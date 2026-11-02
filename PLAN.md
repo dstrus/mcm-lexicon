@@ -131,6 +131,25 @@ Hermaeus's `internal/layers` already reads `ModOrganizer.ini` (`selected_profile
 - **Vortex/manual installs:** the game's `Data` folder is the whole file system, with no overrides.
 - **macOS/Linux:** the author runs Skyrim VR on Windows, but MCM Lexicon must build and run anywhere (CrossOver/Whisky/Proton prefixes, or a copied folder or snapshot). Treat every input as plain folders; do all path matching case-insensitively (Hermaeus's `layers.Lookup`).
 
+### 2.6 Archives (BSA): files the game sees that aren't loose
+
+Many mods pack their files into Bethesda archives (`.bsa`) instead of shipping them loose, and some pack their compiled scripts. MCM Lexicon must read those scripts, or their menus are missing from the catalog.
+
+**Verified** (from the author's lists, 2026-11-02):
+
+- Extended Encounters ships `Extended Encounters.esp`, `Extended Encounters.bsa`, and `Extended Encounters - Textures.bsa`, with no loose `Scripts` folder, so its compiled scripts are in the archive. It also ships a loose `Source` folder.
+- Its menu, and those of R.A.S.S., Wyrmstooth, and the mod named `$SS_ModName`, are missing from every snapshot so far, and the recorded steps for them report "mod not found" for that reason.
+- Extended Encounters' archive, in the author's Skyrim VR list, is **version 105**, Skyrim SE's format. Its flags are `0x3`: folder names and file names are stored, files are uncompressed by default, and names aren't embedded in the file data. It holds 29 folders and 437 files. So VR loads version 105, and Phase 8 reads it first.
+- Its MCM's source ships loose, flat in the mod's `Source` folder as `ee_mcmscript.psc`, beside the sources of its other scripts, while the compiled `ee_mcmscript.pex` is in the archive. So the check that a shipped source is the version the game runs must compare a loose source against an archived compiled script. Today's snapshots hold none of it, because a snapshot finds sources only through loose compiled scripts.
+
+**To build on, but confirm against the author's files before relying on them** (§9):
+
+- **Which archives load.** The game loads an archive named after an active plugin: `<plugin>.bsa`, and `<plugin> - <anything>.bsa` such as `- Textures`. The game's own archives come from its INI's archive lists. An archive whose plugin is inactive isn't loaded.
+- **What wins.** A loose file wins over the same path in any archive, whatever the mods' order. Between archives, the one whose plugin loads later wins. Under MO2, an archive sits in its mod's folder like any other file, but by default its contents still lose to every loose file.
+- **The format.** A header starting `BSA\0` and a version: 104 for the original Skyrim's archives, 105 for Skyrim SE's. Skyrim VR loads 105 (verified above); whether it also loads 104 is unknown, so read both. Then folder records, file records, and the names, with flags saying whether files are compressed by default, a per-file bit that flips it, and whether each file's data starts with its full name. Version 104 compresses with zlib, 105 with LZ4 frames; both are pure Go.
+
+Only the files MCM Lexicon reads are ever extracted: compiled scripts under `scripts/`, and if a mod packs them, `MCM/`, `interface/translations/`, and sources. Archives are read in place, never unpacked to disk.
+
 ---
 
 ## 3. Architecture
@@ -149,7 +168,8 @@ Mirror Hermaeus. New packages are marked ★; the rest are copied from Hermaeus 
 | `internal/prefs/` | Remembered settings: mod list folder, theme, language, last recording folder (copy, new fields) |
 | `internal/gamecheck/` | Whether Skyrim is running, per OS (copy) |
 | `internal/textfile/` | Atomic writes and backups (copy) |
-| ★ `internal/modlist/` | Finding the mod list (MO2 instance, or a game `Data` folder), the active profile, enabled mods in priority order, active plugins, and the virtual file index (`Open(rel) → winning file + owning mod`) |
+| ★ `internal/modlist/` | Finding the mod list (MO2 instance, or a game `Data` folder), the active profile, enabled mods in priority order, active plugins, and the virtual file index (`Open(rel) → winning file + owning mod`), with the contents of loaded archives beneath the loose files (§2.6) |
+| ★ `internal/bsa/` | Reading Bethesda archives (versions 104 and 105) far enough to list their files and extract the few MCM Lexicon reads, zlib and LZ4 included (§2.6) |
 | ★ `internal/plugin/` | Reading `.esp/.esm/.esl` far enough to get quest records' VMAD script properties (`ModName`, `Pages`) and the plugin's light flag. Handles zlib-compressed records. |
 | ★ `internal/papyrus/source/` | Tokenizer and a small parser for `.psc`: script header, functions/events/states, assignments, calls, `if` conditions. Not a full compiler: just enough structure for extraction. |
 | ★ `internal/papyrus/pex/` | Reader for compiled `.pex`: header, string table, debug info, objects, states, functions, instructions |
@@ -406,6 +426,7 @@ Copy Hermaeus's `Makefile` (build, windows, release, notices, types, test, dev, 
 - hand-written `.psc` snippets covering each pattern in §2.3
 - hand-built `.pex` bytes (write a tiny encoder in test code for the instruction subset used)
 - a hand-built minimal plugin with a QUST record, a VMAD `ModName` property, and one compressed record
+- hand-built archives in both versions, with compressed and uncompressed files and embedded names, plus a loose copy of one file that must win over the archive's
 - translation files written as UTF-16 LE with BOM
 - MCM Helper configs with both page styles
 
@@ -436,6 +457,7 @@ Plus golden checks without recordings:
 - Prisma UI AddItem Menu's keymap `Toggle Hotkey` with default `59`
 - Nether's Follower Framework, a large compiled MCM: extraction completes without errors and finds a plausible number of options
 - the `[NoDelete] Davey's MCM Recordings` folder is read correctly despite its brackets and apostrophe
+- **from an archive:** Extended Encounters' menu appears, read from the compiled scripts in its `.bsa`, and the recorded steps for it resolve to exact options. This needs a snapshot taken once snapshots carry archives.
 - **source vs. compiled:** for every script in a snapshot that ships both `.psc` and `.pex`, the two front ends produce the same options. This is the strongest test available, and it gets stronger with every list added.
 
 `make test` runs `go test ./internal/...` then `svelte-check`, as in Hermaeus.
@@ -451,15 +473,16 @@ Each phase ends with everything working, tested and committed.
    - `internal/modlist`: MO2 instance detection, profile, priority order, `plugins.txt`, `overwrite`, game `Data` (from `gamePath`), the case-insensitive virtual index, and the Vortex/plain `Data` mode.
    - `lexicon scan` prints mods and winning-file counts. Tests cover priority, disabled mods, and bracketed names.
    - **`lexicon snapshot`**, ported from `New-MCM-Lexicon-Snapshot.ps1` (§10). At first it uses the script's text heuristic for finding MCM scripts; Phase 5 switches it to following `Extends` chains.
-3. **MCM Helper and translations.** `internal/translations` and `internal/mcmhelper`, the catalog model, and the Menus, menu and Search pages composed as §5.4 says, with Quick Find, sort heads, the pane, and their hints, minus adding to a recording (its A hint isn't shown until Phase 8, since a hint needs a working shortcut). The MCM Helper golden checks pass. `lexicon scan --json` writes a catalog file. *This alone is a useful release.*
+3. **MCM Helper and translations.** `internal/translations` and `internal/mcmhelper`, the catalog model, and the Menus, menu and Search pages composed as §5.4 says, with Quick Find, sort heads, the pane, and their hints, minus adding to a recording (its A hint isn't shown until Phase 9, since a hint needs a working shortcut). The MCM Helper golden checks pass. `lexicon scan --json` writes a catalog file. *This alone is a useful release.*
 4. **Plugins.** `internal/plugin` VMAD reading (compressed records included).
 5. **Papyrus source.** Tokenizer, parser, IR, and the shared extraction. The Dirt & Blood, EVG and Experience golden cases pass. Run over every snapshot and log what's `pattern`/`unknown` and why.
 6. **Compiled Papyrus.** `.pex` reader and lowering. The Be Seated and Sofia golden cases pass, NFF completes, and the source-vs-compiled check passes.
 7. **Recordings, read and validate; comparing lists.**
    - The Recordings page and the editor read-only (the Steps and Files tabs, validation words and sentences, copper on values that differ from a known default), the open-recording select in the top bar, and the recordings group in the sections column. The generic recording checks pass on every snapshot.
    - Opening a catalog file read-only, `lexicon diff`, and the Compare page with its stat-list pane. Test the diff with the MGO RC 4.5 and Nordic snapshots, and with two catalogs of the same list where one mod's options were edited by hand.
-8. **Recordings, write.** Drafts on the server; adding from a menu or search result (`?mode=add`, and the choose-a-recording dialog); editing a step in the pane (`?mode=edit`); the value editors and the DirectX scan-code key table; moving and removing steps; the Files tab's diff against disk; Save with backups and atomic writes; New and Delete. Round-trip tests.
-9. **Polish and release.** Background scan with the bar's scan state, scan cache, the mark and icons (§6, §9), every page checked per §5.6 with a surface brief written for each, `README.md` in Hermaeus's voice, notices, a release tag.
+8. **Archives.** `internal/bsa`, per §2.6: confirm the format and the loading rules against the author's archives first (§9), then read both versions, add loaded archives' files to the virtual index beneath the loose files, and read MCMs whose scripts are packed. Snapshots copy the archives that hold MCM files, and the loose sources of the scripts inside them. The archive tests and the Extended Encounters golden check pass, and Extended Encounters, R.A.S.S., Wyrmstooth, and `$SS_ModName` appear in the catalog or are listed as skipped with a reason.
+9. **Recordings, write.** Drafts on the server; adding from a menu or search result (`?mode=add`, and the choose-a-recording dialog); editing a step in the pane (`?mode=edit`); the value editors and the DirectX scan-code key table; moving and removing steps; the Files tab's diff against disk; Save with backups and atomic writes; New and Delete. Round-trip tests.
+10. **Polish and release.** Background scan with the bar's scan state, scan cache, the mark and icons (§6, §9), every page checked per §5.6 with a surface brief written for each, `README.md` in Hermaeus's voice, notices, a release tag.
 
 Later, if wanted:
 
@@ -477,9 +500,10 @@ These need the game, the author's Windows machine, or the author's decision, so 
 
 1. **Copy the snapshots to the Mac** and give Claude Code the folder (`URAG_SNAPSHOTS`). After a list updates, or to cover another list, run `New-MCM-Lexicon-Snapshot.ps1` on Windows (§10) and copy the new zip over. Once Phase 2 is done, `lexicon snapshot` replaces the script and runs on any OS.
 2. **Record one MCM Helper menu in game** (for example two toggles and a slider in Physical Collision VR, and the keymap in Prisma UI AddItem Menu), save it in an MO2 mod, and take a new snapshot. That confirms what MCM Helper menus record as `mod` and `page` (display name vs. `modName`, page display names), which §2.2's mapping assumes.
-3. **Once Phase 8 works, replay one written recording in game,** ideally one with a non-ASCII label and one with an `index`, to confirm the file format end to end.
-4. Decide the name (MCM Lexicon is a placeholder) and whether the save target should default to a new mod folder or the author's existing `[NoDelete] Davey's MCM Recordings`.
-5. **Choose the mark.** Hermaeus's is the eye of Hermaeus Mora among his tentacles; MCM Lexicon needs its own subject drawn the same way (§6): a single shape that survives 16 pixels, with one cut-out. The librarian's book or a card from a catalog are the obvious subjects; Claude Code can draft candidates as SVG for the author to choose from or redraw, and the shell ships with a plain wordmark until one is chosen.
+3. **Once Phase 9 works, replay one written recording in game,** ideally one with a non-ASCII label and one with an `index`, to confirm the file format end to end.
+4. **Once Phase 8 works, take new snapshots** so they carry the archives that hold MCM scripts, and the loose sources beside them (§2.6, §10).
+5. Decide the name (MCM Lexicon is a placeholder) and whether the save target should default to a new mod folder or the author's existing `[NoDelete] Davey's MCM Recordings`.
+6. **Choose the mark.** Hermaeus's is the eye of Hermaeus Mora among his tentacles; MCM Lexicon needs its own subject drawn the same way (§6): a single shape that survives 16 pixels, with one cut-out. The librarian's book or a card from a catalog are the obvious subjects; Claude Code can draft candidates as SVG for the author to choose from or redraw, and the shell ships with a plain wordmark until one is chosen.
 
 ---
 
@@ -489,7 +513,7 @@ Three kinds of per-list data, from heaviest to lightest:
 
 **Snapshots** hold the files MCM Lexicon reads, for developing and testing MCM Lexicon. A snapshot is a zip containing:
 
-- `mo2/`, a trimmed MO2 instance that MCM Lexicon opens like any other. For every enabled mod with MCM content, it has the plugins at the mod's top level, `MCM/`, `McmRecorder/`, translation files for the chosen languages, and the MCM scripts (`.pex`, plus `.psc` wherever the mod keeps it). It also has `overwrite/MCM/Settings` and `overwrite/McmRecorder`, and trimmed `ModOrganizer.ini`, `modlist.txt` (real priority order) and `plugins.txt` (real active marks).
+- `mo2/`, a trimmed MO2 instance that MCM Lexicon opens like any other. For every enabled mod with MCM content, it has the plugins at the mod's top level, `MCM/`, `McmRecorder/`, translation files for the chosen languages, the MCM scripts (`.pex`, plus `.psc` wherever the mod keeps it), and, from Phase 8, the archives that hold any of those (§2.6), copied whole. It also has `overwrite/MCM/Settings` and `overwrite/McmRecorder`, and trimmed `ModOrganizer.ini`, `modlist.txt` (real priority order) and `plugins.txt` (real active marks).
 - `SNAPSHOT.md`, for people and for Claude Code: where and when it was made, the mods included with their kinds (`mcmhelper:N`, `source:N`, `compiled:N`, `recordings`), every recorded step as an acceptance case, and known gaps.
 
 A whole list is small. MGO RC 4.5 is 72 of 1,819 enabled mods and 277 files: 17.5 MB, or 2.7 MB zipped. Nordic Adventures is 52 mods and 224 files: 1.6 MB zipped. Snapshots hold other authors' files, so they're for local use only.
