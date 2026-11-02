@@ -116,6 +116,8 @@ menus:
     other: "{count} menus are Papyrus scripts, which MCM Lexicon doesn’t read yet, so they aren’t listed."
   showThem: Show them
   hideThem: Hide them
+  noQuest: no quest found
+  notActive: not active
   unreadable:
     one: "{count} file couldn’t be read:"
     other: "{count} files couldn’t be read:"
@@ -133,6 +135,7 @@ menus:
   noOptions: It has no options a recording can set.
   inactive: "Its plugin, {plugin}, isn’t active in this profile, so the game won’t show this menu."
   noPlugin: Its mod has no plugin, so whether the game loads this menu isn’t known.
+  pluginGuessed: No quest with this menu’s script was found, so its plugin is the one in its mod named most like it.
   overridden: Also in {mod}, which loses to this copy.
 
 # One menu: its pages as tabs, and its options.

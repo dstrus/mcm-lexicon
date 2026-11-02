@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -50,29 +51,33 @@ func build(t *testing.T) *modlist.List {
 	t.Helper()
 	inst := testcorpus.New(t, "[NoDelete] MGO", "VR")
 	inst.Mod("Physical Collision VR", true, map[string]string{
-		"PhysicalCollisionVR.esp":                                "plugin",
+		"PhysicalCollisionVR.esp":                                testcorpus.Plugin(),
+		"Scripts/PCVR_MCM.pex":                                   "\xfa\x57\xc0\xde PCVR_MCM MCM_ConfigBase",
+		"Collision Patch.esp":                                    testcorpus.Plugin(testcorpus.Quest{EditorID: "PCVR_MCMQuest", Script: "PCVR_MCM"}),
 		"MCM/Config/PhysicalCollisionVR/config.json":             collision,
 		"MCM/Config/PhysicalCollisionVR/settings.ini":            "[General]\nbEnabled = 1\nbDup1 = 0\n[Hands]\nfRadius = 4.0\niMode = 1\nuUnits = 0\n",
 		"Interface/Translations/PhysicalCollisionVR_ENGLISH.txt": utf16LE("$PCVR_Name\tPhysical Collision VR\r\n$PCVR_Hands\tHands\r\n$PCVR_On\tOn\r\n"),
 		"Interface/Translations/PhysicalCollisionVR_GERMAN.txt":  utf16LE("$PCVR_Name\tPhysische Kollision\r\n"),
 	})
 	inst.Mod("Prisma UI Additem Menu", true, map[string]string{
-		"PrismaUIAddItemMenu.esp":                    "plugin",
+		"PrismaUIAddItemMenu.esp":                    testcorpus.Plugin(),
 		"MCM/Config/PrismaUIAddItemMenu/config.json": `{"modName": "PrismaUIAddItemMenu", "displayName": "Prisma UI AddItem Menu", "content": [{"id": "Toggle:General", "text": "Toggle Hotkey", "type": "keymap", "valueOptions": {"sourceType": "GlobalValue", "defaultValue": 59}}]}`,
 	})
 	inst.Mod("Inactive Thing", true, map[string]string{
-		"Inactive.esp":                    "plugin",
+		"Inactive.esp":                    testcorpus.Plugin(),
 		"MCM/Config/Inactive/config.json": `{"modName": "Inactive", "displayName": "Inactive Thing", "content": [{"id": "b:G", "text": "On", "type": "toggle", "valueOptions": {"sourceType": "ModSettingBool"}}]}`,
 	})
 	inst.Mod("Broken", true, map[string]string{"MCM/Config/Broken/config.json": "{ not json"})
 	inst.Mod("Classic", true, map[string]string{
 		"Scripts/Classic_MCM.pex":    "\xfa\x57\xc0\xde Classic_MCM SKI_ConfigBase OnPageReset",
+		"Classic.esp":                testcorpus.Plugin(testcorpus.Quest{EditorID: "ClassicMCMQuest", Script: "classic_mcm", ModName: "Classic Menu", Pages: []string{"General", "$CL_More"}}),
+		"Broken.esp":                 "not a plugin",
 		"Scripts/Helper_MCM.pex":     "\xfa\x57\xc0\xde Helper_MCM MCM_ConfigBase SKI_ConfigBase",
 		"Scripts/SKI_ConfigBase.pex": "SKI_ConfigBase",
 		"Scripts/Unrelated.pex":      "nothing here",
 	})
 	inst.Overwrite(map[string]string{"MCM/Settings/PhysicalCollisionVR.ini": "[Hands]\nfRadius = 6.5\niMode = 1\n[General]\nbEnabled = 1\n"})
-	inst.Plugins("*PhysicalCollisionVR.esp", "*PrismaUIAddItemMenu.esp", "Inactive.esp")
+	inst.Plugins("*PhysicalCollisionVR.esp", "*Collision Patch.esp", "*PrismaUIAddItemMenu.esp", "Inactive.esp", "Classic.esp", "*Broken.esp")
 	src, err := modlist.Check(inst.Dir, "")
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +114,7 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	}
 
 	pc := menu(t, c, "Physical Collision VR")
-	if pc.Name != "$PCVR_Name" || pc.ID != "mcmhelper-physicalcollisionvr" || pc.Kind != KindMCMHelper || pc.Mod != "Physical Collision VR" || pc.Plugin != "PhysicalCollisionVR.esp" || !pc.Active || pc.Certainty != CertaintyExact {
+	if pc.Name != "$PCVR_Name" || pc.ID != "mcmhelper-physicalcollisionvr" || pc.Kind != KindMCMHelper || pc.Mod != "Physical Collision VR" || pc.Plugin != "Collision Patch.esp" || !pc.Active || pc.Certainty != CertaintyExact || len(pc.Notes) != 0 {
 		t.Errorf("menu = %+v", pc)
 	}
 	if pc.Source.Path != "MCM/Config/PhysicalCollisionVR/config.json" {
@@ -161,8 +166,8 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	if k := pr.Pages[0].Options[0]; k.Type != OptionTypeKeymap || k.Label != "Toggle Hotkey" || k.Default == nil || k.Default.Number != 59 {
 		t.Errorf("Toggle Hotkey = %+v", k)
 	}
-	if in := menu(t, c, "Inactive Thing"); in.Active {
-		t.Error("a menu whose plugin is inactive is marked active")
+	if in := menu(t, c, "Inactive Thing"); in.Active || in.Plugin != "Inactive.esp" || len(in.Notes) != 1 || in.Notes[0].Kind != NoteKindPluginGuessed {
+		t.Errorf("a menu whose plugin is inactive, found by its name: %+v", in)
 	}
 
 	// What couldn't be read: the broken config, and the classic script.
@@ -170,8 +175,13 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	for _, s := range c.Skipped {
 		skipped = append(skipped, string(s.Reason)+" "+s.Path)
 	}
-	if want := "unreadable MCM/Config/Broken/config.json, papyrus Scripts/Classic_MCM.pex"; strings.Join(skipped, ", ") != want {
+	if want := "unreadable Broken.esp, unreadable MCM/Config/Broken/config.json, papyrus Scripts/Classic_MCM.pex"; strings.Join(skipped, ", ") != want {
 		t.Errorf("skipped = %q, want %q", skipped, want)
+	}
+	// The Papyrus menu's quest says its name and pages, matched to the
+	// script without regard to case.
+	if cl := c.Skipped[2]; cl.Name != "Classic Menu" || cl.NameText != "Classic Menu" || cl.Plugin != "Classic.esp" || cl.Quest != "ClassicMCMQuest" || cl.Active || strings.Join(cl.Pages, ",") != "General,$CL_More" {
+		t.Errorf("the Papyrus menu = %+v", cl)
 	}
 }
 
@@ -299,9 +309,24 @@ func TestRealSnapshots(t *testing.T) {
 					}
 				}
 			}
+			named := 0
 			for _, s := range c.Skipped {
 				if s.Reason == SkipReasonUnreadable {
 					t.Errorf("couldn't read %s (%s): %s", s.Path, s.Mod, s.Detail)
+				}
+				if s.Name != "" {
+					named++
+				}
+				if s.Reason == SkipReasonPapyrus && s.Plugin == "" {
+					t.Logf("no quest found for %s (%s)", s.Path, s.Mod)
+				}
+			}
+			t.Logf("%d of %d Papyrus menus named by their quests", named, len(c.Skipped))
+			for _, m := range c.Menus {
+				for _, n := range m.Notes {
+					if n.Kind == NoteKindPluginGuessed {
+						t.Logf("%s: plugin guessed as %s", m.NameText, n.Detail)
+					}
 				}
 			}
 			t.Logf("%d MCM Helper menus, %d Papyrus menus not read yet", helper, len(c.Skipped))
@@ -310,6 +335,16 @@ func TestRealSnapshots(t *testing.T) {
 			}
 			if !strings.Contains(snap.Name, "mgo") {
 				return
+			}
+			// The display names PLAN.md §2.3 says live only in plugins.
+			names := map[string]string{}
+			for _, s := range c.Skipped {
+				names[strings.ToLower(path.Base(s.Path))] = s.Name
+			}
+			for script, want := range map[string]string{"dirty_quest_mcm.pex": "Dirt & Blood"} {
+				if got := names[script]; got != want {
+					t.Errorf("%s: name %q, want %q", script, got, want)
+				}
 			}
 			pc := menu(t, c, "Physical Collision VR")
 			var pages []string

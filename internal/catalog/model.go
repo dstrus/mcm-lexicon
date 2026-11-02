@@ -142,9 +142,10 @@ type SourceRef struct {
 type NoteKind string
 
 const (
-	NoteKindNoPlugin   NoteKind = "no-plugin"  // the menu's mod has no plugin, so whether the game loads it isn't known
-	NoteKindStepper    NoteKind = "stepper"    // a stepper cycles on each click; a recording can only click it
-	NoteKindOverridden NoteKind = "overridden" // another mod's copy of the defining file loses to this one
+	NoteKindNoPlugin      NoteKind = "no-plugin"      // the menu's mod has no plugin, so whether the game loads it isn't known
+	NoteKindStepper       NoteKind = "stepper"        // a stepper cycles on each click; a recording can only click it
+	NoteKindOverridden    NoteKind = "overridden"     // another mod's copy of the defining file loses to this one
+	NoteKindPluginGuessed NoteKind = "plugin-guessed" // no quest with the menu's script was found; Plugin is the mod's likeliest
 )
 
 type Note struct {
@@ -165,4 +166,12 @@ type Skipped struct {
 	Mod    string     `json:"mod"`
 	Reason SkipReason `json:"reason"`
 	Detail string     `json:"detail"`
+	// For a Papyrus menu, what its quest in a plugin says, when one was
+	// found: the display name and pages its script's properties hold.
+	Name     string   `json:"name"`     // raw: may be a $KEY
+	NameText string   `json:"nameText"` // translated
+	Pages    []string `json:"pages"`
+	Plugin   string   `json:"plugin"`
+	Quest    string   `json:"quest"` // the quest's editor ID
+	Active   bool     `json:"active"`
 }

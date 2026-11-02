@@ -12,6 +12,7 @@ import (
 
 	"lexicon/internal/mcmhelper"
 	"lexicon/internal/modlist"
+	"lexicon/internal/plugin"
 	"lexicon/internal/translations"
 )
 
@@ -47,6 +48,8 @@ func Scan(l *modlist.List, o Options) *Catalog {
 		Skipped: []Skipped{},
 	}
 	s := &scan{list: l, cat: c, tr: loadTranslations(l, c.List.Language), ids: map[string]bool{}}
+	s.scripts()
+	s.plugins()
 	s.mcmHelper()
 	s.papyrus()
 	sort.SliceStable(c.Menus, func(i, j int) bool {
@@ -60,6 +63,21 @@ type scan struct {
 	cat  *Catalog
 	tr   *translations.Table
 	ids  map[string]bool
+
+	classic []modlist.File          // compiled scripts that extend SKI_ConfigBase directly
+	helpers map[string][]string     // MCM Helper's scripts (extending MCM_ConfigBase), by mod
+	quests  map[string][]attachment // quests by the lowercase name of a script attached to them
+}
+
+// attachment is a quest in a plugin with a script attached, and what the
+// script's properties hold.
+type attachment struct {
+	plugin  string
+	order   int // the plugin's place in plugins.txt; later wins
+	active  bool
+	quest   string
+	modName string
+	pages   []string
 }
 
 // loadTranslations reads every translation file the game would load for
@@ -101,7 +119,16 @@ func (s *scan) mcmHelper() {
 }
 
 func (s *scan) helperMenu(f modlist.File, id string, cfg mcmhelper.Config) Menu {
-	plugin := s.pluginOf(f.Mod, cfg.ModName, id)
+	plugin, guessed := "", false
+	for _, script := range s.helpers[f.Mod] {
+		if a, ok := s.quest(script); ok {
+			plugin = a.plugin
+			break
+		}
+	}
+	if plugin == "" {
+		plugin, guessed = s.pluginOf(f.Mod, cfg.ModName, id), true
+	}
 	prefer := []string{cfg.ModName, id, strings.TrimSuffix(plugin, path.Ext(plugin))}
 	m := Menu{
 		ID:        s.id("mcmhelper", id),
@@ -118,6 +145,8 @@ func (s *scan) helperMenu(f modlist.File, id string, cfg mcmhelper.Config) Menu 
 	}
 	if plugin == "" {
 		m.Notes = append(m.Notes, Note{Kind: NoteKindNoPlugin, Detail: f.Mod})
+	} else if guessed {
+		m.Notes = append(m.Notes, Note{Kind: NoteKindPluginGuessed, Detail: plugin})
 	}
 	if copies := s.list.Copies(f.Path); len(copies) > 1 {
 		for _, lost := range copies[1:] {
@@ -299,11 +328,12 @@ func (s *scan) ini(rel string) mcmhelper.INI {
 	return mcmhelper.ParseINI(b)
 }
 
-// papyrus lists the menus defined by Papyrus scripts, which aren't read
-// yet, so the catalog says how many it's missing. A compiled script names
-// the script it extends in its string table; MCM Helper's own scripts
-// extend MCM_ConfigBase, and their config.json covers them.
-func (s *scan) papyrus() {
+// scripts finds the compiled scripts that make MCMs. A compiled script
+// names the script it extends in its string table: SKI_ConfigBase for a
+// classic MCM, MCM_ConfigBase for MCM Helper's (whose config.json defines
+// the menu). Following Extends chains properly comes with reading scripts.
+func (s *scan) scripts() {
+	s.helpers = map[string][]string{}
 	marker, helper := []byte("ski_configbase"), []byte("mcm_configbase")
 	for _, f := range s.list.Files("Scripts") {
 		if strings.Count(f.Path, "/") != 1 || !strings.EqualFold(path.Ext(f.Path), ".pex") {
@@ -318,14 +348,84 @@ func (s *scan) papyrus() {
 			continue
 		}
 		lower := bytes.ToLower(b)
-		if bytes.Contains(lower, marker) && !bytes.Contains(lower, helper) {
-			s.skip(f, SkipReasonPapyrus, "")
+		switch {
+		case bytes.Contains(lower, helper):
+			s.helpers[f.Mod] = append(s.helpers[f.Mod], base)
+		case bytes.Contains(lower, marker):
+			s.classic = append(s.classic, f)
 		}
 	}
 }
 
+// plugins reads every plugin the game sees for the quests scripts are
+// attached to. The game's own masters hold no MCMs, so they're skipped.
+func (s *scan) plugins() {
+	s.quests = map[string][]attachment{}
+	order := map[string]int{}
+	for i, p := range s.list.Plugins() {
+		order[strings.ToLower(p.Name)] = i
+	}
+	for _, f := range s.list.Files("") {
+		if strings.Contains(f.Path, "/") || !modlist.IsPlugin(f.Path) || modlist.CoreMaster(f.Path) {
+			continue
+		}
+		p, err := plugin.ReadFile(f.Abs)
+		if err != nil {
+			s.skip(f, SkipReasonUnreadable, err.Error())
+			continue
+		}
+		at, listed := order[strings.ToLower(f.Path)]
+		if !listed {
+			at = -1
+		}
+		for _, q := range p.Quests {
+			for _, sc := range q.Scripts {
+				a := attachment{plugin: f.Path, order: at, active: s.list.PluginActive(f.Path), quest: q.EditorID}
+				if v, ok := sc.Property("ModName"); ok && v.Type == plugin.PropertyString {
+					a.modName = v.String
+				}
+				if v, ok := sc.Property("Pages"); ok && v.Type == plugin.PropertyStringArray {
+					a.pages = v.Strings
+				}
+				key := strings.ToLower(sc.Name)
+				s.quests[key] = append(s.quests[key], a)
+			}
+		}
+	}
+}
+
+// quest is the quest the game runs script on: one in an active plugin over
+// an inactive one, then the plugin loaded last.
+func (s *scan) quest(script string) (attachment, bool) {
+	var best attachment
+	found := false
+	for _, a := range s.quests[strings.ToLower(script)] {
+		if !found || (a.active && !best.active) || (a.active == best.active && a.order > best.order) {
+			best, found = a, true
+		}
+	}
+	return best, found
+}
+
+// papyrus lists the menus defined by Papyrus scripts, which aren't read
+// yet, so the catalog says what it's missing, with what their quests say.
+func (s *scan) papyrus() {
+	for _, f := range s.classic {
+		base := strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path))
+		sk := Skipped{Path: f.Path, Mod: f.Mod, Reason: SkipReasonPapyrus, Pages: []string{}}
+		if a, ok := s.quest(base); ok {
+			sk.Name, sk.Plugin, sk.Quest, sk.Active = a.modName, a.plugin, a.quest, a.active
+			sk.NameText = s.tr.Text(a.modName, strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), base)
+			if a.pages != nil {
+				sk.Pages = a.pages
+			}
+		}
+		s.cat.Skipped = append(s.cat.Skipped, sk)
+	}
+}
+
 func (s *scan) skip(f modlist.File, reason SkipReason, detail string) {
-	s.cat.Skipped = append(s.cat.Skipped, Skipped{Path: f.Path, Mod: f.Mod, Reason: reason, Detail: detail})
+	s.cat.Skipped = append(s.cat.Skipped, Skipped{Path: f.Path, Mod: f.Mod, Reason: reason, Detail: detail, Pages: []string{}})
 }
 
 // id is a menu's ID: its kind and name, lowercased with anything but

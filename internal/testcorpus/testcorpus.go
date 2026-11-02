@@ -5,6 +5,8 @@
 package testcorpus
 
 import (
+	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"strings"
@@ -193,4 +195,61 @@ func repoRoot() (string, bool) {
 		}
 		dir = parent
 	}
+}
+
+// Quest is a quest with one script attached, for Plugin.
+type Quest struct {
+	EditorID string
+	Script   string
+	ModName  string   // the script's ModName property; "" leaves it out
+	Pages    []string // its Pages property; nil leaves it out
+}
+
+// Plugin is the bytes of a minimal plugin holding the quests, as the
+// Creation Kit writes them (VMAD version 5, object format 2).
+func Plugin(quests ...Quest) string {
+	le := func(v any) []byte {
+		var b bytes.Buffer
+		binary.Write(&b, binary.LittleEndian, v)
+		return b.Bytes()
+	}
+	wstr := func(s string) []byte { return append(le(uint16(len(s))), s...) }
+	sub := func(typ string, data []byte) []byte {
+		return append(append([]byte(typ), le(uint16(len(data)))...), data...)
+	}
+	record := func(typ string, data []byte) []byte {
+		return append(append(append([]byte(typ), le(uint32(len(data)))...), make([]byte, 16)...), data...)
+	}
+	var body []byte
+	for i, q := range quests {
+		var props [][]byte
+		if q.ModName != "" {
+			props = append(props, append(append(wstr("ModName"), 2, 1), wstr(q.ModName)...))
+		}
+		if q.Pages != nil {
+			p := append(append(wstr("Pages"), 12, 1), le(uint32(len(q.Pages)))...)
+			for _, page := range q.Pages {
+				p = append(p, wstr(page)...)
+			}
+			props = append(props, p)
+		}
+		v := append(append(append(append(le(int16(5)), le(int16(2))...), le(uint16(1))...), wstr(q.Script)...), 0)
+		v = append(v, le(uint16(len(props)))...)
+		for _, p := range props {
+			v = append(v, p...)
+		}
+		data := append(sub("EDID", append([]byte(q.EditorID), 0)), sub("VMAD", v)...)
+		rec := record("QUST", data)
+		binary.LittleEndian.PutUint32(rec[12:], uint32(0x800+i))
+		body = append(body, rec...)
+	}
+	file := record("TES4", sub("HEDR", make([]byte, 12)))
+	if len(body) > 0 {
+		file = append(file, "GRUP"...)
+		file = append(file, le(uint32(24+len(body)))...)
+		file = append(file, "QUST"...)
+		file = append(file, make([]byte, 12)...)
+		file = append(file, body...)
+	}
+	return string(file)
 }

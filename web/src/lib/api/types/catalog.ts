@@ -139,7 +139,8 @@ export interface SourceRef {
 export const NoteKindNoPlugin = "no-plugin"; // the menu's mod has no plugin, so whether the game loads it isn't known
 export const NoteKindStepper = "stepper"; // a stepper cycles on each click; a recording can only click it
 export const NoteKindOverridden = "overridden"; // another mod's copy of the defining file loses to this one
-export type NoteKind = typeof NoteKindNoPlugin | typeof NoteKindStepper | typeof NoteKindOverridden;
+export const NoteKindPluginGuessed = "plugin-guessed"; // no quest with the menu's script was found; Plugin is the mod's likeliest
+export type NoteKind = typeof NoteKindNoPlugin | typeof NoteKindStepper | typeof NoteKindOverridden | typeof NoteKindPluginGuessed;
 export interface Note {
   kind: NoteKind;
   detail: string; // a name or path the note refers to
@@ -155,6 +156,16 @@ export interface Skipped {
   mod: string;
   reason: SkipReason;
   detail: string;
+  /**
+   * For a Papyrus menu, what its quest in a plugin says, when one was
+   * found: the display name and pages its script's properties hold.
+   */
+  name: string; // raw: may be a $KEY
+  nameText: string; // translated
+  pages: string[];
+  plugin: string;
+  quest: string; // the quest's editor ID
+  active: boolean;
 }
 
 //////////

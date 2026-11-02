@@ -137,6 +137,10 @@ func Read(src Source) (*List, error) {
 // which case every plugin counts as active).
 func (l *List) Plugins() []Plugin { return l.plugins }
 
+// CoreMaster reports whether name is one of the game's own masters, which
+// are always loaded.
+func CoreMaster(name string) bool { return coreMasters[strings.ToLower(name)] }
+
 // PluginActive reports whether the game loads the plugin named name: its
 // mark in plugins.txt, or always for the game's own masters. Without a
 // plugins.txt, every plugin counts as active.

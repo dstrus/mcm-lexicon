@@ -105,7 +105,13 @@
 			<p class="muted">{t.papyrus({ count: papyrus.length })} <button type="button" class="textbutton" onclick={() => (showSkipped = !showSkipped)} aria-expanded={showSkipped}>{showSkipped ? t.hideThem : t.showThem}</button></p>
 			{#if showSkipped}
 				<ul class="files">
-					{#each papyrus as s (s.path)}<li><span class="file">{s.path.replace(/^Scripts\//i, '')}</span> <span class="muted">{s.mod}</span></li>{/each}
+					{#each papyrus as s (s.path)}
+						<li class:inactive={s.plugin && !s.active}>
+							{#if s.nameText}<span class="title">{s.nameText}</span>{/if}
+							<span class="file">{s.path.replace(/^Scripts\//i, '')}</span>
+							<span class="muted">{s.plugin || t.noQuest}{#if s.plugin && !s.active}{' · '}{t.notActive}{/if}</span>
+						</li>
+					{/each}
 				</ul>
 			{/if}
 		{/if}
@@ -167,7 +173,7 @@
 				<div class="actions"><a class="button primary" href={menuHref(current.id)}>{m.common.open}</a></div>
 				{#if !current.active}<p class="notice warn">{t.inactive({ plugin: current.plugin })}</p>{/if}
 				{#each current.notes as note, i (i)}
-					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{/if}
+					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'plugin-guessed'}<p class="notice">{t.pluginGuessed}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{/if}
 				{/each}
 			{/if}
 		</aside>
@@ -216,22 +222,36 @@
 	}
 	.skipped {
 		margin-bottom: var(--space-4);
+	}
+	.skipped > p {
 		max-width: 80ch;
 	}
 	.files {
 		list-style: none;
-		margin: var(--space-2) 0 0;
+		margin: var(--space-2) 0 var(--space-5);
 		padding: 0;
-		columns: 2 22rem;
+		columns: 3 20rem;
 		column-gap: var(--space-6);
 		font-size: var(--step--1);
 	}
 	.files li {
 		break-inside: avoid;
 		padding: 1px 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.files .title {
+		color: var(--ink);
+		margin-right: var(--space-1);
 	}
 	.file {
 		font-family: var(--font-mono);
+		color: var(--muted);
+		margin-right: var(--space-1);
+	}
+	.files .inactive .title {
+		color: var(--muted);
 	}
 	.empty {
 		max-width: 60ch;
