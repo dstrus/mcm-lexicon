@@ -35,7 +35,9 @@
 	let status = $derived(page.data.status as Status);
 	let list = $derived(page.data.recordings as ListReply | null);
 	let openName = $derived(status?.openRecording ?? '');
-	let adding = $derived(param('mode') === 'add' && !!openName);
+	// Adding is a change, so it's there only while editing.
+	let editing = $derived(!!status?.editing);
+	let adding = $derived(editing && param('mode') === 'add' && !!openName);
 
 	// The step being added, started from the option's default. It's made
 	// again whenever another option is selected.
@@ -129,12 +131,14 @@
 	}
 
 	useShortcuts(() =>
-		adding
+		!editing
+			? []
+			: adding
 			? [
 					{ key: 'Enter', label: t.add, command: true, disabled: !!problem || working, run: () => add() },
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
-			: [{ key: 'a', shown: 'A', label: openName ? t.addTo({ recording: openName }) : t.addToAny, disabled: !list?.readable && !list?.recordings.length && !status?.catalogFile, run: start }]
+			: [{ key: 'a', shown: 'A', label: openName ? t.addTo({ recording: openName }) : t.addToAny, run: start }]
 	);
 </script>
 
@@ -151,10 +155,12 @@
 	</form>
 {:else}
 	{@render children()}
-	{#if added}<p class="notice" role="status">{added} <a href={recordingHref(openName)}>{t.openIt}</a></p>{/if}
-	<div class="actions">
-		<button type="button" class="button primary" onclick={start}>{openName ? t.addTo({ recording: openName }) : t.addToAny}</button>
-	</div>
+	{#if editing}
+		{#if added}<p class="notice" role="status">{added} <a href={recordingHref(openName)}>{t.openIt}</a></p>{/if}
+		<div class="actions">
+			<button type="button" class="button primary" onclick={start}>{openName ? t.addTo({ recording: openName }) : t.addToAny}</button>
+		</div>
+	{/if}
 {/if}
 
 <dialog bind:this={dialog} aria-label={t.choose} onclick={(e) => e.target === dialog && dialog?.close()} onkeydown={keys}>

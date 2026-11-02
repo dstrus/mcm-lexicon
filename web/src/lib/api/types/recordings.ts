@@ -105,6 +105,7 @@ export interface Summary {
   counts: Counts;
   problems: Problem[];
   drafted: boolean; // it has changes not yet saved
+  deleted: boolean; // the draft deletes it
   new: boolean; // it's only a draft, never saved
   deletes: string; // why it can't be deleted; "" when it can
 }
@@ -173,6 +174,7 @@ export interface Editor {
   deletes: string; // why it can't be deleted; "" when it can
   targets: string[]; // mod folders to choose from: those with recordings, and the default
   problems: string[]; // what's wrong with the draft, so Save can't write it
+  deleted: boolean; // the draft deletes it: Save removes its files
 }
 /**
  * CreateRequest makes a new recording, as a draft.
@@ -203,6 +205,46 @@ export interface DeleteReply {
  * until Save. Drafts last until the program stops or the list changes.
  */
 export interface Service {
+}
+/**
+ * ChangeKind is what the draft does to a recording.
+ */
+export const ChangeKindNew = "new";
+export const ChangeKindChanged = "changed";
+export const ChangeKindDeleted = "deleted";
+export type ChangeKind = typeof ChangeKindNew | typeof ChangeKindChanged | typeof ChangeKindDeleted;
+/**
+ * Change is one recording the draft changes, as its editor shows it.
+ */
+export interface Change {
+  kind: ChangeKind;
+  editor: Editor;
+}
+/**
+ * Changes is the whole draft, for reviewing before Save.
+ */
+export interface Changes {
+  recordings: Change[];
+  /**
+   * Unsaved is why Save can't write the draft now ("" when it can):
+   * "running", or "blocked" when a recording can't be written (its
+   * editor says why).
+   */
+  unsaved: string;
+  files: number /* int */; // how many files Save writes or removes
+}
+/**
+ * SaveReply is what Save did, recording by recording.
+ */
+export interface SaveReply {
+  saved: SavedRecording[];
+  changes: Changes; // what's left: nothing, unless a save failed part way
+}
+export interface SavedRecording {
+  name: string;
+  kind: ChangeKind;
+  dir: string;
+  backup: string; // where the previous files went; "" when there were none
 }
 /**
  * CompareRequest names the catalog file to compare the current catalog

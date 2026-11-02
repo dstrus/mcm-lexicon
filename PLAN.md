@@ -274,7 +274,7 @@ Then a recursive-descent parser for declarations, statements and expressions, wi
 
 - **Recording locations:** list every `McmRecorder/` folder in the virtual file index. The winning copy of each recording is what the game replays; show the owning mod.
 - **Where Save writes** (as built in Phase 9): a recording saves back into the mod folder holding the copy of its info file the game reads, overwrite included, so an edit replaces what the game replays. A new recording saves to the folder chosen last time, defaulting to a new mod folder `MCM Lexicon Recordings`; the editor's SAVE TO select changes it, for one recording. Never into the game's real `Data` folder under MO2. A new mod folder isn't in the profile until MO2 lists it, unticked, and the editor says to tick it; a target whose copy loses to another mod's says which. With a catalog file open, the target is any folder the player names by its full path.
-- **Deleting** is only for recordings in folders MCM Lexicon has saved recordings to (remembered per list), never a mod list's own, and backs up first.
+- **Deleting** is a change like any other: it goes into the draft, where it can be restored, and Save does it, backing up first. It's only for recordings in folders MCM Lexicon has saved recordings to (remembered per list), never a mod list's own.
 - **Validation:** match each step to the catalog by `mod`, `page`, type, `option`, `index`. Results:
   - **matched**
   - **value not allowed:** a menu choice not in the list, or a slider outside the range
@@ -284,7 +284,8 @@ Then a recursive-descent parser for declarations, statements and expressions, wi
 
   This lint is a headline feature: it tells a player which of their recordings broke when a mod updated.
 - **Editing:** steps are an ordered list. The UI groups them under a heading per step file because the file layout does, but order across mods matters and must be editable. Adding an option from a menu or a search result opens the type's value editor, prefilled with the option's default when known, then appends the step to the draft (§5.4).
-- **Drafts:** edits accumulate in a draft the server holds in memory, one per recording name, so a draft survives a page reload and is the same in every tab, but not a restart of the program; the editor says so while a draft is open. Nothing touches disk until Save.
+- **Read-only unless editing.** MCM Lexicon starts read-only every time: nothing can be added, made, changed, or deleted, and the server refuses such requests too, so another tab can't either. The player turns on **editing** in the top bar (§5.3). Turning it off with changes pending asks first: review and save them, discard them, or keep editing.
+- **One draft:** while editing, every change, to any recording, goes into one draft the server holds in memory: new recordings, changed steps and values, a different save target, and deletions. It survives a page reload and is the same in every tab, but not a restart of the program or choosing another list. A recording edited back to what's on disk drops out of it. Nothing touches disk until the draft is saved, and it's saved only from the **Changes** page (§5.4), all of it at once: every new and changed recording written and every deletion done, each backed up first. Save writes nothing unless every recording in the draft can be written, refuses while Skyrim runs, and on a failure part way says what it had done, leaving the rest in the draft.
 - **Writing:**
   - refuse while Skyrim runs (`gamecheck`), like Hermaeus
   - back up the existing recording folder and info file (copies under `lexicon-backups/<recording>/<time>/`, beside the list where the game doesn't look: the MO2 instance's folder, or the game folder for a Data folder)
@@ -321,9 +322,13 @@ API routes follow Hermaeus's shape (`httpapi.JSON`, typed structs, `apperr` kind
 | `POST /api/recordings` | A new recording, as a draft (name, author, autorun) |
 | `PUT /api/recordings/{name}/draft` | Replace the draft's steps, info, and save target (§4, drafts) |
 | `POST /api/recordings/{name}/steps` | Append one step to the draft, from adding (§5.4); says its number |
-| `DELETE /api/recordings/{name}/draft` | Discard the draft |
-| `POST /api/recordings/{name}/save` | Write the draft to its save target (§4) |
-| `DELETE /api/recordings/{name}` | Only in a folder MCM Lexicon saved to (§4); backed up first |
+| `PUT /api/editing` | Turn editing on or off (§4); off with changes pending needs `discard` |
+| `DELETE /api/recordings/{name}/draft` | Discard one recording's changes from the draft |
+| `POST /api/recordings/{name}/restore` | Take a recording's deletion out of the draft |
+| `GET /api/changes` | The whole draft, recording by recording, with every file Save writes or removes |
+| `POST /api/changes/save` | Save the whole draft (§4) |
+| `DELETE /api/changes` | Discard the whole draft |
+| `DELETE /api/recordings/{name}` | Put its deletion in the draft; only in a folder MCM Lexicon saved to (§4) |
 
 Scans can take a while on 1,800 mods. Run them in the background with progress shown in status, and serve the previous catalog until the new one is ready. Cache parsed scripts by (path, size, mtime) in the OS cache dir.
 
@@ -341,13 +346,15 @@ MCM Lexicon looks like Hermaeus because it *is* Hermaeus's design system, applie
 - **Certainty shows as words, not color.** An `exact` option shows nothing extra. `pattern` and `unknown` show as a muted label-caps word after the option's text in tables (PATTERN, UNKNOWN), and in the pane as an amber notice saying what it means: the label is built at runtime, so a recording can only match it with a `*wildcard*`, or can't match it at all. Certainty is never a column of its own; most rows are exact, and a column of EXACT is noise.
 - **Validation is amber (`warn`) when a step won't replay**, muted when it can't be checked, and silent when it matches. A step's flag is a label-caps word in the step table (NOT FOUND, NOT ALLOWED, MOD MISSING, UNCHECKED) and, in the pane, a sentence that says what the catalog has instead, with the suggestion as a text button that applies it. A recording that couldn't be read at all is an error (`danger`), as in Hermaeus.
 - **The File font (DM Mono) is for anything matched character for character:** raw selectors, page names and menu entries as the recording will hold them, the files the editor previews, and catalog and recording paths. The translated text is for reading, in Jost; the raw selector sits beneath it, muted, in DM Mono, only when the two differ or when the selector has a space at either end. A trailing space is invisible in any font, so copy names it: "Ends with a space. MCM Recorder matches it exactly."
-- **The Draft Rule.** Nothing is written until Save. A recording with unsaved changes says so in a muted line under its title, naming the folder Save will write to, and the hint strip's Save hint is enabled only then. Hermaeus's "say what actually happens" is the test for every notice: name the file, the backup, and the consequence.
+- **The Draft Rule.** Nothing is written until the draft is saved, and only while editing can there be a draft. Each recording with changes says so in a muted line under its title, naming the folder Save will write to, with REVIEW CHANGES to the Changes page, where Save is. Hermaeus's "say what actually happens" is the test for every notice: name the file, the backup, and the consequence.
 
 ### 5.3 The shell
 
 The grid is Hermaeus's: a top bar, a 13rem sections column, main (1.5rem top, 2rem sides, 5rem bottom to clear the hints), and the fixed hint strip. Under 60rem the column becomes a scrolling row under the bar, and panes stack under their tables with a top rule instead of a left one.
 
 **Top bar.** The mark and MCM LEXICON at left, in headline caps. At right, in this order:
+
+- **Mode:** a Segmented READ-ONLY / EDITING, read-only at every start (§4). While editing, the sections column adds CHANGES with the draft's count.
 
 - **Adding to:** ADDING TO in label caps and a select whose entries are the recordings found and *None*; a new recording is made from the Recordings page or from A's dialog. The chosen one is the **open recording**, the one A adds steps to from any menu or search result (§5.4). It's remembered with the source (`PUT /api/recordings/open`), so it survives a reload.
 - **Source:** with a live list, PROFILE and a select of the instance's profiles, the counterpart of Hermaeus's playthrough select; changing it rescans. With a catalog file, CATALOG and the file's name, since there's nothing to choose. The select's `title` is the path on disk.
@@ -380,16 +387,18 @@ Hints: ↑ ↓ (hidden) · A ADD TO <RECORDING> (ADD TO A RECORDING when none is
 Hints: ↑ ↓ (hidden) · ENTER OPEN MENU · A ADD TO <RECORDING> · / FIND.
 
 **Recordings** (`/recordings`). RECORDINGS in display caps, the count, a filter. The item table: diamond; Recording; In (the mod folder holding the winning copy, or OVERWRITE, with "also in <mod>" muted when another copy loses); Steps and Menus as numbers; Autorun as ON or OFF in label caps; Check (nothing when every step matches, else "3 WON'T REPLAY" in amber, or "2 UNCHECKED" muted). The pane: the name in headline caps; AUTHOR, VERSION, AUTORUN, FOLDER (the path), FILES (the count, and the backup folder's path once one exists); the validation summary as sentences; a primary OPEN; and a plain OPEN FOR ADDING that makes it the open recording without leaving the page.
-New (`?mode=new`): the pane form asks for the name (with a note that `/` and `\` become `_`), the author (remembered), and autorun; CREATE makes an empty draft and opens the editor.
-Hints: ↑ ↓ (hidden) · ENTER OPEN · N NEW · DEL DELETE (disabled while Skyrim runs, and for a recording outside the save target, with the reason in the pane) · / FIND.
+New (`?mode=new`, while editing): the pane form asks for the name (with a note that `/` and `\` become `_`), the author (remembered), and autorun; CREATE makes the recording in the draft and opens it. DEL puts the selected recording's deletion in the draft at once, with no confirmation, since the draft is reviewed before anything happens; the row then says DELETED IN THE DRAFT, and R or RESTORE takes it back out.
+Hints: ↑ ↓ (hidden) · ENTER OPEN · and, while editing, N NEW · DEL DELETE (disabled for a recording outside the folders MCM Lexicon saved to, with the reason in the pane) or R RESTORE · / FIND.
 
 **A recording** (`/recordings/{name}`): the editor, and the one screen MCM Lexicon composes without a Hermaeus twin. Up: RECORDINGS. The name in display caps; under it, muted, the folder it lives in and the step and file counts; and, when the draft differs from disk, the Draft Rule's line: "Not saved. Save writes 4 files to <folder>, backing up the current ones first." Tabs: STEPS (count) and FILES (count).
 
 - *Steps:* an item table of the draft's steps in replay order, **grouped under accent headings per step file** (0001 · DIRT & BLOOD), because a new file begins whenever the mod changes and the file layout is what MCM Recorder reads. Columns: diamond; # (the step's number in the whole recording, right-aligned); Option (text, raw beneath as elsewhere); Page; Type; Value in the type's own words (ON, 25, "Deactivated", a key's name with its scan code muted beside it, a 9px color square beside its hex, text in quotes; copper when it differs from a known default); Check (the amber or muted word from §5.2; nothing when matched). Steps are selected with ↑ ↓, and **values change in the table**, since opening a form to flip a setting is a step too many: a toggle's Value cell is a checkbox, flipped by a click or Space; any other value's cell becomes its type's smallest editor when clicked or on E (`?mode=edit`), a number field for a slider, a select for a menu, a key capture, a color input, or a text field, where Enter applies and Esc cancels, and a menu entry, color, or key applies as soon as it's chosen. A click step has nothing to set. Every change goes to the draft. The draft line and Save keep their place whether or not anything has changed, so the table never moves under the pointer. The pane shows the step's option as the menu page does; its check as a sentence with the suggestion as a text button ("The catalog has "Dirt on the Player". Use it"); the value; and EDIT (TURN ON or TURN OFF for a toggle), MOVE UP, MOVE DOWN, REMOVE, with OPEN IN MENUS as a text button to the option's own page.
 - *Files:* every file Save will write, as it will be written, in the File font: the info file, then each step file by name. Where the file exists on disk, differences from it are marked as Hermaeus marks a bio's earlier version (`linediff`, `ins` and `del`); a new file is all `ins`. This is the JSON preview from §4, and the proof the Draft Rule promises.
 
-Save writes per §4, then the title's line becomes "Saved to <folder> at 11:04 PM. The previous files are in <backup folder>."
-Hints: ↑ ↓ (hidden) · SPACE TURN ON/OFF (a toggle) or E EDIT (any other value) · U MOVE UP · D MOVE DOWN · DEL REMOVE · ⌘ ENTER SAVE (enabled when the draft differs; disabled with the reason while Skyrim runs) · ESC RECORDINGS (CANCEL while editing) · / FIND.
+Read-only, the editor shows what's on disk: values as text, no checkboxes or editors, no pane buttons. While editing, nothing on this page writes; the draft line's REVIEW CHANGES goes to Changes.
+
+**Changes** (`/changes`, while editing). CHANGES in display caps; a sentence saying how many files Save writes or removes for how many recordings, and that changes last until saved, discarded, the program closes, or another list is chosen; the primary SAVE ALL (⌘ ENTER) and a plain DISCARD ALL. Then each recording in the draft under an accent heading with NEW, CHANGED or DELETED, the folder it's written to or removed from, its target notices (a new mod folder, a copy that wins over it, a problem), a text button to discard its changes (or keep it, for a deletion), and every file that changes, as a line diff against what's on disk. After Save, a line per recording names what was written and where the previous files went. Hints: ⌘ ENTER SAVE ALL · / FIND.
+Hints: ↑ ↓ (hidden) · while editing, SPACE TURN ON/OFF (a toggle) or E EDIT (any other value) · U MOVE UP · D MOVE DOWN · DEL REMOVE · ESC RECORDINGS (CANCEL while a value is being edited) · / FIND.
 
 **Value editors**, one per option type, for adding a step from a menu or a search result; editing a step's value uses the compact ones in its table cell, above. Each uses Hermaeus's field style (smoked field, strong hairline, the label in muted caps above) and has a keyboard path:
 

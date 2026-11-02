@@ -8,7 +8,7 @@
 	import type { Summary } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { count } from '#lib/format.ts';
-	import { create, deleteRecording, recordingHref, setOpen } from '#lib/recordings/api.ts';
+	import { create, deleteRecording, recordingHref, restore, setOpen } from '#lib/recordings/api.ts';
 	import { countsText } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import SortHeader from '#lib/ui/SortHeader.svelte';
@@ -16,7 +16,6 @@
 	import { fitToViewport } from '#lib/ui/fit.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
 	import { deleteShortcuts, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
-	import { live } from '#lib/api/live.svelte.ts';
 	import { sorted, type Sort } from '#lib/ui/sort.ts';
 	import type { PageProps } from './$types';
 
@@ -62,7 +61,8 @@
 	let newAuthor = $state('');
 	let newAutorun = $state('false');
 	let working = $state(false);
-	let deleted = $state('');
+	// Read-only unless editing is on.
+	let editing = $derived(data.status.editing);
 	function startNew() {
 		newName = '';
 		newAuthor = reply?.author ?? '';
@@ -86,16 +86,16 @@
 		}
 	}
 	// Why the selected recording can't be deleted, in words; "" when it can.
-	const whyNot = (r: Summary) => (r.deletes === '' ? '' : r.deletes === 'running' ? m.common.gameRunning : r.deletes === 'new' ? t.deleteNew : t.deleteNotOurs({ mod: r.mod }));
-	let canDelete = $derived(!!current && current.deletes === '' && !live.gameRunning);
-	async function confirmDelete() {
+	const whyNot = (r: Summary) => (r.deletes === '' ? '' : r.deletes === 'new' ? t.deleteNew : t.deleteNotOurs({ mod: r.mod }));
+	let canDelete = $derived(editing && !!current && current.deletes === '' && !current.deleted);
+	// Deleting puts the deletion in the draft, where it's reviewed with the
+	// rest and can be undone; Save does it.
+	async function markDeleted(on: boolean) {
 		if (!current || working) return;
 		working = true;
 		error = '';
 		try {
-			const r = await deleteRecording(current.name);
-			deleted = t.deleted({ name: current.name, backup: r.backup });
-			await setParams({ mode: null, item: null }, 'replace');
+			await (on ? deleteRecording(current.name) : restore(current.name));
 			await invalidateAll();
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : String(err);
@@ -105,7 +105,7 @@
 	}
 
 	useShortcuts(() =>
-		mode === 'new' || mode === 'delete'
+		mode === 'new' && editing
 			? [
 					...(mode === 'new' ? [{ key: 'Enter', label: t.create, command: true, disabled: !newName.trim() || working, run: () => createNew() }] : []),
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
@@ -114,8 +114,14 @@
 					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
 					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
 					{ key: 'Enter', label: m.common.open, disabled: !current, run: () => current && open(current) },
-					{ key: 'n', shown: 'N', label: t.new, run: startNew },
-					...deleteShortcuts({ label: t.delete, disabled: !canDelete, run: () => setParams({ mode: 'delete' }) })
+					...(editing
+						? [
+								{ key: 'n', shown: 'N', label: t.new, run: startNew },
+								...(current?.deleted
+									? [{ key: 'r', shown: 'R', label: t.restore, disabled: working, run: () => markDeleted(false) }]
+									: deleteShortcuts({ label: t.delete, disabled: !canDelete || working, run: () => markDeleted(true) }))
+							]
+						: [])
 				]
 	);
 </script>
@@ -127,7 +133,6 @@
 		<input type="search" bind:value={query} placeholder={t.filter} aria-label={t.filterLabel} />
 	{/if}
 </div>
-{#if deleted}<p class="notice" role="status">{deleted}</p>{/if}
 
 {#snippet newForm()}
 	<form class="new" onsubmit={createNew}>
@@ -153,11 +158,11 @@
 	</form>
 {/snippet}
 
-{#if mode === 'new' && !all.length}
+{#if mode === 'new' && editing && !all.length}
 	<div class="split"><p class="empty">{reply && !reply.readable ? t.fromCatalog : t.none}</p><aside class="pane" aria-label={t.pane} use:fitToViewport>{@render newForm()}</aside></div>
 {:else if !all.length}
 	<p class="empty">{reply && !reply.readable ? t.fromCatalog : t.none}</p>
-	<p><button type="button" class="button primary" onclick={startNew}>{t.new}</button></p>
+	{#if editing}<p><button type="button" class="button primary" onclick={startNew}>{t.new}</button></p>{/if}
 {:else if !shown.length}
 	<p class="muted">{m.common.noMatch({ query })}</p>
 {:else}
@@ -182,7 +187,7 @@
 						<td class="name">
 							<a href={recordingHref(r.name)}>{r.name}</a>
 							{#if r.title && r.title !== r.name}<span class="muted sub">{r.title}</span>{/if}
-							{#if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
+							{#if r.deleted}<span class="muted sub">{t.deletedInDraft}</span>{:else if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
 						</td>
 						<td class="mod muted"><span use:clipped>{r.mod}</span>{#if r.losing.length}<span class="sub">{t.losing({ mods: r.losing.join(', ') })}</span>{/if}</td>
 						<td class="n">{count(r.steps)}</td>
@@ -194,16 +199,8 @@
 			</tbody>
 		</table>
 		<aside class="pane" aria-label={t.pane} use:fitToViewport>
-			{#if mode === 'new'}
+			{#if mode === 'new' && editing}
 				{@render newForm()}
-			{:else if mode === 'delete' && current}
-				<h2 class="caps">{t.deleteTitle({ name: current.name })}</h2>
-				<p>{t.deleteSays({ mod: current.mod })}</p>
-				{#if error}<p class="notice error" role="alert">{error}</p>{/if}
-				<div class="footer">
-					<button type="button" class="button primary" disabled={!canDelete || working} onclick={confirmDelete}>{t.delete}</button>
-					<button type="button" class="button" onclick={() => leave('mode')}>{m.common.cancel}</button>
-				</div>
 			{:else if current}
 				<h2 class="caps">{current.name}</h2>
 				{#if current.title && current.title !== current.name}<p class="muted">{current.title}</p>{/if}
@@ -217,7 +214,7 @@
 					<dt class="caps">{t.steps}</dt><dd>{count(current.steps)}</dd>
 				</dl>
 				<div class="summary">
-					{#if current.new}<p class="notice">{t.newNotSaved}</p>{:else if current.drafted}<p class="notice">{t.draftHeld}</p>{/if}
+					{#if current.deleted}<p class="notice warn">{t.deletedSays({ mod: current.mod })}</p>{:else if current.new}<p class="notice">{t.newNotSaved}</p>{:else if current.drafted}<p class="notice">{t.draftHeld}</p>{/if}
 					{#if current.steps && failing(current) === 0 && current.counts.unchecked === 0 && current.counts.modMissing === 0}
 						<p>{t.allMatch({ count: current.steps })}</p>
 					{/if}
@@ -231,12 +228,17 @@
 				</div>
 				<div class="actions">
 					<a class="button primary" href={recordingHref(current.name)}>{m.common.open}</a>
-					{#if data.status.openRecording !== current.name}
+					{#if editing && !current.deleted && data.status.openRecording !== current.name}
 						<button type="button" class="button" onclick={() => openForAdding(current!)}>{t.openForAdding}</button>
 					{/if}
+					{#if editing && current.deleted}
+						<button type="button" class="button" disabled={working} onclick={() => markDeleted(false)}>{t.restore}</button>
+					{:else if canDelete}
+						<button type="button" class="button" disabled={working} onclick={() => markDeleted(true)}>{t.delete}</button>
+					{/if}
 				</div>
-				{#if data.status.openRecording === current.name}<p class="notice">{t.isOpen}</p>{/if}
-				{#if whyNot(current) && current.deletes !== 'new'}<p class="muted why">{whyNot(current)}</p>{/if}
+				{#if editing && data.status.openRecording === current.name}<p class="notice">{t.isOpen}</p>{/if}
+				{#if editing && whyNot(current) && current.deletes !== 'new'}<p class="muted why">{whyNot(current)}</p>{/if}
 				{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 			{/if}
 		</aside>
@@ -442,10 +444,6 @@
 	.lead {
 		margin: 0 0 var(--space-3);
 		max-width: 65ch;
-	}
-	.bar + .notice {
-		overflow-wrap: anywhere;
-		margin-bottom: var(--space-3);
 	}
 	.pane > .notice {
 		margin-top: var(--space-3);

@@ -7,7 +7,8 @@
 	import { menusDependency } from '#lib/menus/api.ts';
 	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
-	import { setSource } from '#lib/api/status.ts';
+	import { setEditing, setSource } from '#lib/api/status.ts';
+	import Segmented from '#lib/ui/Segmented.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import SourceForm from '#lib/source/SourceForm.svelte';
 	import HintBar from '#lib/ui/HintBar.svelte';
@@ -63,6 +64,43 @@
 		}
 	}
 
+	// Editing: off, everything is read-only; on, every change goes to the
+	// draft until it's saved from Changes. Leaving with changes asks first.
+	let editing = $derived(data.status.editing);
+	let pending = $derived(data.status.changes);
+	let leaveDialog = $state<HTMLDialogElement>();
+	// The switch shows the mode as it is: a choice the dialog holds back
+	// goes back to it when the dialog closes.
+	let modeValue = $state('read');
+	function syncMode() {
+		modeValue = editing ? 'editing' : 'read';
+	}
+	$effect(syncMode);
+	let modeError = $state('');
+	async function chooseMode(value: string) {
+		modeError = '';
+		const on = value === 'editing';
+		if (!on && pending > 0) {
+			leaveDialog?.showModal();
+			return;
+		}
+		try {
+			await setEditing(on);
+			await invalidateAll();
+		} catch (e) {
+			modeError = e instanceof ApiError ? e.message : String(e);
+		}
+	}
+	async function discardAndLeave() {
+		try {
+			await setEditing(false, true);
+			leaveDialog?.close();
+			await invalidateAll();
+		} catch (e) {
+			modeError = e instanceof ApiError ? e.message : String(e);
+		}
+	}
+
 	// When the catalog was scanned: the time today, the date before that.
 	function scannedLabel(iso: string): string {
 		const when = new Date(iso);
@@ -77,7 +115,12 @@
 	<header class="top">
 		<a class="name caps" href="/">{m.shell.name}</a>
 		<div class="state">
-			{#if recordings.length}
+			{#if open}
+				<span class="mode" title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
+					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
+				</span>
+			{/if}
+			{#if editing && recordings.length}
 				<label class="source">
 					<span class="caps muted">{m.shell.recording}</span>
 					<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>
@@ -125,6 +168,7 @@
 				<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
 				<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
 				<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
+				{#if editing}<li><a class="caps" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>{m.nav.changes}{#if pending}<span class="count">{pending}</span>{/if}</a></li>{/if}
 			</ul>
 			{#if recordings.length}
 				<p class="group caps">{m.nav.recordingsGroup}</p>
@@ -137,6 +181,15 @@
 		</nav>
 		<main>{@render children()}</main>
 		<QuickFind menus={data.menus?.menus ?? []} />
+		<dialog bind:this={leaveDialog} class="leave" aria-label={m.shell.leaveTitle} onclick={(e) => e.target === leaveDialog && leaveDialog?.close()} onclose={syncMode}>
+			<h2 class="caps">{m.shell.leaveTitle}</h2>
+			<p>{m.shell.leaveSays({ count: pending })}</p>
+			<div class="buttons">
+				<a class="button primary" href="/changes" onclick={() => leaveDialog?.close()}>{m.shell.review}</a>
+				<button type="button" class="button" onclick={discardAndLeave}>{m.shell.discardAndLeave}</button>
+				<button type="button" class="textbutton" onclick={() => leaveDialog?.close()}>{m.shell.keepEditing}</button>
+			</div>
+		</dialog>
 	{/if}
 
 	<HintBar />
@@ -283,5 +336,43 @@
 			gap: var(--space-5);
 			margin: 0;
 		}
+	}
+	.mode {
+		display: inline-flex;
+	}
+	/* The draft's size beside CHANGES, in the section's own ink. */
+	.sections .count {
+		margin-left: var(--space-2);
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+	}
+	.leave {
+		width: min(30rem, 90vw);
+		margin: 18vh auto auto;
+		padding: var(--space-4);
+		background: var(--smoke);
+		color: var(--ink);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45);
+	}
+	.leave::backdrop {
+		background: rgb(0 0 0 / 0.45);
+	}
+	.leave h2 {
+		font-size: var(--step-1);
+		font-weight: 600;
+	}
+	.leave p {
+		margin: var(--space-2) 0 var(--space-4);
+	}
+	.leave .buttons {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+	.leave .button {
+		text-decoration: none;
 	}
 </style>

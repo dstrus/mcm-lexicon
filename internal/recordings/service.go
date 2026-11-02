@@ -3,6 +3,7 @@ package recordings
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ type Summary struct {
 	Counts   Counts    `json:"counts"`
 	Problems []Problem `json:"problems"`
 	Drafted  bool      `json:"drafted"` // it has changes not yet saved
+	Deleted  bool      `json:"deleted"` // the draft deletes it
 	New      bool      `json:"new"`     // it's only a draft, never saved
 	Deletes  string    `json:"deletes"` // why it can't be deleted; "" when it can
 }
@@ -110,6 +112,7 @@ type Editor struct {
 	Deletes   string        `json:"deletes"`  // why it can't be deleted; "" when it can
 	Targets   []string      `json:"targets"`  // mod folders to choose from: those with recordings, and the default
 	Problems  []string      `json:"problems"` // what's wrong with the draft, so Save can't write it
+	Deleted   bool          `json:"deleted"`  // the draft deletes it: Save removes its files
 }
 
 // CreateRequest makes a new recording, as a draft.
@@ -142,17 +145,74 @@ type Service struct {
 	running func() bool
 	now     func() time.Time
 
-	mu     sync.Mutex
-	from   string            // the list or catalog file the drafts belong to
-	drafts map[string]*Draft // by lowercase name
-	saved  map[string]Saved  // the last save of each, by lowercase name
+	mu      sync.Mutex
+	editing bool              // changes are allowed, into the draft; off, everything is read-only
+	from    string            // the list or catalog file the draft belongs to
+	drafts  map[string]*Draft // the draft's recordings, new or changed, by lowercase name
+	deleted map[string]bool   // the recordings the draft deletes, by lowercase name
+	kept    map[string]*Draft // saved where this list doesn't see them (a new mod folder), shown as saved
+	saved   map[string]Saved  // the last save of each, by lowercase name
 }
 
 func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Service {
 	if running == nil {
 		running = func() bool { return false }
 	}
-	return &Service{cat: cat, prefs: p, running: running, now: time.Now, drafts: map[string]*Draft{}, saved: map[string]Saved{}}
+	s := &Service{cat: cat, prefs: p, running: running, now: time.Now}
+	s.reset()
+	return s
+}
+
+// reset forgets the draft. Callers hold s.mu, or have s to themselves.
+func (s *Service) reset() {
+	s.drafts, s.deleted, s.kept, s.saved = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}
+}
+
+// Editing reports whether changes are allowed. MCM Lexicon starts
+// read-only; the player turns editing on.
+func (s *Service) Editing() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.editing
+}
+
+// Pending is how many recordings the draft changes: new, changed, or
+// deleted.
+func (s *Service) Pending() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.drafts) + len(s.deleted)
+}
+
+// SetEditing turns editing on or off. Turning it off with changes pending
+// is refused unless discard says to drop them.
+func (s *Service) SetEditing(on, discard bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !on && len(s.drafts)+len(s.deleted) > 0 {
+		if !discard {
+			return apperr.New(apperr.Conflict, "The draft has changes to %d recordings. Save them or discard them first", len(s.drafts)+len(s.deleted))
+		}
+		s.drafts, s.deleted = map[string]*Draft{}, map[string]bool{}
+	}
+	s.editing = on
+	return nil
+}
+
+// Clear forgets the draft and turns editing off, for another list.
+func (s *Service) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reset()
+	s.editing = false
+}
+
+// mustEdit refuses a change while editing is off.
+func (s *Service) mustEdit() error {
+	if !s.Editing() {
+		return apperr.New(apperr.Conflict, "MCM Lexicon is read-only. Turn on editing to change recordings")
+	}
+	return nil
 }
 
 // env is what a request works against: the catalog, the list (nil with a
@@ -187,7 +247,8 @@ func (s *Service) env(r *http.Request) (*env, error) {
 	}
 	s.mu.Lock()
 	if s.from != e.key {
-		s.from, s.drafts, s.saved = e.key, map[string]*Draft{}, map[string]Saved{}
+		s.from = e.key
+		s.reset()
 	}
 	s.mu.Unlock()
 	return e, nil
@@ -211,6 +272,9 @@ func (s *Service) Routes(m *http.ServeMux) {
 		return s.list(e), nil
 	}))
 	m.Handle("POST /api/recordings", httpapi.JSON(func(r *http.Request, req CreateRequest) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
 			return Editor{}, err
@@ -225,6 +289,9 @@ func (s *Service) Routes(m *http.ServeMux) {
 		return s.editor(e, r.PathValue("name"))
 	}))
 	m.Handle("PUT /api/recordings/{name}/draft", httpapi.JSON(func(r *http.Request, d Draft) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
 			return Editor{}, err
@@ -240,12 +307,28 @@ func (s *Service) Routes(m *http.ServeMux) {
 		if d.Target, err = s.checkTarget(e, d.Target); err != nil {
 			return Editor{}, err
 		}
+		key := strings.ToLower(d.Name)
 		s.mu.Lock()
-		s.drafts[strings.ToLower(d.Name)] = &d
+		if s.deleted[key] {
+			s.mu.Unlock()
+			return Editor{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to change it", d.Name)
+		}
+		s.drafts[key] = &d
 		s.mu.Unlock()
-		return s.editor(e, name)
+		ed, err := s.editor(e, name)
+		if err == nil && !ed.Changed && ed.Recording != nil {
+			// Back to what's on disk: nothing left to save.
+			s.mu.Lock()
+			delete(s.drafts, key)
+			s.mu.Unlock()
+			return s.editor(e, name)
+		}
+		return ed, err
 	}))
 	m.Handle("DELETE /api/recordings/{name}/draft", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
 			return Editor{}, err
@@ -260,26 +343,100 @@ func (s *Service) Routes(m *http.ServeMux) {
 		return s.editor(e, name)
 	}))
 	m.Handle("POST /api/recordings/{name}/steps", httpapi.JSON(func(r *http.Request, req AddRequest) (AddReply, error) {
+		if err := s.mustEdit(); err != nil {
+			return AddReply{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
 			return AddReply{}, err
 		}
 		return s.add(e, r.PathValue("name"), req.Step)
 	}))
-	m.Handle("POST /api/recordings/{name}/save", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
+	m.Handle("DELETE /api/recordings/{name}", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
 			return Editor{}, err
 		}
-		return s.save(e, r.PathValue("name"))
+		return s.markDeleted(e, r.PathValue("name"), true)
 	}))
-	m.Handle("DELETE /api/recordings/{name}", httpapi.JSON(func(r *http.Request, _ httpapi.None) (DeleteReply, error) {
+	m.Handle("POST /api/recordings/{name}/restore", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
 		e, err := s.env(r)
 		if err != nil {
-			return DeleteReply{}, err
+			return Editor{}, err
 		}
-		return s.delete(e, r.PathValue("name"))
+		return s.markDeleted(e, r.PathValue("name"), false)
 	}))
+	m.Handle("GET /api/changes", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Changes, error) {
+		e, err := s.env(r)
+		if err != nil {
+			return Changes{}, err
+		}
+		return s.changes(e), nil
+	}))
+	m.Handle("POST /api/changes/save", httpapi.JSON(func(r *http.Request, _ httpapi.None) (SaveReply, error) {
+		if err := s.mustEdit(); err != nil {
+			return SaveReply{}, err
+		}
+		e, err := s.env(r)
+		if err != nil {
+			return SaveReply{}, err
+		}
+		return s.saveAll(e)
+	}))
+	m.Handle("DELETE /api/changes", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Changes, error) {
+		e, err := s.env(r)
+		if err != nil {
+			return Changes{}, err
+		}
+		s.mu.Lock()
+		s.drafts, s.deleted = map[string]*Draft{}, map[string]bool{}
+		s.mu.Unlock()
+		return s.changes(e), nil
+	}))
+}
+
+// ChangeKind is what the draft does to a recording.
+type ChangeKind string
+
+const (
+	ChangeKindNew     ChangeKind = "new"
+	ChangeKindChanged ChangeKind = "changed"
+	ChangeKindDeleted ChangeKind = "deleted"
+)
+
+// Change is one recording the draft changes, as its editor shows it.
+type Change struct {
+	Kind   ChangeKind `json:"kind"`
+	Editor Editor     `json:"editor"`
+}
+
+// Changes is the whole draft, for reviewing before Save.
+type Changes struct {
+	Recordings []Change `json:"recordings"`
+	// Unsaved is why Save can't write the draft now ("" when it can):
+	// "running", or "blocked" when a recording can't be written (its
+	// editor says why).
+	Unsaved string `json:"unsaved"`
+	Files   int    `json:"files"` // how many files Save writes or removes
+}
+
+// SaveReply is what Save did, recording by recording.
+type SaveReply struct {
+	Saved   []SavedRecording `json:"saved"`
+	Changes Changes          `json:"changes"` // what's left: nothing, unless a save failed part way
+}
+
+type SavedRecording struct {
+	Name   string     `json:"name"`
+	Kind   ChangeKind `json:"kind"`
+	Dir    string     `json:"dir"`
+	Backup string     `json:"backup"` // where the previous files went; "" when there were none
 }
 
 func (s *Service) list(e *env) ListReply {
@@ -296,6 +453,9 @@ func (s *Service) list(e *env) ListReply {
 			sum.Drafted = true
 			delete(drafts, strings.ToLower(rec.Name))
 		}
+		s.mu.Lock()
+		sum.Deleted = s.deleted[strings.ToLower(rec.Name)]
+		s.mu.Unlock()
 		sum.Deletes = s.deletes(e, rec)
 		reply.Recordings = append(reply.Recordings, sum)
 	}
@@ -467,12 +627,17 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	rec := e.recording(name)
 	s.mu.Lock()
 	held := s.drafts[strings.ToLower(name)]
+	drafted := held != nil
+	if held == nil {
+		held = s.kept[strings.ToLower(name)]
+	}
 	var d Draft
 	if held != nil {
 		d = *held
 		d.Steps = append([]Step{}, held.Steps...)
 	}
 	saved, wasSaved := s.saved[strings.ToLower(name)]
+	deleted := s.deleted[strings.ToLower(name)]
 	s.mu.Unlock()
 	if rec == nil && held == nil {
 		if e.list == nil {
@@ -483,7 +648,7 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	if held == nil {
 		d = DraftOf(rec, s.homeOf(e, rec))
 	}
-	ed := Editor{Recording: rec, Drafted: held != nil, Problems: []string{}, Targets: s.targets(e, d.Target)}
+	ed := Editor{Recording: rec, Drafted: drafted, Deleted: deleted, Problems: []string{}, Targets: s.targets(e, d.Target)}
 	files, err := Plan(&d)
 	if err != nil {
 		ed.Problems = append(ed.Problems, err.Error())
@@ -493,7 +658,19 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	ed.Counts = Count(ed.Checks)
 	ed.Target = s.target(e, d)
 	ed.Files = []PlannedFile{}
-	if ed.Target.Dir != "" && err == nil {
+	if deleted {
+		// Save removes every file the recording has in its folder.
+		disk := Disk(ed.Target.Dir, d.Name)
+		var paths []string
+		for path := range disk {
+			paths = append(paths, path)
+		}
+		sort.Strings(paths)
+		for _, path := range paths {
+			ed.Files = append(ed.Files, PlannedFile{Name: filepath.Base(path), Path: path, Old: disk[path], Change: FileChangeRemoved})
+		}
+		ed.Changed = len(paths) > 0
+	} else if ed.Target.Dir != "" && err == nil {
 		disk := Disk(ed.Target.Dir, d.Name)
 		for _, f := range files {
 			p := PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew}
@@ -529,6 +706,7 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	switch {
 	case s.running():
 		ed.Unsaved = "running"
+	case deleted:
 	case ed.Target.Kind == TargetKindNone:
 		ed.Unsaved = "no-target"
 	case len(ed.Problems) > 0:
@@ -633,16 +811,14 @@ func (s *Service) targets(e *env, current string) []string {
 
 // deletes is why a recording can't be deleted, or "" when it can: MCM
 // Lexicon deletes only recordings in folders it has saved recordings to,
-// never a mod list's own, and not while Skyrim runs.
+// never a mod list's own. (Save, which does the deleting, waits for Skyrim
+// to close.)
 func (s *Service) deletes(e *env, r *Recording) string {
 	if e.list == nil {
 		return "no-list"
 	}
 	if !slices.ContainsFunc(s.prefs.Get().WroteTo[e.key], func(m string) bool { return strings.EqualFold(m, r.Mod) }) {
 		return "not-ours"
-	}
-	if s.running() {
-		return "running"
 	}
 	return ""
 }
@@ -716,24 +892,47 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 		// or a folder with a catalog file open): keep showing the draft.
 		d := ed.Draft
 		s.mu.Lock()
-		s.drafts[key] = &d
+		s.kept[key] = &d
 		s.mu.Unlock()
 	}
 	return s.editor(e, name)
 }
 
-func (s *Service) delete(e *env, name string) (DeleteReply, error) {
+// markDeleted puts a recording's deletion in the draft, or takes it out.
+// A new recording isn't deleted: its draft is discarded.
+func (s *Service) markDeleted(e *env, name string, on bool) (Editor, error) {
+	rec := e.recording(name)
+	if rec == nil {
+		return Editor{}, apperr.New(apperr.NotFound, "There's no saved recording %q in this list", name)
+	}
+	if on {
+		switch s.deletes(e, rec) {
+		case "not-ours":
+			return Editor{}, apperr.New(apperr.Conflict, "%s is in %s, which MCM Lexicon didn't save it to, so it isn't deleted here", rec.Name, rec.Mod)
+		case "no-list":
+			return Editor{}, apperr.New(apperr.Unavailable, "Recordings are deleted from a mod list, and a catalog file is open")
+		}
+	}
+	key := strings.ToLower(rec.Name)
+	s.mu.Lock()
+	if on {
+		s.deleted[key] = true
+		delete(s.drafts, key) // deleting replaces any changes to it
+	} else {
+		delete(s.deleted, key)
+	}
+	s.mu.Unlock()
+	return s.editor(e, rec.Name)
+}
+
+// deleteNow removes a recording's files, after backing them up.
+func (s *Service) deleteNow(e *env, name string) (DeleteReply, error) {
 	rec := e.recording(name)
 	if rec == nil {
 		return DeleteReply{}, apperr.New(apperr.NotFound, "There's no recording %q in this list", name)
 	}
-	switch s.deletes(e, rec) {
-	case "running":
-		return DeleteReply{}, apperr.New(apperr.Conflict, "Skyrim is running, so nothing can be deleted until you close it")
-	case "not-ours":
+	if s.deletes(e, rec) == "not-ours" {
 		return DeleteReply{}, apperr.New(apperr.Conflict, "%s is in %s, which MCM Lexicon didn't save it to, so it isn't deleted here", rec.Name, rec.Mod)
-	case "no-list":
-		return DeleteReply{}, apperr.New(apperr.Unavailable, "Recordings are deleted from a mod list, and a catalog file is open")
 	}
 	t := s.target(e, Draft{Name: rec.Name, Target: rec.Mod})
 	backup, err := Delete(t.Dir, rec.Name, e.backups(t), s.now())
@@ -742,15 +941,120 @@ func (s *Service) delete(e *env, name string) (DeleteReply, error) {
 	}
 	s.mu.Lock()
 	delete(s.drafts, strings.ToLower(rec.Name))
+	delete(s.deleted, strings.ToLower(rec.Name))
 	delete(s.saved, strings.ToLower(rec.Name))
 	s.mu.Unlock()
 	e.list.Refresh("McmRecorder")
+	e.recs = Read(e.list)
 	s.prefs.Update(func(v *prefs.Values) {
 		if strings.EqualFold(v.OpenRecording, rec.Name) {
 			v.OpenRecording = ""
 		}
 	})
 	return DeleteReply{Backup: backup}, nil
+}
+
+// changes is the whole draft, recording by recording, in name order.
+func (s *Service) changes(e *env) Changes {
+	s.mu.Lock()
+	var names []string
+	for _, d := range s.drafts {
+		names = append(names, d.Name)
+	}
+	for k := range s.deleted {
+		if r := e.recording(k); r != nil {
+			names = append(names, r.Name)
+		}
+	}
+	s.mu.Unlock()
+	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
+	out := Changes{Recordings: []Change{}}
+	for _, name := range names {
+		ed, err := s.editor(e, name)
+		if err != nil {
+			continue
+		}
+		kind := ChangeKindChanged
+		switch {
+		case ed.Deleted:
+			kind = ChangeKindDeleted
+		case ed.Recording == nil:
+			kind = ChangeKindNew
+		}
+		for _, f := range ed.Files {
+			if f.Change != FileChangeSame {
+				out.Files++
+			}
+		}
+		if ed.Unsaved != "" && ed.Unsaved != "unchanged" && ed.Unsaved != "running" && out.Unsaved == "" {
+			out.Unsaved = "blocked"
+		}
+		out.Recordings = append(out.Recordings, Change{Kind: kind, Editor: ed})
+	}
+	if s.running() {
+		out.Unsaved = "running"
+	}
+	return out
+}
+
+// saveAll writes the whole draft: every new and changed recording, and
+// every deletion, each backed up first. It writes nothing unless all of
+// them can be written, and stops at the first failure, saying what it had
+// done; what's left stays in the draft.
+func (s *Service) saveAll(e *env) (SaveReply, error) {
+	ch := s.changes(e)
+	switch ch.Unsaved {
+	case "running":
+		return SaveReply{}, apperr.New(apperr.Conflict, "Skyrim is running, so nothing can be written until you close it")
+	case "blocked":
+		var names []string
+		for _, c := range ch.Recordings {
+			if u := c.Editor.Unsaved; u != "" && u != "unchanged" {
+				names = append(names, c.Editor.Draft.Name)
+			}
+		}
+		return SaveReply{}, apperr.New(apperr.Invalid, "Nothing was written: %s can't be saved yet. Its page says why", strings.Join(names, ", "))
+	}
+	reply := SaveReply{Saved: []SavedRecording{}}
+	for _, c := range ch.Recordings {
+		name := c.Editor.Draft.Name
+		var err error
+		switch c.Kind {
+		case ChangeKindDeleted:
+			var d DeleteReply
+			if d, err = s.deleteNow(e, name); err == nil {
+				reply.Saved = append(reply.Saved, SavedRecording{Name: name, Kind: c.Kind, Dir: c.Editor.Target.Dir, Backup: d.Backup})
+				s.prefs.Update(func(v *prefs.Values) {
+					if strings.EqualFold(v.OpenRecording, name) {
+						v.OpenRecording = ""
+					}
+				})
+			}
+		default:
+			if !c.Editor.Changed {
+				s.mu.Lock()
+				delete(s.drafts, strings.ToLower(name))
+				s.mu.Unlock()
+				continue
+			}
+			var ed Editor
+			if ed, err = s.save(e, name); err == nil && ed.Saved != nil {
+				reply.Saved = append(reply.Saved, SavedRecording{Name: name, Kind: c.Kind, Dir: ed.Saved.Dir, Backup: ed.Saved.Backup})
+			}
+		}
+		if err != nil {
+			var done []string
+			for _, r := range reply.Saved {
+				done = append(done, r.Name)
+			}
+			if len(done) > 0 {
+				return SaveReply{}, fmt.Errorf("saved %s, then %s failed: %w; the rest is still in the draft", strings.Join(done, ", "), name, err)
+			}
+			return SaveReply{}, fmt.Errorf("%s: %w; nothing was written", name, err)
+		}
+	}
+	reply.Changes = s.changes(e)
+	return reply, nil
 }
 
 func summarize(r *Recording, c *catalog.Catalog) Summary {

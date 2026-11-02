@@ -31,6 +31,20 @@ export interface Status {
    * OpenRecording is the recording new steps go to, by name; "" for none.
    */
   openRecording: string;
+  /**
+   * Editing is whether changes are allowed (into the draft, until Save);
+   * MCM Lexicon starts read-only.
+   */
+  editing: boolean;
+  changes: number /* int */; // how many recordings the draft changes
+}
+/**
+ * EditingRequest turns editing on or off. Off with changes in the draft
+ * needs Discard.
+ */
+export interface EditingRequest {
+  editing: boolean;
+  discard: boolean;
 }
 /**
  * OpenRequest chooses the open recording; "" closes it.

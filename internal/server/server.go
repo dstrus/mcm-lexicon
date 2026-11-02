@@ -106,6 +106,12 @@ func (s *Server) routes() {
 	s.catalog.Routes(m)
 	s.recordings = recordings.NewService(s.catalog, s.Prefs, s.Running)
 	s.recordings.Routes(m)
+	m.Handle("PUT /api/editing", httpapi.JSON(func(_ *http.Request, req EditingRequest) (Status, error) {
+		if err := s.recordings.SetEditing(req.Editing, req.Discard); err != nil {
+			return Status{}, err
+		}
+		return s.status(), nil
+	}))
 	recordings.CompareRoutes(m, s.catalog)
 	m.Handle("PUT /api/recordings/open", httpapi.JSON(func(_ *http.Request, req OpenRequest) (Status, error) {
 		s.Prefs.Update(func(v *prefs.Values) { v.OpenRecording = strings.TrimSpace(req.Name) })
@@ -129,6 +135,7 @@ func (s *Server) SetSource(path, profile string) (modlist.Source, error) {
 	s.catalogFile = ""
 	s.mu.Unlock()
 	s.catalog.UseList(src)
+	s.recordings.Clear()
 	log.Printf("Mod list: %s", src.Path)
 	s.Prefs.Update(func(v *prefs.Values) {
 		if v.ListDir != src.Path {
@@ -154,6 +161,7 @@ func (s *Server) OpenCatalog(path string) error {
 	s.source = nil
 	s.catalogFile = file
 	s.mu.Unlock()
+	s.recordings.Clear()
 	log.Printf("Catalog: %s", file)
 	s.Prefs.Update(func(v *prefs.Values) {
 		v.ListDir = ""

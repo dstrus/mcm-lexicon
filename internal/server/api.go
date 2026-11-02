@@ -28,6 +28,17 @@ type Status struct {
 	Theme       string          `json:"theme"`   // "system", "dark" or "light"
 	// OpenRecording is the recording new steps go to, by name; "" for none.
 	OpenRecording string `json:"openRecording"`
+	// Editing is whether changes are allowed (into the draft, until Save);
+	// MCM Lexicon starts read-only.
+	Editing bool `json:"editing"`
+	Changes int  `json:"changes"` // how many recordings the draft changes
+}
+
+// EditingRequest turns editing on or off. Off with changes in the draft
+// needs Discard.
+type EditingRequest struct {
+	Editing bool `json:"editing"`
+	Discard bool `json:"discard"`
 }
 
 // OpenRequest chooses the open recording; "" closes it.
@@ -56,5 +67,7 @@ func (s *Server) status() Status {
 		Version:       s.Version,
 		Theme:         s.Prefs.Get().ThemeOf(),
 		OpenRecording: s.Prefs.Get().OpenRecording,
+		Editing:       s.recordings.Editing(),
+		Changes:       s.recordings.Pending(),
 	}
 }

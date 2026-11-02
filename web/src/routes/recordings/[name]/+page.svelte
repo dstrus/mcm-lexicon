@@ -5,6 +5,8 @@
      Every change goes to the draft; nothing is written until Save. -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import type { Status } from '#lib/api/types/api.ts';
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Check, Step } from '#lib/api/types/recordings.ts';
 	import Fill from '#lib/copy/Fill.svelte';
@@ -43,9 +45,11 @@
 	const beyondASCII = (s: Step) => /[^\x00-\x7f]/.test(s.mod + s.page + s.option + (s.kind === 'choose' || s.kind === 'text' ? s.value : ''));
 	const menuLink = (c: Check) => (c.option ? menuHref(c.menuId, c.page, c.position) : c.menuId ? menuHref(c.menuId) : '');
 
-	// A toggle flips in place; a click has nothing to set; anything else is
-	// edited in its cell.
-	const editable = (s: Step) => s.kind !== 'toggle' && s.kind !== 'click';
+	// Steps change only while editing, and not in a recording the draft
+	// deletes. Then a toggle flips in place, a click has nothing to set, and
+	// anything else is edited in its cell.
+	let canEdit = $derived((page.data.status as Status).editing && !ed.deleted);
+	const editable = (s: Step) => canEdit && s.kind !== 'toggle' && s.kind !== 'click';
 	let editing = $derived(param('mode') === 'edit' && !!current && editable(current.step));
 	let working = $state(false);
 	let error = $state('');
@@ -68,7 +72,7 @@
 	// flip turns the toggle step at i on or off.
 	const flip = (i: number) => {
 		const s = steps[i];
-		if (!s || s.kind !== 'toggle' || working) return;
+		if (!s || s.kind !== 'toggle' || working || !canEdit) return;
 		apply((x) => (x[i]!.value = isOn(s) ? 'off' : 'on'));
 	};
 	// E: a toggle flips; anything else's cell becomes its editor.
@@ -113,7 +117,13 @@
 
 	let up = $derived(`/recordings?item=${encodeURIComponent(ed.draft.name)}`);
 	useShortcuts(() =>
-		editing
+		!canEdit
+			? [
+					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
+					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
+					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto(up) }
+				]
+			: editing
 			? [
 					// The cell's field takes these keys first; they're here so the
 					// strip shows them.
@@ -161,7 +171,7 @@
 						<td class="page muted">{pageText(r.step, r.check)}</td>
 						<td class="type caps">{m.option.types[kindType[r.step.kind]]}</td>
 						<td class="value" class:changed={changed(r.step, r.check.option)}>
-							{#if r.step.kind === 'toggle'}
+							{#if r.step.kind === 'toggle' && canEdit}
 								<label class="flip">
 									<input type="checkbox" checked={isOn(r.step)} disabled={working} onchange={() => flip(r.n - 1)} aria-label={e.toggleLabel({ option: optionText(r.step, r.check) })} />
 									{value(r.step, r.check.option)}
@@ -198,7 +208,7 @@
 									{:else}
 										<Fill text={t.suggestion.text}>{#snippet label()}<span class="raw">“{c.suggestion!.label}”</span>{/snippet}</Fill>
 									{/if}
-									<button type="button" class="textbutton" disabled={working} onclick={useSuggestion}>{e.useIt}</button>
+									{#if canEdit}<button type="button" class="textbutton" disabled={working} onclick={useSuggestion}>{e.useIt}</button>{/if}
 								</p>
 							{/if}
 							<dl>
@@ -213,7 +223,7 @@
 								{#if s.side}<dt class="caps">{t.side}</dt><dd>{s.side}</dd>{/if}
 								<dt class="caps">{t.file}</dt><dd class="raw">{fileNames[s.file]}</dd>
 							</dl>
-							<div class="actions">
+							{#if canEdit}<div class="actions">
 								{#if s.kind === 'toggle'}
 									<button type="button" class="button primary" disabled={working} onclick={startEdit}>{isOn(s) ? e.turnOff : e.turnOn}</button>
 								{:else if editable(s)}
@@ -222,7 +232,7 @@
 								<button type="button" class="button" disabled={working || current.n === 1} onclick={() => moveBy(-1)}>{e.moveUp}</button>
 								<button type="button" class="button" disabled={working || current.n === steps.length} onclick={() => moveBy(1)}>{e.moveDown}</button>
 								<button type="button" class="button" disabled={working} onclick={remove}>{e.remove}</button>
-							</div>
+							</div>{/if}
 							{#if menuLink(c)}<a class="textbutton open" href={menuLink(c)}>{t.openInMenus}</a>{/if}
 						{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 					</div>

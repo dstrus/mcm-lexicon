@@ -1,16 +1,18 @@
-<!-- One recording in the editor: its name, where Save writes it, whether
-     the draft differs from what's there (the Draft Rule), and its Steps and
-     Files. Nothing is written until Save. -->
+<!-- One recording: its name, and its Steps and Files. While editing, also
+     where Save writes it and whether the draft differs from what's there
+     (the Draft Rule), with the way to Changes, where Save is. Read-only, it
+     shows what's on disk. -->
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
+	import type { Status } from '#lib/api/types/api.ts';
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
-	import { discardDraft, recordingHref, recordingsDependency, save } from '#lib/recordings/api.ts';
+	import { discardDraft, recordingHref, recordingsDependency, restore } from '#lib/recordings/api.ts';
 	import { change } from '#lib/recordings/draft.ts';
 	import Tabs from '#lib/ui/Tabs.svelte';
 	import Up from '#lib/ui/Up.svelte';
-	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -20,6 +22,7 @@
 	let ed = $derived(data.editor);
 	let draft = $derived(ed.draft);
 	let target = $derived(ed.target);
+	let editing = $derived((page.data.status as Status).editing);
 	let stepFiles = $derived(ed.files.filter((f) => f.change !== 'removed').length - 1); // without the info file
 	let writes = $derived(ed.files.filter((f) => f.change !== 'same').length);
 	let working = $state(false);
@@ -40,15 +43,15 @@
 			working = false;
 		}
 	}
-	const saveNow = () =>
-		run(async () => {
-			await save(draft.name);
-			await invalidate(recordingsDependency);
-		});
 	const discard = () =>
 		run(async () => {
 			await discardDraft(draft.name);
 			if (!ed.recording) return goto('/recordings', { invalidateAll: true });
+			await invalidate(recordingsDependency);
+		});
+	const undelete = () =>
+		run(async () => {
+			await restore(draft.name);
 			await invalidate(recordingsDependency);
 		});
 
@@ -74,73 +77,73 @@
 			other = false;
 		});
 	}
-
-	let canSave = $derived(!ed.unsaved && !working);
-	useShortcuts(() => [{ key: 'Enter', label: m.common.save, command: true, disabled: !canSave, hidden: !ed.changed, run: saveNow }]);
 </script>
 
 <Up href="/recordings?item={encodeURIComponent(draft.name)}" label={t.up} />
 <h1 class="caps">{draft.name}</h1>
 <p class="muted sub">
-	{#if draft.title && draft.title !== draft.name}{draft.title}{' · '}{/if}{#if target.kind !== 'none'}{folder}{' · '}{/if}{t.stepsInFiles({ steps: t.stepCount({ count: draft.steps.length }), files: t.fileCount({ count: stepFiles }) })}
+	{#if draft.title && draft.title !== draft.name}{draft.title}{' · '}{/if}{#if target.kind !== 'none'}{folder}{' · '}{/if}{t.stepsInFiles({ steps: t.stepCount({ count: draft.steps.length }), files: t.fileCount({ count: Math.max(0, stepFiles) }) })}
 </p>
 
-<div class="draft">
-	{#if ed.changed && target.kind !== 'none'}
+{#if editing}
+	<div class="draft">
+		<!-- Two lines' room whatever it says, so the table below doesn't move
+		     when the first change is made in it. -->
 		<p class="line">
-			{ed.files.some((f) => f.old) ? d.notSavedBackup({ count: writes, folder }) : d.notSaved({ count: writes, folder })}
-		</p>
-	{:else if ed.saved}
-		<p class="line">{ed.saved.backup ? d.savedBackup({ folder, time: time(ed.saved.at), backup: ed.saved.backup }) : d.saved({ folder, time: time(ed.saved.at) })}</p>
-	{:else if target.kind !== 'none'}
-		<p class="line">{d.upToDate({ folder })}</p>
-	{/if}
-	<!-- Always here, so the table below doesn't move when the first change
-	     is made in it. -->
-	<div class="actions">
-		<button type="button" class="button primary" disabled={!canSave || !ed.changed} onclick={saveNow} title={ed.unsaved === 'running' ? m.common.gameRunning : undefined}>{m.common.save}</button>
-		{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
-		{#if ed.drafted}<span class="muted small">{d.keptInMemory}</span>{/if}
-	</div>
-
-	{#if target.kind === 'data'}
-		<!-- A Data folder: there's nowhere else to write. -->
-	{:else if target.kind === 'folder' || target.kind === 'none'}
-		<form class="target" onsubmit={useOther}>
-			<label>
-				<span class="caps">{d.saveTo}</span>
-				<input bind:value={otherName} placeholder={target.name || d.folderPath} autocomplete="off" spellcheck="false" />
-			</label>
-			<button class="button" disabled={working || !otherName.trim()}>{d.use}</button>
-		</form>
-	{:else}
-		<div class="target">
-			<label>
-				<span class="caps">{d.saveTo}</span>
-				<select value={other ? otherValue : target.name} disabled={working} onchange={(e) => chooseTarget(e.currentTarget.value)}>
-					{#each ed.targets as name (name)}<option value={name}>{name}</option>{/each}
-					<option value="overwrite">{d.overwrite}</option>
-					<option value={otherValue}>{d.otherMod}</option>
-				</select>
-			</label>
-			{#if other}
-				<form class="other" onsubmit={useOther}>
-					<input bind:value={otherName} placeholder={d.modName} aria-label={d.modName} autocomplete="off" spellcheck="false" />
-					<button class="button" disabled={working || !otherName.trim()}>{d.use}</button>
-				</form>
+			{#if ed.deleted}
+				{d.deletes({ count: writes, folder })}
+				<button type="button" class="textbutton" disabled={working} onclick={undelete}>{d.restore}</button>
+			{:else if ed.changed && target.kind !== 'none'}
+				{ed.files.some((f) => f.old) ? d.notSavedBackup({ count: writes, folder }) : d.notSaved({ count: writes, folder })}
+				<a class="textbutton" href="/changes">{d.review}</a>
+				{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
+			{:else if ed.saved}
+				{ed.saved.backup ? d.savedBackup({ folder, time: time(ed.saved.at), backup: ed.saved.backup }) : d.saved({ folder, time: time(ed.saved.at) })}
+			{:else if target.kind !== 'none'}
+				{d.upToDate({ folder })}
 			{/if}
-		</div>
-	{/if}
+		</p>
 
-	{#if ed.unsaved === 'running'}<p class="notice warn">{d.running}</p>{/if}
-	{#if target.kind === 'none'}<p class="notice">{d.chooseFolder}</p>{/if}
-	{#if target.kind === 'new-mod' && target.exists}<p class="notice"><Fill text={d.notListed.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>
-	{:else if target.kind === 'new-mod'}<p class="notice"><Fill text={d.newMod.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>{/if}
-	{#if target.kind === 'mod' && !target.enabled}<p class="notice warn">{d.unticked({ mod: target.name })}</p>{/if}
-	{#if target.losesTo}<p class="notice warn">{d.losesTo({ mod: target.losesTo })}</p>{/if}
-	{#each ed.problems as p, i (i)}<p class="notice error">{p}</p>{/each}
-	{#if error}<p class="notice error" role="alert">{error}</p>{/if}
-</div>
+		{#if ed.deleted || target.kind === 'data'}
+			<!-- Nothing to choose: a deletion removes the files where they are, and a Data folder is the only place. -->
+		{:else if target.kind === 'folder' || target.kind === 'none'}
+			<form class="target" onsubmit={useOther}>
+				<label>
+					<span class="caps">{d.saveTo}</span>
+					<input bind:value={otherName} placeholder={target.name || d.folderPath} autocomplete="off" spellcheck="false" />
+				</label>
+				<button class="button" disabled={working || !otherName.trim()}>{d.use}</button>
+			</form>
+		{:else}
+			<div class="target">
+				<label>
+					<span class="caps">{d.saveTo}</span>
+					<select value={other ? otherValue : target.name} disabled={working} onchange={(e) => chooseTarget(e.currentTarget.value)}>
+						{#each ed.targets as name (name)}<option value={name}>{name}</option>{/each}
+						<option value="overwrite">{d.overwrite}</option>
+						<option value={otherValue}>{d.otherMod}</option>
+					</select>
+				</label>
+				{#if other}
+					<form class="other" onsubmit={useOther}>
+						<input bind:value={otherName} placeholder={d.modName} aria-label={d.modName} autocomplete="off" spellcheck="false" />
+						<button class="button" disabled={working || !otherName.trim()}>{d.use}</button>
+					</form>
+				{/if}
+			</div>
+		{/if}
+
+		{#if !ed.deleted}
+			{#if target.kind === 'none'}<p class="notice">{d.chooseFolder}</p>{/if}
+			{#if target.kind === 'new-mod' && target.exists}<p class="notice"><Fill text={d.notListed.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>
+			{:else if target.kind === 'new-mod'}<p class="notice"><Fill text={d.newMod.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>{/if}
+			{#if target.kind === 'mod' && !target.enabled}<p class="notice warn">{d.unticked({ mod: target.name })}</p>{/if}
+			{#if target.losesTo}<p class="notice warn">{d.losesTo({ mod: target.losesTo })}</p>{/if}
+			{#each ed.problems as p, i (i)}<p class="notice error">{p}</p>{/each}
+		{/if}
+		{#if error}<p class="notice error" role="alert">{error}</p>{/if}
+	</div>
+{/if}
 
 <Tabs
 	label={t.tabs}
@@ -173,16 +176,15 @@
 		min-height: 3.1em;
 		color: var(--muted);
 	}
-	.actions,
+	.line .textbutton {
+		margin-left: var(--space-2);
+	}
 	.target,
 	.other {
 		display: flex;
 		align-items: end;
 		flex-wrap: wrap;
 		gap: var(--space-3);
-	}
-	.actions {
-		align-items: baseline;
 	}
 	.target label {
 		display: grid;
@@ -191,9 +193,6 @@
 	}
 	.target label span {
 		color: var(--muted);
-		font-size: var(--step--1);
-	}
-	.small {
 		font-size: var(--step--1);
 	}
 	.raw {

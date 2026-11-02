@@ -25,6 +25,18 @@ shell:
   recording: Adding to
   noRecording: None
   recordingTitle: The recording A adds steps to, from any menu or search result
+  mode: Read-only or editing
+  readOnly: Read-only
+  editing: Editing
+  readOnlyTitle: Nothing can be changed. Turn on editing to make and change recordings.
+  editingTitle: Every change goes to the draft. Review and save it on the Changes page.
+  leaveTitle: The draft has changes
+  leaveSays:
+    one: The draft changes {count} recording, and none of it is saved. Review and save it first, or discard it to go back to read-only.
+    other: The draft changes {count} recordings, and none of it is saved. Review and save it first, or discard it to go back to read-only.
+  review: Review changes
+  discardAndLeave: Discard them
+  keepEditing: Keep editing
   profile: Profile
   catalog: Catalog
   gameRunning: Skyrim running · read-only
@@ -54,6 +66,7 @@ nav:
   search: Search
   recordings: Recordings
   compare: Compare
+  changes: Changes
   notBuiltYet: Not built yet
   recordingsGroup: Recordings
 
@@ -333,11 +346,11 @@ recordings:
   autorunNote: With autorun on, MCM Recorder plays it by itself when a new game starts.
   create: Create
 
-  # Delete.
+  # Delete: into the draft, where it can be undone; Save does it.
   delete: Delete
-  deleteTitle: Delete {name}?
-  deleteSays: Its info file and step files go from {mod} to MCM Lexicon’s backups beside the list, where you can restore them by hand.
-  deleted: Deleted {name}. Its files are in {backup}.
+  restore: Restore
+  deletedInDraft: Deleted in the draft
+  deletedSays: The draft deletes it. Save removes its files from {mod}, after backing them up beside the list.
   deleteNew: It isn’t saved anywhere yet; discard it from its own page.
   deleteNotOurs: It’s in {mod}, where MCM Lexicon didn’t save it, so it isn’t deleted here. Delete it in its mod if you mean to.
   problems:
@@ -421,7 +434,11 @@ draft:
   savedBackup: Saved to {folder} at {time}. The previous files are in {backup}.
   discard: Discard changes
   discardNew: Discard the recording
-  keptInMemory: Changes are kept until you save, close MCM Lexicon, or choose another list.
+  review: Review changes
+  restore: Restore it
+  deletes:
+    one: The draft deletes this recording. Save removes its {count} file from {folder}, backing it up first.
+    other: The draft deletes this recording. Save removes its {count} files from {folder}, backing them up first.
   saveTo: Save to
   overwrite: MO2’s overwrite folder
   data: The Data folder
@@ -451,6 +468,30 @@ edit:
   editValue: Change the value
   beyondASCII: It has characters beyond plain ASCII. MCM Recorder hasn’t yet been seen to match those in game, so check this step there once.
   noSteps: This recording has no steps yet. Add them from any menu or search result with A.
+
+# The whole draft, reviewed before Save.
+changes:
+  title: Changes
+  readOnly: MCM Lexicon is read-only. Turn on editing in the top bar to make and change recordings; every change waits here until you save it.
+  none: The draft has no changes. Make them on any recording’s page, from a menu or a search result with A, or with New on Recordings.
+  summary:
+    one: Save writes or removes {files} file for {count} recording, backing up the current ones first. Changes are kept until you save, discard them, close MCM Lexicon, or choose another list.
+    other: Save writes or removes {files} files for {count} recordings, backing up the current ones first. Changes are kept until you save, discard them, close MCM Lexicon, or choose another list.
+  saveAll: Save all
+  discardAll: Discard all
+  blocked: Some recordings can’t be written yet; each says why below. Nothing is written until they can be.
+  kinds:
+    new: New
+    changed: Changed
+    deleted: Deleted
+  writesTo: Written to {folder}.
+  removesFrom: Removed from {folder}.
+  discard: Discard its changes
+  discardNew: Discard it
+  restore: Keep it
+  saved: Saved {name}.
+  deleted: Deleted {name}.
+  backupIn: The previous files are in {backup}.
 
 # The files Save writes.
 files:

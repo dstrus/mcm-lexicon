@@ -71,6 +71,13 @@ func (h *harness) call(method, path string, body any, out any) int {
 func TestNewRecordingAddSaveDelete(t *testing.T) {
 	h := newHarness(t)
 	var ed Editor
+	// Read-only until editing is turned on.
+	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "My/Settings", Author: "Me"}, nil); code == 200 {
+		t.Fatal("a recording was created while read-only")
+	}
+	if err := h.svc.SetEditing(true, false); err != nil {
+		t.Fatal(err)
+	}
 	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "My/Settings", Author: "Me"}, &ed); code != 200 {
 		t.Fatalf("create: %d", code)
 	}
@@ -102,14 +109,24 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 		t.Errorf("list = %+v", list.Recordings)
 	}
 
+	var ch Changes
+	h.call("GET", "/api/changes", nil, &ch)
+	if len(ch.Recordings) != 1 || ch.Recordings[0].Kind != ChangeKindNew || ch.Files != 2 || h.svc.Pending() != 1 {
+		t.Fatalf("changes = %+v", ch)
+	}
+	if err := h.svc.SetEditing(false, false); err == nil {
+		t.Error("editing turned off with changes in the draft")
+	}
 	h.running = true
-	if code := h.call("POST", "/api/recordings/My_Settings/save", nil, nil); code == 200 {
+	if code := h.call("POST", "/api/changes/save", nil, nil); code == 200 {
 		t.Error("saved while Skyrim runs")
 	}
 	h.running = false
-	if code := h.call("POST", "/api/recordings/My_Settings/save", nil, &ed); code != 200 {
-		t.Fatalf("save: %d", code)
+	var saved SaveReply
+	if code := h.call("POST", "/api/changes/save", nil, &saved); code != 200 || len(saved.Saved) != 1 || len(saved.Changes.Recordings) != 0 {
+		t.Fatalf("save: %d, %+v", code, saved)
 	}
+	h.call("GET", "/api/recordings/My_Settings", nil, &ed)
 	dir := filepath.Join(h.inst.Dir, "mods", DefaultTarget)
 	if b, err := os.ReadFile(filepath.Join(dir, "McmRecorder", "My_Settings", "0001_Be Seated.json")); err != nil || !strings.Contains(string(b), `"slider": 4.0`) {
 		t.Errorf("written: %s, %v", b, err)
@@ -135,23 +152,47 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 	if ed.Files[0].Change != FileChangeSame || ed.Files[1].Change != FileChangeChanged {
 		t.Errorf("files = %s, %s", ed.Files[0].Change, ed.Files[1].Change)
 	}
-	h.call("POST", "/api/recordings/MGO/save", nil, &ed)
-	if ed.Saved == nil || ed.Saved.Backup == "" || ed.Drafted || ed.Changed || ed.Recording == nil || ed.Recording.Steps[0].Value != "on" {
+	h.call("POST", "/api/changes/save", nil, &saved)
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if len(saved.Saved) != 1 || saved.Saved[0].Backup == "" || ed.Drafted || ed.Changed || ed.Recording == nil || ed.Recording.Steps[0].Value != "on" {
 		t.Fatalf("saved MGO = %+v", ed)
 	}
 	if _, err := os.Stat(filepath.Join(h.inst.Dir, "lexicon-backups", "MGO")); err != nil {
 		t.Errorf("no backup beside the list: %v", err)
 	}
-	// Saved there now, so it's MCM Lexicon's to delete.
-	var del DeleteReply
-	if code := h.call("DELETE", "/api/recordings/MGO", nil, &del); code != 200 || del.Backup == "" {
-		t.Errorf("delete: %d, %+v", code, del)
+	// Saved there now, so it's MCM Lexicon's to delete: in the draft first,
+	// where it can be restored, then by Save.
+	if code := h.call("DELETE", "/api/recordings/MGO", nil, &ed); code != 200 || !ed.Deleted || ed.Files[0].Change != FileChangeRemoved {
+		t.Fatalf("delete: %d, %+v", code, ed)
+	}
+	h.call("POST", "/api/recordings/MGO/restore", nil, &ed)
+	if ed.Deleted || h.svc.Pending() != 0 {
+		t.Errorf("restored = %+v", ed)
+	}
+	h.call("DELETE", "/api/recordings/MGO", nil, nil)
+	if code := h.call("POST", "/api/changes/save", nil, &saved); code != 200 || saved.Saved[0].Kind != ChangeKindDeleted || saved.Saved[0].Backup == "" {
+		t.Errorf("deleting save: %d, %+v", code, saved)
+	}
+	if _, err := os.Stat(filepath.Join(h.inst.Dir, "mods", "MGO Recordings", "McmRecorder", "MGO.json")); err == nil {
+		t.Error("MGO's info file is still there")
 	}
 	h.call("GET", "/api/recordings", nil, &list)
 	for _, r := range list.Recordings {
 		if r.Name == "MGO" {
 			t.Error("MGO is still listed")
 		}
+	}
+}
+
+func TestLeavingEditingDiscards(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	h.call("POST", "/api/recordings", CreateRequest{Name: "Scratch"}, nil)
+	if err := h.svc.SetEditing(false, true); err != nil || h.svc.Pending() != 0 || h.svc.Editing() {
+		t.Fatalf("after discarding: %v, %d pending", err, h.svc.Pending())
+	}
+	if code := h.call("GET", "/api/recordings/Scratch", nil, nil); code == 200 {
+		t.Error("the discarded recording is still there")
 	}
 }
 
@@ -162,6 +203,7 @@ func TestTargetThatLoses(t *testing.T) {
 	cat := catalog.NewService("test")
 	cat.UseList(src)
 	h.svc = NewService(cat, prefs.Load(""), nil)
+	h.svc.SetEditing(true, false)
 	h.mux = http.NewServeMux()
 	h.svc.Routes(h.mux)
 	var ed Editor

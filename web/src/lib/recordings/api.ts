@@ -1,6 +1,6 @@
 import { request } from '#lib/api/client.ts';
 import type { OpenRequest, Status } from '#lib/api/types/api.ts';
-import type { AddReply, CompareReply, CompareRequest, CreateRequest, DeleteReply, Draft, Editor, ListReply, Step } from '#lib/api/types/recordings.ts';
+import type { AddReply, Changes, CompareReply, CompareRequest, CreateRequest, Draft, Editor, ListReply, SaveReply, Step } from '#lib/api/types/recordings.ts';
 
 export const recordingsDependency = 'app:recordings';
 
@@ -34,12 +34,29 @@ export function addStep(name: string, step: Step): Promise<AddReply> {
 	return request<AddReply>('POST', `${at(name)}/steps`, { step });
 }
 
-export function save(name: string): Promise<Editor> {
-	return request<Editor>('POST', `${at(name)}/save`);
+// deleteRecording puts a recording's deletion in the draft; Save does it.
+export function deleteRecording(name: string): Promise<Editor> {
+	return request<Editor>('DELETE', at(name));
 }
 
-export function deleteRecording(name: string): Promise<DeleteReply> {
-	return request<DeleteReply>('DELETE', at(name));
+// restore takes a recording's deletion out of the draft.
+export function restore(name: string): Promise<Editor> {
+	return request<Editor>('POST', `${at(name)}/restore`);
+}
+
+// getChanges is the whole draft, for reviewing before Save.
+export function getChanges(fetchFn?: typeof fetch): Promise<Changes> {
+	return request<Changes>('GET', '/api/changes', undefined, fetchFn);
+}
+
+// saveAll writes the whole draft.
+export function saveAll(): Promise<SaveReply> {
+	return request<SaveReply>('POST', '/api/changes/save');
+}
+
+// discardAll drops the whole draft.
+export function discardAll(): Promise<Changes> {
+	return request<Changes>('DELETE', '/api/changes');
 }
 
 // setOpen makes a recording the one new steps go to; "" closes it.
