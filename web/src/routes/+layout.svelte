@@ -166,7 +166,7 @@
 			</nav>
 			<section class="session" class:editing aria-label={m.shell.session}>
 				<span title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
-					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
+					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly, quiet: true }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
 				</span>
 				{#if editing}
 					<label class="adding">

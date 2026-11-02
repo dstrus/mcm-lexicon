@@ -1,4 +1,6 @@
-<!-- One choice among a few, shown as a row of segments. -->
+<!-- One choice among a few, shown as a row of segments. A quiet option,
+     when chosen, shows in ink on the selected haze rather than the accent:
+     a resting state, such as read-only, beside one that acts. -->
 <script lang="ts">
 	let {
 		value = $bindable(),
@@ -7,7 +9,7 @@
 		onchange
 	}: {
 		value: string;
-		options: { value: string; label: string; title?: string }[];
+		options: { value: string; label: string; title?: string; quiet?: boolean }[];
 		label: string; // for assistive technology
 		onchange?: (value: string) => void; // after a choice, for a choice that leads elsewhere
 	} = $props();
@@ -15,7 +17,7 @@
 
 <div class="segments caps" role="radiogroup" aria-label={label}>
 	{#each options as o (o.value)}
-		<button type="button" role="radio" aria-checked={value === o.value} title={o.title} onclick={() => {
+		<button type="button" role="radio" aria-checked={value === o.value} class:quiet={o.quiet} title={o.title} onclick={() => {
 				value = o.value;
 				onchange?.(o.value);
 			}}>
@@ -53,6 +55,14 @@
 		background: var(--accent);
 		color: var(--on-accent);
 		font-weight: 600;
+	}
+	button.quiet[aria-checked='true'] {
+		background: var(--select);
+		color: var(--ink);
+	}
+	button.quiet[aria-checked='true'] + button,
+	button.quiet[aria-checked='true'] {
+		border-left-color: var(--rule-strong);
 	}
 	button:hover:not([aria-checked='true']) {
 		color: var(--ink);
