@@ -327,7 +327,7 @@ recordings:
   steps: Steps
   menus: Menus
   autorun: Autorun
-  check: Check
+  check: Issues
   "on": "On"
   "off": "Off"
 
@@ -403,7 +403,7 @@ recording:
   page: Page
   type: Type
   value: Value
-  check: Check
+  check: Issues
 
   # The pane.
   selector: Selector
