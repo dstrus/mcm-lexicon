@@ -282,3 +282,16 @@ func freePort(t *testing.T) int {
 	defer ln.Close()
 	return ln.Addr().(*net.TCPAddr).Port
 }
+
+// Under make dev, pages come from Vite, at the same address; the API stays.
+func TestDevPagesGoToVite(t *testing.T) {
+	h := newHarness(t)
+	h.srv.DevPages = "http://localhost:5174/"
+	w := h.request("GET", "/recordings/Fresh/info?item=2", "")
+	if w.Code != 307 || w.Header().Get("Location") != "http://localhost:5174/recordings/Fresh/info?item=2" {
+		t.Errorf("page: %d to %q", w.Code, w.Header().Get("Location"))
+	}
+	if w := h.request("GET", "/api/status", ""); w.Code != 200 {
+		t.Errorf("the API under dev: %d", w.Code)
+	}
+}

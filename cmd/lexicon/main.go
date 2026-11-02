@@ -101,6 +101,9 @@ func main() {
 		Port:    actualPort,
 		Files:   web.Files(),
 		Version: version,
+		// Under make dev, Vite serves the pages, so this program's own copy
+		// of them (built when it was) isn't the one to look at.
+		DevPages: os.Getenv("LEXICON_DEV_PAGES"),
 	})
 	if err != nil {
 		exit("%v", err)

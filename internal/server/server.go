@@ -39,6 +39,10 @@ type Options struct {
 	Port    int
 	Files   fs.FS // the built frontend, with index.html at its root
 	Version string
+	// DevPages, during development, is the Vite dev server's address: page
+	// requests go there, since the frontend built into this program may be
+	// older than the source. "" serves the built frontend.
+	DevPages string
 }
 
 type Server struct {
@@ -191,6 +195,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpapi.Send(w, http.StatusOK, Ping{App: AppID})
 	case strings.HasPrefix(r.URL.Path, "/api/"):
 		s.guard(w, r)
+	case s.DevPages != "":
+		http.Redirect(w, r, strings.TrimRight(s.DevPages, "/")+r.URL.RequestURI(), http.StatusTemporaryRedirect)
 	default:
 		s.page(w, r)
 	}

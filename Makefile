@@ -82,11 +82,13 @@ test: web/node_modules types
 # already running on the usual 8766 doesn't take its place. Both get the same token,
 # since the page Vite serves can't carry it. Pass a mod list with LIST=…
 # If either one stops (including MCM Lexicon failing to start), both do.
+# MCM Lexicon's own port sends page requests to Vite's, so its built-in copy
+# of the frontend, which may be older than the source, isn't shown by mistake.
 DEV_PORT ?= 8776
 
 dev: web/node_modules
 	@test -d web/build || npm --prefix web run build
-	@export LEXICON_DEV_TOKEN=$$(openssl rand -hex 16) LEXICON_DEV_PORT=$(DEV_PORT); \
+	@export LEXICON_DEV_TOKEN=$$(openssl rand -hex 16) LEXICON_DEV_PORT=$(DEV_PORT) LEXICON_DEV_PAGES=http://localhost:5174; \
 	trap 'kill 0' EXIT; \
 	(go run ./cmd/lexicon -no-browser -port $(DEV_PORT) $(if $(LIST),-list "$(LIST)"); kill 0) & \
 	npm --prefix web run dev
