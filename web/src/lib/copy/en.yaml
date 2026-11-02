@@ -20,6 +20,9 @@ common:
 
 shell:
   name: MCM Lexicon
+  recording: Recording
+  noRecording: None
+  recordingTitle: The recording new steps go to
   profile: Profile
   catalog: Catalog
   gameRunning: Skyrim running · read-only
@@ -50,6 +53,7 @@ nav:
   recordings: Recordings
   compare: Compare
   notBuiltYet: Not built yet
+  recordingsGroup: Recordings
 
 # Choosing what to read: a mod list, or a catalog file.
 source:
@@ -263,3 +267,153 @@ keys:
 # Controls many pages share.
 ui:
   shortcuts: Keyboard shortcuts
+
+# The recordings in the list.
+recordings:
+  title: Recordings
+  count:
+    one: "{count} recording"
+    other: "{count} recordings"
+  filter: Filter by name or mod
+  filterLabel: Filter recordings
+  none: There are no MCM Recorder recordings in this list. MCM Recorder keeps them in a McmRecorder folder, in any mod or in overwrite.
+  fromCatalog: Recordings live in a mod list’s files, and a catalog file is open, so there are none to show.
+  pane: Recording
+
+  # The table.
+  recording: Recording
+  in: In
+  steps: Steps
+  menus: Menus
+  autorun: Autorun
+  check: Check
+  "on": "On"
+  "off": "Off"
+
+  # The pane.
+  author: Author
+  version: Version
+  info: Info file
+  files: Files
+  losing: Also in {mods}, whose copy loses to this one.
+  noInfo: It has no info file, so MCM Recorder doesn’t list it.
+  allMatch:
+    one: Its step matches the catalog.
+    other: All {count} steps match the catalog.
+  wontReplay:
+    one: "{count} step won’t replay: the catalog doesn’t have what it names."
+    other: "{count} steps won’t replay: the catalog doesn’t have what they name."
+  unchecked:
+    one: "{count} step can’t be checked, since its menu isn’t fully known."
+    other: "{count} steps can’t be checked, since their menus aren’t fully known."
+  modMissing:
+    one: "{count} step is for a menu that isn’t in this list, which MCM Recorder skips."
+    other: "{count} steps are for menus that aren’t in this list, which MCM Recorder skips."
+  openForAdding: Open for adding
+  isOpen: New steps go to this recording.
+  problems:
+    unreadable: "{path} couldn’t be read: {detail}"
+    noKind: "Step {detail} of {path} has nothing to set, so MCM Recorder can’t play it."
+
+# One recording, read-only for now.
+recording:
+  up: Recordings
+  tabs: Recording
+  steps: Steps
+  files: Files
+  stepCount:
+    one: "{count} step"
+    other: "{count} steps"
+  fileCount:
+    one: "{count} file"
+    other: "{count} files"
+  stepsInFiles: "{steps} in {files}"
+  noSteps: This recording has no steps.
+  pane: Step
+  openInMenus: Open in Menus
+  file: File
+  noFiles: This recording has no step files.
+
+  # The table.
+  number: "#"
+  option: Option
+  page: Page
+  type: Type
+  value: Value
+  check: Check
+
+  # The pane.
+  selector: Selector
+  menu: Menu
+  index: Index
+  state: State
+  side: Side
+  asWritten: As written
+  suggestion: The catalog has {label}.
+  suggestionOnPage: The catalog has {label} on the page {page}.
+
+# How steps read.
+steps:
+  click: Click
+  clickRight: Click (right side)
+  wontReplay:
+    one: "{count} won’t replay"
+    other: "{count} won’t replay"
+  uncheckedCount:
+    one: "{count} unchecked"
+    other: "{count} unchecked"
+  words:
+    notFound: Not found
+    notAllowed: Not allowed
+    modMissing: Mod missing
+    unchecked: Unchecked
+  says:
+    matched: The catalog has this option, and the value is one it allows.
+    range: The option is there, but {value} is outside its range.
+    choice: The option is there, but “{value}” isn’t one of its entries.
+    modMissing: There’s no menu named “{mod}” in this list, so MCM Recorder skips the step.
+    inactive: The menu “{mod}” is in the list, but its plugin isn’t active, so the game won’t show it.
+    unchecked: The catalog doesn’t know all of this menu’s options, so a miss here proves nothing.
+    right: A click on the right side matches an option by its value, which only the game knows.
+    page: The menu has no page named “{page}”.
+    option: The page has no option of this type with this selector.
+    index: There are fewer options with this selector than its index, {index}, says.
+
+# Comparing the catalog with an older one.
+compare:
+  title: Compare
+  lead: What changed between a catalog saved before and the list now, and which recorded steps that changes breaks.
+  file: Older catalog file
+  run: Compare
+  current: Now
+  older: Before
+  scannedFrom: "{list}, profile {profile}, scanned {when}"
+  nothing: Nothing differs.
+  changed: Changed
+  all: Everything
+  menusAdded: Menus added
+  menusRemoved: Menus removed
+  optionsAdded: Options added
+  optionsRemoved: Options removed
+  optionsRenamed: Options renamed
+  valuesChanged: Values changed
+  breaks: Steps that break
+  noBreaks: No recorded step breaks.
+  what: What
+  change: Change
+  before: Before
+  after: After
+  step: Step {n}
+  changes:
+    added: Added
+    removed: Removed
+    changed: Changed
+    renamed: Renamed
+    range: Range
+    choices: Choices
+    default: Default
+    certainty: Certainty
+    page: Page
+  pageAdded: Page added
+  pageRemoved: Page removed
+  wholeMenu: The whole menu

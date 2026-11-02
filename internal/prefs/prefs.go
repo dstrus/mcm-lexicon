@@ -16,11 +16,13 @@ type Values struct {
 	Profile     string `json:"profile,omitempty"`     // the MO2 profile read, when chosen
 	CatalogFile string `json:"catalogFile,omitempty"` // a catalog file opened instead of a list
 	Theme       string `json:"theme,omitempty"`       // see Themes; "" follows the system
+	// The recording new steps go to, by name, for the list it belongs to.
+	OpenRecording string `json:"openRecording,omitempty"`
 }
 
 // keys are the names Values writes, so an omitted value is cleared from
 // the file rather than kept from last time.
-var keys = []string{"listDir", "profile", "catalogFile", "theme"}
+var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording"}
 
 // Themes are the themes MCM Lexicon has. "system" follows the operating
 // system's dark or light setting.

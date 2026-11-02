@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -135,6 +136,17 @@ var fixed = [opCount]int{0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 3, 3, 3, 3
 
 func (op Opcode) varargs() bool {
 	return op == OpCallMethod || op == OpCallParent || op == OpCallStatic
+}
+
+// Float32 widens a stored 32-bit float to the number it was written as:
+// 0.1, not 0.100000001490116, so a compiled script's values read as its
+// source's do.
+func Float32(f float32) float64 {
+	n, err := strconv.ParseFloat(strconv.FormatFloat(float64(f), 'g', -1, 32), 64)
+	if err != nil {
+		return float64(f)
+	}
+	return n
 }
 
 // ReadFile reads the compiled script at path.
@@ -363,7 +375,7 @@ func (r *reader) operand() Operand {
 	case OperandInt:
 		return Operand{Kind: k, Number: float64(int32(r.u32()))}
 	case OperandFloat:
-		return Operand{Kind: k, Number: float64(math.Float32frombits(r.u32()))}
+		return Operand{Kind: k, Number: Float32(math.Float32frombits(r.u32()))}
 	case OperandBool:
 		return Operand{Kind: k, Number: float64(r.u8())}
 	}

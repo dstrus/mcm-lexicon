@@ -314,3 +314,28 @@ func sortedKeys[V any](m map[string]V) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// Scripts is every compiled script in the list that makes an MCM, by its
+// Extends chain, and the scripts on the chains between them and the MCM
+// bases (a framework's), by lowercase name: what a snapshot must hold for
+// the menus to read. The bases themselves aren't included.
+func Scripts(l *modlist.List) map[string]bool {
+	l.Index(modlist.MCMScope)
+	s := &scan{list: l, cat: &Catalog{}, ids: map[string]bool{}}
+	s.scripts()
+	out := map[string]bool{}
+	for k := range s.compiled {
+		if s.base(k) == "" {
+			continue
+		}
+		for name := k; name != "" && name != "ski_configbase" && name != "mcm_configbase" && !out[name]; {
+			out[name] = true
+			f := s.form(name)
+			if f == nil {
+				break
+			}
+			name = ir.Key(f.script.Parent)
+		}
+	}
+	return out
+}

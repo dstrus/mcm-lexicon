@@ -18,6 +18,7 @@ import (
 var commands = map[string]func(args []string){
 	"scan":     runScan,
 	"snapshot": runSnapshot,
+	"diff":     runDiff,
 }
 
 // listFlags adds the flags that name a mod list to fs, and returns a
@@ -122,6 +123,29 @@ func runSnapshot(args []string) {
 	}
 	fmt.Printf("Snapshot of %s (%s): %d mods, %d files, %d recorded steps\n", l.Source.Path, l.Source.Profile, sum.Mods, sum.Files, sum.Steps)
 	fmt.Printf("Wrote %s (%.1f MB)\n", sum.Out, float64(sum.Bytes)/(1024*1024))
+}
+
+// runDiff compares two catalog files, older first.
+func runDiff(args []string) {
+	fs := flag.NewFlagSet("lexicon diff", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), "Usage: lexicon diff old.json new.json")
+		fs.PrintDefaults()
+	}
+	fs.Parse(args)
+	if fs.NArg() != 2 {
+		fs.Usage()
+		exit("Name two catalog files, the older first.")
+	}
+	old, err := catalog.ReadFile(fs.Arg(0))
+	if err != nil {
+		exit("%v", err)
+	}
+	new, err := catalog.ReadFile(fs.Arg(1))
+	if err != nil {
+		exit("%v", err)
+	}
+	fmt.Print(catalog.Report(catalog.Compare(old, new)))
 }
 
 // describe is the list in a few lines: where it is and what was read.

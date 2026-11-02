@@ -27,6 +27,16 @@ export interface Status {
   gameRunning: boolean;
   version: string; // MCM Lexicon's own
   theme: string; // "system", "dark" or "light"
+  /**
+   * OpenRecording is the recording new steps go to, by name; "" for none.
+   */
+  openRecording: string;
+}
+/**
+ * OpenRequest chooses the open recording; "" closes it.
+ */
+export interface OpenRequest {
+  name: string;
 }
 /**
  * SourceRequest chooses what to read: a mod list, or a catalog file.

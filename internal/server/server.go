@@ -20,6 +20,7 @@ import (
 	"lexicon/internal/httpapi"
 	"lexicon/internal/modlist"
 	"lexicon/internal/prefs"
+	"lexicon/internal/recordings"
 )
 
 // Placeholders in index.html (see app.html): the session's token, and the
@@ -102,6 +103,12 @@ func (s *Server) routes() {
 	}))
 
 	s.catalog.Routes(m)
+	recordings.Routes(m, s.catalog)
+	recordings.CompareRoutes(m, s.catalog)
+	m.Handle("PUT /api/recordings/open", httpapi.JSON(func(_ *http.Request, req OpenRequest) (Status, error) {
+		s.Prefs.Update(func(v *prefs.Values) { v.OpenRecording = strings.TrimSpace(req.Name) })
+		return s.status(), nil
+	}))
 
 	m.Handle("/api/", httpapi.JSON(func(r *http.Request, _ httpapi.None) (httpapi.None, error) {
 		return httpapi.None{}, apperr.New(apperr.NotFound, "Unknown endpoint: %s %s", r.Method, r.URL.Path)
@@ -122,6 +129,9 @@ func (s *Server) SetSource(path, profile string) (modlist.Source, error) {
 	s.catalog.UseList(src)
 	log.Printf("Mod list: %s", src.Path)
 	s.Prefs.Update(func(v *prefs.Values) {
+		if v.ListDir != src.Path {
+			v.OpenRecording = "" // another list's recordings
+		}
 		v.ListDir = src.Path
 		v.Profile = src.Profile
 		v.CatalogFile = ""

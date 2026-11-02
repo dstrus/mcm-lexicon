@@ -5,6 +5,7 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, watchStatus } from '#lib/api/live.svelte.ts';
 	import { menusDependency } from '#lib/menus/api.ts';
+	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import { setSource } from '#lib/api/status.ts';
 	import { m } from '#lib/copy/messages.ts';
@@ -18,7 +19,12 @@
 
 	let { data, children }: LayoutProps = $props();
 
-	$effect(() => watchStatus(data.status, () => invalidate(menusDependency)));
+	$effect(() =>
+		watchStatus(data.status, () => {
+			invalidate(menusDependency);
+			invalidate(recordingsDependency);
+		})
+	);
 
 	let source = $derived(data.status.source);
 	let catalog = $derived(data.status.catalogFile);
@@ -42,8 +48,20 @@
 	const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 	// A section is current at its URL or below it.
 	const here = (path: string) => page.url.pathname === path || page.url.pathname.startsWith(`${path}/`);
-	// The sections that aren't built yet, named in the column as they'll be.
-	const unbuilt = [m.nav.recordings, m.nav.compare];
+	let recordings = $derived(data.recordings?.recordings ?? []);
+	let openRecording = $derived(data.status.openRecording);
+	let openError = $state('');
+
+	// Choosing the recording new steps go to; MCM Lexicon remembers it.
+	async function chooseRecording(name: string) {
+		openError = '';
+		try {
+			await setOpen(name);
+			await invalidateAll();
+		} catch (e) {
+			openError = e instanceof ApiError ? e.message : String(e);
+		}
+	}
 
 	// When the catalog was scanned: the time today, the date before that.
 	function scannedLabel(iso: string): string {
@@ -59,6 +77,18 @@
 	<header class="top">
 		<a class="name caps" href="/">{m.shell.name}</a>
 		<div class="state">
+			{#if data.recordings?.readable && recordings.length}
+				<label class="source">
+					<span class="caps muted">{m.shell.recording}</span>
+					<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>
+						<option value="">{m.shell.noRecording}</option>
+						{#each recordings as r (r.name)}
+							<option value={r.name}>{r.name}</option>
+						{/each}
+						{#if openRecording && !recordings.some((r) => r.name === openRecording)}<option value={openRecording}>{openRecording}</option>{/if}
+					</select>
+				</label>
+			{/if}
 			{#if source?.kind === 'mo2'}
 				<label class="source">
 					<span class="caps muted">{m.shell.profile}</span>
@@ -93,13 +123,17 @@
 			<ul>
 				<li><a class="caps" href="/menus" aria-current={here('/menus') ? 'page' : undefined}>{m.nav.menus}</a></li>
 				<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
+				<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
+				<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
 			</ul>
-			<p class="group caps">{m.nav.notBuiltYet}</p>
-			<ul aria-label={m.nav.notBuiltYet}>
-				{#each unbuilt as label (label)}
-					<li><span class="caps">{label}</span></li>
-				{/each}
-			</ul>
+			{#if recordings.length}
+				<p class="group caps">{m.nav.recordingsGroup}</p>
+				<ul aria-label={m.nav.recordingsGroup}>
+					{#each recordings as r (r.name)}
+						<li><a class="caps clip" href={recordingHref(r.name)} title={r.name} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>{r.name}</a></li>
+					{/each}
+				</ul>
+			{/if}
 		</nav>
 		<main>{@render children()}</main>
 		<QuickFind menus={data.menus?.menus ?? []} />
@@ -186,8 +220,7 @@
 		margin: 0 0 var(--space-5);
 		padding: 0;
 	}
-	.sections a,
-	.sections span {
+	.sections a {
 		display: block;
 		padding: var(--space-1) 0;
 		font-size: var(--step-1);
@@ -196,6 +229,12 @@
 	}
 	.sections a:hover {
 		color: var(--ink);
+	}
+	/* A recording's name can outrun the column; its whole name is its title. */
+	.sections a.clip {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.sections a[aria-current='page'] {
 		color: var(--accent);

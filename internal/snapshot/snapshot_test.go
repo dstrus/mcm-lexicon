@@ -14,21 +14,20 @@ import (
 	"testing"
 	"time"
 
+	"lexicon/internal/catalog"
 	"lexicon/internal/modlist"
 	"lexicon/internal/testcorpus"
 )
-
-// A compiled script that extends SKI_ConfigBase names it in its string table.
-const mcmPex = "\xde\xc0\x57\xfa...Alpha_MCM\x00SKI_ConfigBase\x00OnPageReset..."
 
 func build(t *testing.T) *testcorpus.Instance {
 	t.Helper()
 	inst := testcorpus.New(t, "[NoDelete] MGO", "VR")
 	inst.Mod("Nothing", true, map[string]string{"meshes/a.nif": "x", "Nothing.esp": "p", "Interface/Translations/Nothing_ENGLISH.txt": "t"})
 	inst.Mod("Alpha", true, map[string]string{
-		"Scripts/Alpha_MCM.pex":                    mcmPex,
-		"Scripts/Other.pex":                        "no menu here",
-		"Scripts/SKI_ConfigBase.pex":               "SKI_ConfigBase itself",
+		"Scripts/Alpha_MCM.pex":                    testcorpus.Compiled("Alpha_MCM", "Framework_Base"),
+		"Scripts/Framework_Base.pex":               testcorpus.Compiled("Framework_Base", "SKI_ConfigBase"),
+		"Scripts/Other.pex":                        testcorpus.Compiled("Other", "Quest", "SKI_ConfigBase"),
+		"Scripts/SKI_ConfigBase.pex":               testcorpus.Compiled("SKI_ConfigBase", "Quest"),
 		"Source/Scripts/Alpha_MCM.psc":             "ScriptName Alpha_MCM extends SKI_ConfigBase",
 		"Alpha.esp":                                "plugin",
 		"Interface/Translations/Alpha_ENGLISH.txt": "en",
@@ -36,7 +35,7 @@ func build(t *testing.T) *testcorpus.Instance {
 	})
 	inst.Separator("Gameplay")
 	inst.Mod("Beta Helper", true, map[string]string{
-		"Scripts/Beta_MCM.pex":         "...MCM_ConfigBase...",
+		"Scripts/Beta_MCM.pex":         testcorpus.Compiled("Beta_MCM", "MCM_ConfigBase"),
 		"MCM/Config/Beta/config.json":  `{"displayName": "Beta"}`,
 		"MCM/Config/Beta/settings.ini": "[Main]",
 		"MCM/Settings/Beta.ini":        "[Main]\nx=1",
@@ -110,6 +109,7 @@ func TestWriteFolder(t *testing.T) {
 		"mods/Alpha/Alpha.esp",
 		"mods/Alpha/Interface/Translations/Alpha_ENGLISH.txt",
 		"mods/Alpha/Scripts/Alpha_MCM.pex",
+		"mods/Alpha/Scripts/Framework_Base.pex",
 		"mods/Alpha/Source/Scripts/Alpha_MCM.psc",
 		"mods/Beta Helper/Beta.esp",
 		"mods/Beta Helper/BetaPatch.esl",
@@ -146,7 +146,7 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range inv.Mods {
 		mods = append(mods, m.Name+" "+strings.Join(m.Kinds, ","))
 	}
-	if want := "Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1"; strings.Join(mods, "; ") != want {
+	if want := "Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1"; strings.Join(mods, "; ") != want {
 		t.Errorf("mods = %q", mods)
 	}
 	if inv.List.EnabledMods != 6 || inv.List.IncludedMods != 5 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
@@ -177,7 +177,7 @@ func TestWriteFolder(t *testing.T) {
 		t.Errorf("ModOrganizer.ini = %q", ini)
 	}
 	md, _ := os.ReadFile(filepath.Join(out, "SNAPSHOT.md"))
-	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "5 of 6 enabled mods, 16 files", "| 1 | Recs | recordings |", "| 3 | Settings Patch | settings:1 |", "| 5 | Alpha | source:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
+	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "5 of 6 enabled mods, 17 files", "| 1 | Recs | recordings |", "| 3 | Settings Patch | settings:1 |", "| 5 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
 		if !strings.Contains(string(md), want) {
 			t.Errorf("SNAPSHOT.md lacks %q:\n%s", want, md)
 		}
@@ -246,6 +246,10 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 					t.Errorf("copied %s, which the script didn't", f.Path)
 				}
 			}
+			// The script found MCM scripts by a text search, which also took
+			// scripts that only mention SKI_ConfigBase; following Extends
+			// chains leaves those out.
+			mcm := catalog.Scripts(read(t, snap.Dir))
 			original := read(t, snap.Dir)
 			for p := range have {
 				if strings.HasPrefix(p, "profiles/") || p == "ModOrganizer.ini" {
@@ -257,6 +261,9 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 					if _, listed := original.Mod(parts[1]); !listed {
 						continue
 					}
+				}
+				if ext := strings.ToLower(filepath.Ext(p)); (ext == ".pex" || ext == ".psc") && !mcm[strings.ToLower(strings.TrimSuffix(filepath.Base(p), filepath.Ext(p)))] {
+					continue
 				}
 				if !got[p] {
 					t.Errorf("missed %s, which the script copied", p)

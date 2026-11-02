@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"lexicon/internal/apperr"
+	"lexicon/internal/catalog"
 	"lexicon/internal/modlist"
 )
 
@@ -88,11 +89,9 @@ type Summary struct {
 	Bytes int64
 }
 
-var mcmMarker = regexp.MustCompile(`(?i)SKI_ConfigBase|MCM_ConfigBase`)
-
-// Gaps the text search leaves, stated in SNAPSHOT.md.
+// Gaps a snapshot leaves, stated in SNAPSHOT.md.
 var gaps = []string{
-	"MCM scripts were found by the text `SKI_ConfigBase`/`MCM_ConfigBase` in compiled scripts. A script that extends another MCM script (a framework such as NL_MCM) without naming either is missed.",
+	"MCM scripts were found by following each compiled script's Extends chain to SKI_ConfigBase or MCM_ConfigBase, frameworks between included. A chain through a script that isn't in the list is lost.",
 	"Plugins are copied whole, from mods with MCM content only. A mod whose MCM quest lives in a plugin from a different mod (a patch) needs that plugin added by hand.",
 	"Loose files in the game's real Data folder (outside MO2) aren't included.",
 }
@@ -129,7 +128,7 @@ func Write(list *modlist.List, out string, o Options) (Summary, error) {
 	}
 	defer os.RemoveAll(stage)
 
-	w := &writer{list: list, o: o, stage: stage, mo2: filepath.Join(stage, "mo2")}
+	w := &writer{list: list, o: o, stage: stage, mo2: filepath.Join(stage, "mo2"), mcm: catalog.Scripts(list)}
 	if err := w.run(); err != nil {
 		return Summary{}, err
 	}
@@ -144,6 +143,7 @@ func Write(list *modlist.List, out string, o Options) (Summary, error) {
 }
 
 type writer struct {
+	mcm    map[string]bool // the scripts that make MCMs, by lowercase name
 	list   *modlist.List
 	o      Options
 	stage  string
@@ -245,11 +245,7 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 	if scripts, rel, ok := modlist.Resolve(m.Dir, "Scripts"); ok {
 		for _, f := range listFiles(scripts) {
 			base := strings.TrimSuffix(f, filepath.Ext(f))
-			if !strings.EqualFold(filepath.Ext(f), ".pex") || strings.EqualFold(base, "SKI_ConfigBase") || strings.EqualFold(base, "MCM_ConfigBase") {
-				continue
-			}
-			b, err := os.ReadFile(filepath.Join(scripts, f))
-			if err != nil || !mcmMarker.Match(b) {
+			if !strings.EqualFold(filepath.Ext(f), ".pex") || !w.mcm[strings.ToLower(base)] {
 				continue
 			}
 			if err := w.copy(filepath.Join(scripts, f), prefix+rel+"/"+f, m.Name); err != nil {

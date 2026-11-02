@@ -26,6 +26,13 @@ type Status struct {
 	GameRunning bool            `json:"gameRunning"`
 	Version     string          `json:"version"` // MCM Lexicon's own
 	Theme       string          `json:"theme"`   // "system", "dark" or "light"
+	// OpenRecording is the recording new steps go to, by name; "" for none.
+	OpenRecording string `json:"openRecording"`
+}
+
+// OpenRequest chooses the open recording; "" closes it.
+type OpenRequest struct {
+	Name string `json:"name"`
 }
 
 // SourceRequest chooses what to read: a mod list, or a catalog file.
@@ -42,11 +49,12 @@ type ThemeRequest struct {
 func (s *Server) status() Status {
 	source, file := s.Source()
 	return Status{
-		Source:      source,
-		CatalogFile: file,
-		Scan:        s.catalog.State(),
-		GameRunning: s.Running != nil && s.Running(),
-		Version:     s.Version,
-		Theme:       s.Prefs.Get().ThemeOf(),
+		Source:        source,
+		CatalogFile:   file,
+		Scan:          s.catalog.State(),
+		GameRunning:   s.Running != nil && s.Running(),
+		Version:       s.Version,
+		Theme:         s.Prefs.Get().ThemeOf(),
+		OpenRecording: s.Prefs.Get().OpenRecording,
 	}
 }

@@ -19,7 +19,8 @@ type Service struct {
 
 	mu       sync.Mutex
 	cur      *Catalog
-	err      error // the last scan's or read's failure
+	list     *modlist.List // the list cur was scanned from, indexed; nil for a catalog file
+	err      error         // the last scan's or read's failure
 	source   *modlist.Source
 	file     string // the catalog file open instead of a list
 	scanning bool
@@ -51,7 +52,7 @@ func (s *Service) UseFile(path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stop()
-	s.source, s.file, s.cur, s.err = nil, path, c, nil
+	s.source, s.file, s.cur, s.err, s.list = nil, path, c, nil, nil
 	return nil
 }
 
@@ -70,7 +71,7 @@ func (s *Service) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stop()
-	s.source, s.file, s.cur, s.err = nil, "", nil, nil
+	s.source, s.file, s.cur, s.err, s.list = nil, "", nil, nil, nil
 }
 
 // Rescan scans the list again in the background. A catalog file isn't
@@ -112,12 +113,23 @@ func (s *Service) Rescan() error {
 		if err != nil {
 			s.err = err
 		} else {
-			s.cur, s.err = c, nil
+			s.cur, s.err, s.list = c, nil, l
 			log.Printf("Scanned %s: %d menus, %d not read, in %s", src.Path, len(c.Menus), len(c.Skipped), time.Since(started).Round(time.Millisecond))
 		}
 		close(done)
 	}()
 	return nil
+}
+
+// List is the list the current catalog was scanned from, with its files
+// indexed, or nil when a catalog file is open or nothing is.
+func (s *Service) List(r *http.Request) (*modlist.List, error) {
+	if _, err := s.Catalog(r); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.list, nil
 }
 
 // State is what the page shows about the catalog while it works.

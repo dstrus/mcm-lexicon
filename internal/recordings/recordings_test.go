@@ -1,0 +1,192 @@
+package recordings
+
+import (
+	"strings"
+	"testing"
+
+	"lexicon/internal/catalog"
+	"lexicon/internal/modlist"
+	"lexicon/internal/testcorpus"
+)
+
+func list(t *testing.T, inst *testcorpus.Instance) *modlist.List {
+	t.Helper()
+	src, err := modlist.Check(inst.Dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := modlist.Read(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Index(modlist.MCMScope)
+	return l
+}
+
+func TestRead(t *testing.T) {
+	inst := testcorpus.New(t, "mgo", "VR")
+	inst.Mod("Old Recordings", true, map[string]string{
+		"McmRecorder/Mine.json": `{"name": "Old", "autorun": "false"}`,
+	})
+	inst.Mod("[NoDelete] Davey's MCM Recordings", true, map[string]string{
+		// MGO's own: Mod in capitals, autorun "True", two files numbered 0001.
+		"McmRecorder/Mine.json":                   "\ufeff" + `{"author": "Me", "autorun": "True", "name": "My Settings", "Version": "1.0.0"}`,
+		"McmRecorder/Mine/0001_VRIK.json":         `[{"Mod": "VRIK", "option": "Head Bobbing Height", "slider": 0.0}]`,
+		"McmRecorder/Mine/0001_Be Seated.json":    `[{"mod": "Be Seated", "option": "Enable / Disable Sitting Prompts", "toggle": "off"}]`,
+		"McmRecorder/Mine/0002_Dirt & Blood.json": `[{"mod": "Dirt & Blood", "page": "Settings", "option": "Dirt on Player", "choose": "Deactivated"}, {"mod": "Dirt & Blood", "page": "Settings", "click": "Restart Player Effects", "side": "left"}, {"mod": "Dirt & Blood", "page": "Settings", "option": "*Bandits*", "toggle": "on", "index": 2}]`,
+		"McmRecorder/Broken.json":                 `{"name": "Broken"}`,
+		"McmRecorder/Broken/0001_X.json":          `{"not": "an array"}`,
+		"McmRecorder/Broken/0002_Y.json":          `[{"mod": "Y", "option": "Nothing to do"}]`,
+		"McmRecorder/Loose/0001_Z.json":           `[]`,
+		"McmRecorder/.debug/dump.json":            `{}`,
+	})
+	recs := Read(list(t, inst))
+	var names []string
+	for _, r := range recs {
+		names = append(names, r.Name)
+	}
+	if strings.Join(names, ",") != "Broken,Loose,Mine" {
+		t.Fatalf("recordings = %q", names)
+	}
+	mine := recs[2]
+	if mine.Title != "My Settings" || mine.Author != "Me" || mine.Version != "1.0.0" || !mine.Autorun || mine.Mod != "[NoDelete] Davey's MCM Recordings" {
+		t.Errorf("info = %+v", mine)
+	}
+	if len(mine.Losing) != 1 || mine.Losing[0] != "Old Recordings" {
+		t.Errorf("losing copies = %q", mine.Losing)
+	}
+	var files []string
+	for _, f := range mine.Files {
+		files = append(files, f.Name)
+	}
+	if strings.Join(files, ",") != "0001_Be Seated.json,0001_VRIK.json,0002_Dirt & Blood.json" {
+		t.Errorf("files in replay order = %q", files)
+	}
+	if len(mine.Steps) != 5 {
+		t.Fatalf("steps = %+v", mine.Steps)
+	}
+	if s := mine.Steps[1]; s.Mod != "VRIK" || s.Kind != KindSlider || s.Value != "0.0" || s.File != 1 {
+		t.Errorf("a slider keeps its spelling: %+v", s)
+	}
+	if s := mine.Steps[3]; s.Kind != KindClick || s.Option != "Restart Player Effects" || s.Side != "left" {
+		t.Errorf("a click's selector is what it clicks: %+v", s)
+	}
+	if s := mine.Steps[4]; !s.Wildcard || s.Index != 2 {
+		t.Errorf("a wildcard with an index: %+v", s)
+	}
+	broken := recs[0]
+	var problems []string
+	for _, p := range broken.Problems {
+		problems = append(problems, string(p.Kind)+" "+p.Path)
+	}
+	if strings.Join(problems, ",") != "unreadable McmRecorder/Broken/0001_X.json,no-kind McmRecorder/Broken/0002_Y.json" {
+		t.Errorf("problems = %q", problems)
+	}
+	if p := recs[1].Problems; len(p) != 1 || p[0].Kind != ProblemNoInfo {
+		t.Errorf("a folder without an info file: %+v", p)
+	}
+}
+
+func cat() *catalog.Catalog {
+	return &catalog.Catalog{Menus: []catalog.Menu{
+		{ID: "dirt", Name: "Dirt & Blood", NameText: "Dirt & Blood", Active: true, Certainty: catalog.CertaintyExact, Pages: []catalog.Page{{Name: "Settings", Text: "Settings", Options: []catalog.Option{
+			{Type: catalog.OptionTypeMenu, Label: "Dirt on Player", Choices: []catalog.Choice{{Raw: "Deactivated"}, {Raw: "Often"}}},
+			{Type: catalog.OptionTypeToggle, Label: "Dirt on Bandits"},
+			{Type: catalog.OptionTypeToggle, Label: "Bandits too", Index: 0},
+			{Type: catalog.OptionTypeSlider, Label: "Chance", Slider: &catalog.Range{Min: 0, Max: 100}},
+			{Type: catalog.OptionTypeText, Label: "Restart Player Effects"},
+		}}}},
+		{ID: "off", Name: "Turned Off", Active: false, Certainty: catalog.CertaintyExact, Pages: []catalog.Page{{}}},
+		{ID: "vague", Name: "Vague", Active: true, Certainty: catalog.CertaintyPattern, Pages: []catalog.Page{{Name: "", Options: []catalog.Option{{Type: catalog.OptionTypeToggle, Label: "*Slot*", Certainty: catalog.CertaintyPattern}}}}},
+		{ID: "other", Name: "Other", Active: true, Certainty: catalog.CertaintyExact, Pages: []catalog.Page{
+			{Name: "A", Options: []catalog.Option{{Type: catalog.OptionTypeToggle, Label: "Moved"}}},
+			{Name: "B", Options: []catalog.Option{{Type: catalog.OptionTypeToggle, Label: "Here"}}},
+		}},
+	}}
+}
+
+func TestValidate(t *testing.T) {
+	steps := []Step{
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Dirt on Player", Kind: KindChoose, Value: "Deactivated"},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Dirt on Player", Kind: KindChoose, Value: "Never"},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Chance", Kind: KindSlider, Value: "150.0"},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "*Bandits*", Kind: KindToggle, Value: "on", Index: 2, Wildcard: true},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Restart Player Effects", Kind: KindClick, Value: "Restart Player Effects"},
+		{Mod: "dirt & blood", Page: "settings", Option: "dirt on player", Kind: KindChoose, Value: "deactivated"},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Dirt On Bandits ", Kind: KindToggle, Value: "on"},
+		{Mod: "Dirt & Blood", Page: "Settings", Option: "Dirt on Bandits", Kind: KindToggle, Value: "on", Index: 3},
+		{Mod: "Dirt & Blood", Page: "Gone", Option: "Dirt on Bandits", Kind: KindToggle, Value: "on"},
+		{Mod: "Not Installed", Option: "x", Kind: KindToggle},
+		{Mod: "Turned Off", Option: "x", Kind: KindToggle},
+		{Mod: "Vague", Option: "Slot 3", Kind: KindToggle},
+		{Mod: "Other", Page: "B", Option: "Moved", Kind: KindToggle},
+	}
+	checks := Validate(&Recording{Steps: steps}, cat())
+	want := []string{"matched", "not-allowed choice", "not-allowed range", "matched", "matched", "matched", "not-found option", "not-found index", "not-found page", "mod-missing", "mod-missing inactive", "unchecked option", "not-found option"}
+	for i, ch := range checks {
+		got := string(ch.Status)
+		if ch.Why != "" {
+			got += " " + string(ch.Why)
+		}
+		if got != want[i] {
+			t.Errorf("step %d (%s): %s, want %s", i+1, steps[i].Option, got, want[i])
+		}
+	}
+	if o := checks[3].Option; o == nil || o.Label != "Bandits too" {
+		t.Errorf("a wildcard's second match: %+v", o)
+	}
+	if s := checks[6].Suggestion; s == nil || s.Label != "Dirt on Bandits" {
+		t.Errorf("a near miss suggests the label: %+v", s)
+	}
+	if s := checks[8].Suggestion; s == nil || s.Page != "Settings" {
+		t.Errorf("a missing page suggests where the option is: %+v", s)
+	}
+	if s := checks[12].Suggestion; s == nil || s.Page != "A" || s.Label != "Moved" {
+		t.Errorf("an option on another page: %+v", s)
+	}
+	if c := Count(checks); c.Matched != 4 || c.NotAllowed != 2 || c.NotFound != 4 || c.ModMissing != 2 || c.Unchecked != 1 {
+		t.Errorf("counts = %+v", c)
+	}
+}
+
+// The generic acceptance check of PLAN.md §7: every step of every recording
+// in a real list resolves exactly, or its mod isn't in the list.
+func TestRealSnapshots(t *testing.T) {
+	for _, snap := range testcorpus.Snapshots(t) {
+		t.Run(snap.Name, func(t *testing.T) {
+			src, err := modlist.Check(snap.Dir, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			l, err := modlist.Read(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c := catalog.Scan(l, catalog.Options{})
+			recs := Read(l)
+			total := 0
+			var counts Counts
+			for _, r := range recs {
+				for _, p := range r.Problems {
+					t.Errorf("%s: %s %s %s", r.Name, p.Kind, p.Path, p.Detail)
+				}
+				checks := Validate(r, c)
+				for i, ch := range checks {
+					s := r.Steps[i]
+					switch ch.Status {
+					case StatusMatched:
+					case StatusModMissing:
+						t.Logf("%s: %q isn't in this list (%s)", r.Name, s.Mod, ch.Why)
+					default:
+						t.Errorf("%s step %d: %s / %q / %s %q: %s %s", r.Name, i+1, s.Mod, s.Page, s.Kind, s.Option, ch.Status, ch.Why)
+					}
+				}
+				c := Count(checks)
+				counts.Matched += c.Matched
+				counts.ModMissing += c.ModMissing
+				total += len(r.Steps)
+			}
+			t.Logf("%d recordings, %d steps: %d matched, %d for mods not in the list", len(recs), total, counts.Matched, counts.ModMissing)
+		})
+	}
+}

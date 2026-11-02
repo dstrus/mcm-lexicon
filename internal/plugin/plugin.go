@@ -15,6 +15,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -342,7 +343,7 @@ func (r *reader) value(p *Property, format int16) {
 	case PropertyInt:
 		p.Number = float64(int32(r.u32()))
 	case PropertyFloat:
-		p.Number = float64(math.Float32frombits(r.u32()))
+		p.Number = float32ToFloat(math.Float32frombits(r.u32()))
 	case PropertyBool:
 		p.Number = float64(r.u8())
 	case PropertyObjectArray:
@@ -364,7 +365,7 @@ func (r *reader) value(p *Property, format int16) {
 	case PropertyFloatArray:
 		n := r.count(4)
 		for i := 0; i < n; i++ {
-			p.Numbers = append(p.Numbers, float64(math.Float32frombits(r.u32())))
+			p.Numbers = append(p.Numbers, float32ToFloat(math.Float32frombits(r.u32())))
 		}
 	case PropertyBoolArray:
 		n := r.count(1)
@@ -376,6 +377,16 @@ func (r *reader) value(p *Property, format int16) {
 			r.err = fmt.Errorf("property %s has type %d, which Skyrim doesn't use", p.Name, p.Type)
 		}
 	}
+}
+
+// float32ToFloat widens a stored 32-bit float to the number it was
+// written as: 0.1, not 0.100000001490116.
+func float32ToFloat(f float32) float64 {
+	n, err := strconv.ParseFloat(strconv.FormatFloat(float64(f), 'g', -1, 32), 64)
+	if err != nil {
+		return float64(f)
+	}
+	return n
 }
 
 func zstring(b []byte) string {

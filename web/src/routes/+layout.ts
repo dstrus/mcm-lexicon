@@ -1,6 +1,8 @@
 import { getStatus } from '#lib/api/status.ts';
 import type { MenusReply } from '#lib/api/types/catalog.ts';
 import { getMenus, menusDependency } from '#lib/menus/api.ts';
+import type { ListReply } from '#lib/api/types/recordings.ts';
+import { getRecordings, recordingsDependency } from '#lib/recordings/api.ts';
 import type { LayoutLoad } from './$types.ts';
 
 // MCM Lexicon runs entirely in the browser: the Go server only serves the
@@ -10,11 +12,13 @@ export const prerender = false;
 
 export const load: LayoutLoad = async ({ fetch, depends }) => {
 	depends(menusDependency);
+	depends(recordingsDependency);
 	const status = await getStatus(fetch);
 	// The menus, once there's a catalog to list them from. A first scan
 	// still running doesn't hold the page up; it reloads them when it ends.
 	let menus: MenusReply | null = null;
 	let menusError = '';
+	let recordings: ListReply | null = null;
 	const open = !!status.source || !!status.catalogFile;
 	if (open && (status.scan.scannedAt || !status.scan.scanning)) {
 		try {
@@ -22,6 +26,9 @@ export const load: LayoutLoad = async ({ fetch, depends }) => {
 		} catch (e) {
 			menusError = e instanceof Error ? e.message : String(e);
 		}
+		// The recordings, for the sections column and the top bar; a problem
+		// reading them shows on their own page.
+		recordings = await getRecordings(fetch).catch(() => null);
 	}
-	return { status, menus, menusError };
+	return { status, menus, menusError, recordings };
 };
