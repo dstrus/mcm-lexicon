@@ -190,6 +190,17 @@ export interface CreateRequest {
 export interface AddRequest {
   step: Step;
 }
+/**
+ * AddAllRequest records many options at once, in order (Record all settings
+ * on this page). An option the recording has already keeps its step.
+ */
+export interface AddAllRequest {
+  steps: Step[];
+}
+export interface AddAllReply {
+  added: number /* int */; // new steps
+  kept: number /* int */; // options the recording had already, left as they were
+}
 export interface AddReply {
   number: number /* int */; // the step's position in the recording, from 1
   replaced: boolean; // the option was in the recording already, and its step now has this value

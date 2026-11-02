@@ -169,6 +169,18 @@ menus:
 # One menu: its pages as tabs, and its options.
 menu:
   up: Menus
+  recorded: Recorded
+  recordAll: Record all settings on this page
+  # Record all's outcome, as up to three sentences.
+  recordedAdded:
+    one: Recorded {count} setting in {recording}.
+    other: Recorded {count} settings in {recording}.
+  recordedKept:
+    one: "{count} was there already and kept its value."
+    other: "{count} were there already and kept their values."
+  recordedSkipped:
+    one: "{count} has no value the catalog knows, or a label built at runtime, so it wasn’t recorded."
+    other: "{count} have no value the catalog knows, or a label built at runtime, so they weren’t recorded."
   pages: Pages
   mainPage: Main
   noOptions: This page has nothing a recording can set.
@@ -513,17 +525,18 @@ files:
 adding:
   addTo: Add to {recording}
   addToAny: Add to a recording
-  add: Add
-  into: A new step at the end of {recording}.
   added: Added to {recording} as step {n}.
   changed: Changed step {n} of {recording}.
-  already: It’s step {n} of {recording} already, set to {value}.
-  changeIn: Change in {recording}
-  inPlace: Step {n} of {recording}. A recording holds an option once, so this changes that step.
-  apply: Apply
+  saveChanges: Save changes
+  inRecording: In {recording}
+  stepN: Step {n}.
+  notYet: Not recorded yet. Adding it records this value.
+  notYetTitle: Not in {recording} yet. Change it here to record it.
+  recordThis: Record {option}
+  cantRecord: Its label is built at runtime, so a recording can’t name it exactly.
   openIt: Open it
   choose: Choose a recording
-  chooseLead: New steps go to the recording you choose, until you choose another in the top bar.
+  chooseLead: New steps go to the recording you choose, until you choose another under Adding to.
   newRecording: New recording…
   name: Name
   nameNote: / and \ become _ in the recording’s file names, as MCM Recorder writes them.

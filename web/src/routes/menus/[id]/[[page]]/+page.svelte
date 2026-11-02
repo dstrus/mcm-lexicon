@@ -1,13 +1,22 @@
 <!-- One menu: its pages as tabs, the current page's options as an item
-     table, and the selected option in the pane. -->
+     table, and the selected option in the pane. While editing, with a
+     recording chosen, a Recorded column shows each option's value in it,
+     edited in the table: a change records the option, and Record all
+     settings on this page records every one whose value is known. -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
+	import { ApiError } from '#lib/api/client.ts';
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
 	import OptionPane from '#lib/menus/OptionPane.svelte';
 	import Adder from '#lib/recordings/Adder.svelte';
-	import { param } from '#lib/ui/address.svelte.ts';
+	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
+	import InlineValue from '#lib/recordings/InlineValue.svelte';
+	import { addAll, addStep, recordingsDependency } from '#lib/recordings/api.ts';
+	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
+	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
+	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { allowed, changed, hex, show } from '#lib/menus/values.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -43,13 +52,101 @@
 	});
 	const typeLabel = (o: Option) => (o.control === 'stepper' ? m.option.types.stepper : m.option.types[o.type]);
 
-	// While the pane adds a step, the arrows don't move off its option.
-	let adding = $derived(param('mode') === 'add');
-	useShortcuts(() => [
-		{ key: 'ArrowDown', label: m.common.next, hidden: true, disabled: adding, run: () => selection.move(1) },
-		{ key: 'ArrowUp', label: m.common.previous, hidden: true, disabled: adding, run: () => selection.move(-1) },
-		{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto(`/menus?item=${encodeURIComponent(menu.id)}`) }
-	]);
+	// The open recording, while editing: what it has of this page.
+	const open = new OpenRecording();
+	let chooser = $state<ChooseRecording>();
+	const choose = () => chooser?.choose() ?? Promise.resolve(null);
+	let recording = $derived(open.editing && !!open.name);
+	const base = (o: Option) => stepFor(menu.name, page?.name ?? '', o);
+	const recorded = (o: Option) => open.find(base(o));
+	// What a cell shows and starts from: the recorded value, else the
+	// option's own.
+	const valueNow = (o: Option) => recorded(o)?.step ?? base(o);
+	const on = (o: Option) => valueNow(o).value.toLowerCase() === 'on';
+	// A toggle flips in place when its value is known (recorded, saved, or
+	// the mod's default); one that isn't is chosen outright, On or Off.
+	const flippable = (o: Option) => o.type === 'toggle' && (!!recorded(o) || !!known(o));
+	const canEdit = (o: Option) => recordable(o);
+
+	let working = $state(false);
+	let error = $state('');
+	let note = $state('');
+	let inline = $state<InlineValue>();
+	let editingCell = $derived(recording && param('mode') === 'edit' && selection.current ? selection.current.i : -1);
+
+	// record puts the option in the open recording with this value: a new
+	// step, or its step changed.
+	async function record(o: Option, value: string) {
+		if (working) return;
+		working = true;
+		error = '';
+		try {
+			await addStep(open.name, { ...base(o), value });
+			await invalidate(recordingsDependency);
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			working = false;
+			leave('mode');
+		}
+	}
+	const flip = (o: Option) => record(o, on(o) ? 'off' : 'on');
+	function editCell(r: (typeof rows)[number]) {
+		selection.select(r);
+		if (flippable(r.option)) return flip(r.option);
+		if (r.option.type === 'text') return record(r.option, '');
+		setParams({ item: String(r.i), mode: 'edit' });
+	}
+
+	// Record all settings on this page: every option whose value is known
+	// and whose label can be matched exactly; ones recorded already keep
+	// their values.
+	let recordableNow = $derived(options.filter((o) => recordable(o) && o.type !== 'text' && !!known(o)));
+	async function recordAll() {
+		if (working) return;
+		if (!open.name && !(await choose())) return;
+		working = true;
+		error = '';
+		note = '';
+		try {
+			const r = await addAll(open.name, recordableNow.map(base));
+			const skipped = options.length - recordableNow.length;
+			note = [
+				t.recordedAdded({ count: r.added, recording: open.name }),
+				r.kept ? t.recordedKept({ count: r.kept }) : '',
+				skipped ? t.recordedSkipped({ count: skipped }) : ''
+			]
+				.filter(Boolean)
+				.join(' ');
+			await invalidate(recordingsDependency);
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			working = false;
+		}
+	}
+
+	let sel = $derived(selection.current);
+	useShortcuts(() =>
+		editingCell >= 0
+			? [
+					// The cell's field takes these first; they're here so the strip shows them.
+					{ key: 'Enter', label: m.edit.apply, disabled: working, run: () => inline?.done() },
+					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
+				]
+			: [
+					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
+					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
+					...(recording && sel && canEdit(sel.option)
+						? flippable(sel.option)
+							? [{ key: ' ', shown: 'Space', label: on(sel.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(sel.option) }]
+							: sel.option.type === 'text'
+								? []
+								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => setParams({ mode: 'edit' }) }]
+						: []),
+					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto(`/menus?item=${encodeURIComponent(menu.id)}`) }
+				]
+	);
 </script>
 
 <Up href="/menus?item={encodeURIComponent(menu.id)}" label={t.up} />
@@ -60,6 +157,14 @@
 {#if tabbed}
 	<Tabs label={t.pages} tabs={menu.pages.map((p, i) => ({ href: menuHref(menu.id, i), label: pageText(p), count: p.options.length }))} />
 {/if}
+
+{#if open.editing && options.length}
+	<div class="tools">
+		<button type="button" class="button" disabled={working || !recordableNow.length} onclick={recordAll}>{t.recordAll}</button>
+		{#if note}<p class="muted" role="status">{note}</p>{/if}
+	</div>
+{/if}
+{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 
 {#if !options.length}
 	<p class="empty">{tabbed ? t.noOptions : t.noPages}</p>
@@ -74,6 +179,7 @@
 					<th class="caps allowed">{t.allowed}</th>
 					<th class="caps">{t.default}</th>
 					{#if withSaved}<th class="caps">{t.saved}</th>{/if}
+					{#if recording}<th class="caps" title={open.name}>{t.recorded}</th>{/if}
 				</tr>
 			</thead>
 			<tbody>
@@ -92,6 +198,27 @@
 						{#if withSaved}
 							<td class="value" class:changed={changed(o)}>{#if o.saved}{#if o.type === 'color'}<span class="swatch" style:background={hex(o.saved.number)}></span>{/if}{show(o, o.saved)}{/if}</td>
 						{/if}
+						{#if recording}
+							{@const rec = recorded(o)}
+							<td class="value rec" class:changed={!!rec && stepChanged(rec.step, o)}>
+								{#if !canEdit(o)}
+									<span class="muted" title={m.adding.cantRecord}></span>
+								{:else if flippable(o)}
+									<label class="flip" class:unrecorded={!rec} title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
+										<input type="checkbox" checked={on(o)} disabled={working} onclick={(e) => e.stopPropagation()} onchange={() => flip(o)} aria-label={m.edit.toggleLabel({ option: o.text })} />
+										{#if rec}{stepValue(rec.step, o)}{/if}
+									</label>
+								{:else if editingCell === r.i}
+									<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
+								{:else if rec}
+									<button type="button" class="cell" title={m.edit.editValue} disabled={o.type === 'text'} onclick={(e) => (e.stopPropagation(), editCell(r))}>
+										{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
+									</button>
+								{:else}
+									<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), editCell(r))}>—</button>
+								{/if}
+							</td>
+						{/if}
 					</tr>
 				{/each}
 			</tbody>
@@ -100,15 +227,17 @@
 			{#if current}
 				{#key current.i}
 					<div class="enter">
-						<Adder option={current.option} menu={menu.name} pageName={page?.name ?? ''}>
-							<OptionPane option={current.option} page={page && page.name !== '' ? pageText(page) : ''} />
-						</Adder>
+						<OptionPane option={current.option} page={page && page.name !== '' ? pageText(page) : ''}>
+							{#snippet action()}<Adder option={current.option} menu={menu.name} pageName={page?.name ?? ''} {open} {choose} />{/snippet}
+						</OptionPane>
 					</div>
 				{/key}
 			{/if}
 		</aside>
 	</div>
 {/if}
+
+<ChooseRecording bind:this={chooser} />
 
 <style>
 	h1 {
@@ -197,6 +326,50 @@
 		height: 9px;
 		margin-right: var(--space-2);
 		border: 1px solid var(--rule-strong);
+	}
+	.tools {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+	}
+	.tools p {
+		margin: 0;
+		font-size: var(--step--1);
+	}
+	/* A toggle's recorded cell is its checkbox; one not recorded yet is
+	   dimmed, showing what the menu has, so a click records the other. */
+	.flip {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		cursor: pointer;
+	}
+	.flip.unrecorded input {
+		opacity: 0.45;
+	}
+	/* Any other value's cell is a button that turns into its editor. */
+	.cell {
+		background: none;
+		border: 0;
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: text;
+		border-bottom: 1px dashed transparent;
+	}
+	.cell:hover:not(:disabled),
+	.cell:focus-visible {
+		border-bottom-color: var(--rule-strong);
+		outline: none;
+	}
+	.cell:disabled {
+		cursor: default;
+	}
+	.cell.unrecorded {
+		color: var(--muted);
 	}
 	.pane {
 		position: sticky;

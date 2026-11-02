@@ -253,3 +253,32 @@ func TestAddingAgainChangesTheStepAndDiscardingForgetsTheRecording(t *testing.T)
 		t.Errorf("open = %q", open)
 	}
 }
+
+func TestRecordAllKeepsWhatsRecorded(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	h.call("POST", "/api/recordings", CreateRequest{Name: "All"}, nil)
+	h.call("POST", "/api/recordings/All/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "off"}}, nil)
+	var r AddAllReply
+	code := h.call("POST", "/api/recordings/All/steps/all", AddAllRequest{Steps: []Step{
+		{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "on"},
+		{Mod: "Be Seated", Option: "Height", Kind: KindSlider, Value: "4"},
+	}}, &r)
+	if code != 200 || r.Added != 1 || r.Kept != 1 {
+		t.Fatalf("record all: %d, %+v", code, r)
+	}
+	var ed Editor
+	h.call("GET", "/api/recordings/All", nil, &ed)
+	if len(ed.Draft.Steps) != 2 || ed.Draft.Steps[0].Value != "off" {
+		t.Errorf("steps = %+v", ed.Draft.Steps)
+	}
+	// One that can't be written stops the lot.
+	code = h.call("POST", "/api/recordings/All/steps/all", AddAllRequest{Steps: []Step{
+		{Mod: "Be Seated", Option: "Depth", Kind: KindSlider, Value: "4"},
+		{Mod: "Be Seated", Option: "Bad", Kind: KindSlider, Value: "lots"},
+	}}, nil)
+	h.call("GET", "/api/recordings/All", nil, &ed)
+	if code == 200 || len(ed.Draft.Steps) != 2 {
+		t.Errorf("a bad setting: %d, %d steps", code, len(ed.Draft.Steps))
+	}
+}

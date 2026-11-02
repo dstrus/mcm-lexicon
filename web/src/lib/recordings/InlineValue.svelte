@@ -85,7 +85,13 @@
 </script>
 
 <span class="inline">
-	{#if kind === 'slider'}
+	{#if kind === 'toggle'}
+		<!-- A toggle whose value isn't known yet: On or Off, chosen outright. -->
+		<span class="choice" role="group" aria-label={t.value}>
+			<button type="button" bind:this={field} onclick={() => apply('on')} onkeydown={keys}>{m.values.on}</button>
+			<button type="button" onclick={() => apply('off')} onkeydown={keys}>{m.values.off}</button>
+		</span>
+	{:else if kind === 'slider'}
 		<input
 			bind:this={field}
 			bind:value={draft}
@@ -140,6 +146,27 @@
 	/* A value the slider won't take: the field's own border says so. */
 	input.bad {
 		border-color: var(--warn);
+	}
+	.choice {
+		display: inline-flex;
+		border: 1px solid var(--accent);
+		border-radius: var(--radius);
+		overflow: hidden;
+	}
+	.choice button {
+		background: none;
+		border: 0;
+		padding: 0.1em var(--space-2);
+		font-size: var(--step--1);
+		cursor: pointer;
+	}
+	.choice button + button {
+		border-left: 1px solid var(--rule-strong);
+	}
+	.choice button:hover,
+	.choice button:focus-visible {
+		background: var(--select);
+		outline: none;
 	}
 	.capture {
 		display: inline-flex;

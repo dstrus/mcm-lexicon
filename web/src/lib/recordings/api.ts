@@ -1,6 +1,6 @@
 import { request } from '#lib/api/client.ts';
 import type { OpenRequest, Status } from '#lib/api/types/api.ts';
-import type { AddReply, Changes, CompareReply, CompareRequest, CreateRequest, Draft, Editor, ListReply, SaveReply, Step } from '#lib/api/types/recordings.ts';
+import type { AddAllReply, AddReply, Changes, CompareReply, CompareRequest, CreateRequest, Draft, Editor, ListReply, SaveReply, Step } from '#lib/api/types/recordings.ts';
 
 export const recordingsDependency = 'app:recordings';
 
@@ -32,6 +32,12 @@ export function discardDraft(name: string): Promise<Editor> {
 // addStep appends a step to a recording's draft.
 export function addStep(name: string, step: Step): Promise<AddReply> {
 	return request<AddReply>('POST', `${at(name)}/steps`, { step });
+}
+
+// addAll records many options at once; ones the recording has keep their
+// steps.
+export function addAll(name: string, steps: Step[]): Promise<AddAllReply> {
+	return request<AddAllReply>('POST', `${at(name)}/steps/all`, { steps });
 }
 
 // deleteRecording puts a recording's deletion in the draft; Save does it.

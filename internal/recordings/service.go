@@ -127,6 +127,17 @@ type AddRequest struct {
 	Step Step `json:"step"`
 }
 
+// AddAllRequest records many options at once, in order (Record all settings
+// on this page). An option the recording has already keeps its step.
+type AddAllRequest struct {
+	Steps []Step `json:"steps"`
+}
+
+type AddAllReply struct {
+	Added int `json:"added"` // new steps
+	Kept  int `json:"kept"`  // options the recording had already, left as they were
+}
+
 type AddReply struct {
 	Number   int  `json:"number"`   // the step's position in the recording, from 1
 	Replaced bool `json:"replaced"` // the option was in the recording already, and its step now has this value
@@ -356,6 +367,16 @@ func (s *Service) Routes(m *http.ServeMux) {
 			return AddReply{}, err
 		}
 		return s.add(e, r.PathValue("name"), req.Step)
+	}))
+	m.Handle("POST /api/recordings/{name}/steps/all", httpapi.JSON(func(r *http.Request, req AddAllRequest) (AddAllReply, error) {
+		if err := s.mustEdit(); err != nil {
+			return AddAllReply{}, err
+		}
+		e, err := s.env(r)
+		if err != nil {
+			return AddAllReply{}, err
+		}
+		return s.addAll(e, r.PathValue("name"), req.Steps)
 	}))
 	m.Handle("DELETE /api/recordings/{name}", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
 		if err := s.mustEdit(); err != nil {
@@ -831,12 +852,8 @@ func (s *Service) deletes(e *env, r *Recording) string {
 	return ""
 }
 
-func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
-	ed, err := s.editor(e, name)
-	if err != nil {
-		return AddReply{}, err
-	}
-	d := ed.Draft
+// prepare is a step as adding takes it, or why it can't be written.
+func prepare(step Step) (Step, error) {
 	step.File = 0
 	if step.Kind == KindClick {
 		step.Value = step.Option
@@ -844,7 +861,54 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 	step.Wildcard = len(step.Option) > 2 && strings.HasPrefix(step.Option, "*") && strings.HasSuffix(step.Option, "*")
 	probe := Draft{Name: "probe", Steps: []Step{step}}
 	if _, err := Plan(&probe); err != nil {
-		return AddReply{}, apperr.New(apperr.Invalid, "That step can't be written: %v", err)
+		return step, apperr.New(apperr.Invalid, "That step can't be written: %v", err)
+	}
+	return step, nil
+}
+
+// addAll appends the steps the recording doesn't have yet, all or none.
+func (s *Service) addAll(e *env, name string, steps []Step) (AddAllReply, error) {
+	ed, err := s.editor(e, name)
+	if err != nil {
+		return AddAllReply{}, err
+	}
+	if ed.Deleted {
+		return AddAllReply{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to add to it", ed.Draft.Name)
+	}
+	d := ed.Draft
+	var reply AddAllReply
+	for i, step := range steps {
+		step, err := prepare(step)
+		if err != nil {
+			return AddAllReply{}, fmt.Errorf("setting %d (%s): %w; nothing was recorded", i+1, step.Option, err)
+		}
+		if Find(d.Steps, step) >= 0 {
+			reply.Kept++
+			continue
+		}
+		d.Steps = append(d.Steps, step)
+		reply.Added++
+	}
+	if reply.Added > 0 {
+		s.mu.Lock()
+		s.drafts[strings.ToLower(d.Name)] = &d
+		s.mu.Unlock()
+	}
+	return reply, nil
+}
+
+func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
+	ed, err := s.editor(e, name)
+	if err != nil {
+		return AddReply{}, err
+	}
+	if ed.Deleted {
+		return AddReply{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to add to it", ed.Draft.Name)
+	}
+	d := ed.Draft
+	step, err = prepare(step)
+	if err != nil {
+		return AddReply{}, err
 	}
 	// The option once per recording: adding it again changes its step.
 	if i := Find(d.Steps, step); i >= 0 {

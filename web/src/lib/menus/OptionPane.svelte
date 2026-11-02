@@ -4,9 +4,12 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import Fill from '#lib/copy/Fill.svelte';
+	import type { Snippet } from 'svelte';
 	import { allowed, changed, edgeSpace, hex, number, show } from './values.ts';
 
-	let { option: o, page, menu }: { option: Option; page: string; menu?: { text: string; href: string } } = $props();
+	// action, when given, sits under the heading: the option in the open
+	// recording, while editing.
+	let { option: o, page, menu, action }: { option: Option; page: string; menu?: { text: string; href: string }; action?: Snippet } = $props();
 
 	const t = m.option;
 	let typeLabel = $derived(o.control === 'stepper' ? t.types.stepper : t.types[o.type]);
@@ -14,6 +17,7 @@
 
 <h2 class="caps">{o.text || m.values.noLabel}</h2>
 {#if menu}<p class="muted"><a href={menu.href}>{menu.text}</a>{#if page}{' · '}{page}{/if}</p>{:else if page}<p class="muted">{page}</p>{/if}
+{@render action?.()}
 
 <dl>
 	<dt class="caps">{t.selector}</dt>

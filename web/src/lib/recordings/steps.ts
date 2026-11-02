@@ -132,11 +132,23 @@ export const typeKind: Record<Option['type'], Kind> = {
 	text: 'click'
 };
 
-// stepFor is a new step for an option, its value the option's default
-// where the catalog knows it: what adding from a menu starts with.
+// known is the value an option has as far as the catalog knows: the
+// player's saved one (MCM Helper), else the mod's default.
+export function known(o: Option): Option['default'] {
+	return o.saved ?? o.default;
+}
+
+// recordable reports whether a recording can name the option exactly: a
+// label built at runtime can't be matched without a wildcard.
+export function recordable(o: Option): boolean {
+	return o.certainty === 'exact';
+}
+
+// stepFor is a new step for an option, its value the one the option has
+// (known), where the catalog knows it: what recording it starts with.
 export function stepFor(menu: string, page: string, o: Option): Step {
 	const kind = typeKind[o.type];
-	const d = o.default;
+	const d = known(o);
 	let value = '';
 	switch (kind) {
 		case 'toggle':
@@ -168,4 +180,10 @@ export function stepFor(menu: string, page: string, o: Option): Step {
 		state: '',
 		wildcard: false
 	};
+}
+
+// sameOption reports whether two steps set the same option, compared as MCM
+// Recorder compares them.
+export function sameOption(a: Step, b: Step): boolean {
+	return a.mod.toLowerCase() === b.mod.toLowerCase() && a.page.toLowerCase() === b.page.toLowerCase() && a.option.toLowerCase() === b.option.toLowerCase() && a.index === b.index && a.kind === b.kind;
 }

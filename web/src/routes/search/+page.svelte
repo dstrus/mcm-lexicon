@@ -11,7 +11,8 @@
 	import { menuHref, search } from '#lib/menus/api.ts';
 	import OptionPane from '#lib/menus/OptionPane.svelte';
 	import Adder from '#lib/recordings/Adder.svelte';
-	import { param } from '#lib/ui/address.svelte.ts';
+	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
+	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { allowed } from '#lib/menus/values.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -70,12 +71,15 @@
 		e.preventDefault();
 	}
 
-	// While the pane adds a step, the arrows don't move off its option.
-	let adding = $derived(param('mode') === 'add');
+	// The open recording, for the pane's In <recording> section.
+	const open = new OpenRecording();
+	let chooser = $state<ChooseRecording>();
+	const choose = () => chooser?.choose() ?? Promise.resolve(null);
+
 	useShortcuts(() => [
-		{ key: 'ArrowDown', label: m.common.next, hidden: true, disabled: adding, run: () => selection.move(1) },
-		{ key: 'ArrowUp', label: m.common.previous, hidden: true, disabled: adding, run: () => selection.move(-1) },
-		{ key: 'Enter', label: t.openMenu, hidden: adding, disabled: !current || adding, run: () => current && openMenu(current) }
+		{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
+		{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
+		{ key: 'Enter', label: t.openMenu, disabled: !current, run: () => current && openMenu(current) }
 	]);
 </script>
 
@@ -119,18 +123,21 @@
 		</table>
 		<aside class="pane" aria-label={t.pane} use:fitToViewport>
 			{#if current}
-				{#key key(current)}
+				{@const r = current}
+				{#key key(r)}
 					<div class="enter">
-						<Adder option={current.option} menu={current.menuName} pageName={current.pageName}>
-							<OptionPane option={current.option} page={pageText(current)} menu={{ text: current.menuText, href: menuHref(current.menuId, current.page, current.position) }} />
-							<p class="open"><a class="textbutton" href={menuHref(current.menuId, current.page, current.position)}>{t.openMenu}</a></p>
-						</Adder>
+						<OptionPane option={r.option} page={pageText(r)} menu={{ text: r.menuText, href: menuHref(r.menuId, r.page, r.position) }}>
+							{#snippet action()}<Adder option={r.option} menu={r.menuName} pageName={r.pageName} {open} {choose} />{/snippet}
+						</OptionPane>
+						<p class="open"><a class="textbutton" href={menuHref(r.menuId, r.page, r.position)}>{t.openMenu}</a></p>
 					</div>
 				{/key}
 			{/if}
 		</aside>
 	</div>
 {/if}
+
+<ChooseRecording bind:this={chooser} />
 
 <style>
 	h1 {
