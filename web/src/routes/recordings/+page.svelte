@@ -2,18 +2,21 @@
      catalog, and the selected one in the pane. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import Segmented from '#lib/ui/Segmented.svelte';
+	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Summary } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { count } from '#lib/format.ts';
-	import { recordingHref, setOpen } from '#lib/recordings/api.ts';
+	import { create, deleteRecording, recordingHref, setOpen } from '#lib/recordings/api.ts';
 	import { countsText } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import SortHeader from '#lib/ui/SortHeader.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
-	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
+	import { deleteShortcuts, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
+	import { live } from '#lib/api/live.svelte.ts';
 	import { sorted, type Sort } from '#lib/ui/sort.ts';
 	import type { PageProps } from './$types';
 
@@ -52,11 +55,69 @@
 		}
 	}
 
-	useShortcuts(() => [
-		{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
-		{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
-		{ key: 'Enter', label: m.common.open, disabled: !current, run: () => current && open(current) }
-	]);
+	// The pane's forms: a new recording (?mode=new), and confirming a
+	// delete (?mode=delete).
+	let mode = $derived(param('mode'));
+	let newName = $state('');
+	let newAuthor = $state('');
+	let newAutorun = $state('false');
+	let working = $state(false);
+	let deleted = $state('');
+	function startNew() {
+		newName = '';
+		newAuthor = reply?.author ?? '';
+		newAutorun = 'false';
+		error = '';
+		setParams({ mode: 'new' });
+	}
+	async function createNew(e?: SubmitEvent) {
+		e?.preventDefault();
+		if (!newName.trim() || working) return;
+		working = true;
+		error = '';
+		try {
+			const ed = await create({ name: newName, author: newAuthor, autorun: newAutorun === 'true' });
+			await setOpen(ed.draft.name);
+			await goto(recordingHref(ed.draft.name), { invalidateAll: true });
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : String(err);
+		} finally {
+			working = false;
+		}
+	}
+	// Why the selected recording can't be deleted, in words; "" when it can.
+	const whyNot = (r: Summary) => (r.deletes === '' ? '' : r.deletes === 'running' ? m.common.gameRunning : r.deletes === 'new' ? t.deleteNew : t.deleteNotOurs({ mod: r.mod }));
+	let canDelete = $derived(!!current && current.deletes === '' && !live.gameRunning);
+	async function confirmDelete() {
+		if (!current || working) return;
+		working = true;
+		error = '';
+		try {
+			const r = await deleteRecording(current.name);
+			deleted = t.deleted({ name: current.name, backup: r.backup });
+			await setParams({ mode: null, item: null }, 'replace');
+			await invalidateAll();
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : String(err);
+		} finally {
+			working = false;
+		}
+	}
+
+	useShortcuts(() =>
+		mode === 'new' || mode === 'delete'
+			? [
+					...(mode === 'new' ? [{ key: 'Enter', label: t.create, command: true, disabled: !newName.trim() || working, run: () => createNew() }] : []),
+					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
+				]
+			: [
+					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
+					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
+					{ key: 'Enter', label: m.common.open, disabled: !current, run: () => current && open(current) },
+					{ key: 'n', shown: 'N', label: t.new, run: startNew },
+					...deleteShortcuts({ label: t.delete, disabled: !canDelete, run: () => setParams({ mode: 'delete' }) })
+				]
+	);
 </script>
 
 <div class="bar">
@@ -66,15 +127,41 @@
 		<input type="search" bind:value={query} placeholder={t.filter} aria-label={t.filterLabel} />
 	{/if}
 </div>
-{#if error}<p class="notice error" role="alert">{error}</p>{/if}
+{#if deleted}<p class="notice" role="status">{deleted}</p>{/if}
 
-{#if reply && !reply.readable}
-	<p class="empty">{t.fromCatalog}</p>
+{#snippet newForm()}
+	<form class="new" onsubmit={createNew}>
+		<h2 class="caps">{t.newTitle}</h2>
+		<label>
+			<span class="caps">{t.name}</span>
+			<!-- svelte-ignore a11y_autofocus -->
+			<input bind:value={newName} required autocomplete="off" spellcheck="false" autofocus />
+		</label>
+		<p class="muted note">{t.nameNote}</p>
+		<label>
+			<span class="caps">{t.author}</span>
+			<input bind:value={newAuthor} autocomplete="off" spellcheck="false" />
+		</label>
+		<span class="caps label">{t.autorun}</span>
+		<Segmented bind:value={newAutorun} options={[{ value: 'false', label: t.off }, { value: 'true', label: t.on }]} label={t.autorun} />
+		<p class="muted note">{t.autorunNote}</p>
+		{#if error}<p class="notice error" role="alert">{error}</p>{/if}
+		<div class="footer">
+			<button class="button primary" disabled={!newName.trim() || working}>{t.create}</button>
+			<button type="button" class="button" onclick={() => leave('mode')}>{m.common.cancel}</button>
+		</div>
+	</form>
+{/snippet}
+
+{#if mode === 'new' && !all.length}
+	<div class="split"><p class="empty">{reply && !reply.readable ? t.fromCatalog : t.none}</p><aside class="pane" aria-label={t.pane} use:fitToViewport>{@render newForm()}</aside></div>
 {:else if !all.length}
-	<p class="empty">{t.none}</p>
+	<p class="empty">{reply && !reply.readable ? t.fromCatalog : t.none}</p>
+	<p><button type="button" class="button primary" onclick={startNew}>{t.new}</button></p>
 {:else if !shown.length}
 	<p class="muted">{m.common.noMatch({ query })}</p>
 {:else}
+	{#if reply && !reply.readable}<p class="muted lead">{t.onlyNew}</p>{/if}
 	<div class="split">
 		<table>
 			<thead>
@@ -90,11 +177,12 @@
 			</thead>
 			<tbody>
 				{#each shown as r (r.name)}
-					<tr aria-selected={selection.is(r)} onclick={() => selection.select(r)} ondblclick={() => open(r)}>
+					<tr aria-selected={selection.is(r)} onclick={() => !mode && selection.select(r)} ondblclick={() => open(r)}>
 						<td class="mark">{#if selection.is(r)}<Diamond />{/if}</td>
 						<td class="name">
 							<a href={recordingHref(r.name)}>{r.name}</a>
 							{#if r.title && r.title !== r.name}<span class="muted sub">{r.title}</span>{/if}
+							{#if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
 						</td>
 						<td class="mod muted"><span use:clipped>{r.mod}</span>{#if r.losing.length}<span class="sub">{t.losing({ mods: r.losing.join(', ') })}</span>{/if}</td>
 						<td class="n">{count(r.steps)}</td>
@@ -106,7 +194,17 @@
 			</tbody>
 		</table>
 		<aside class="pane" aria-label={t.pane} use:fitToViewport>
-			{#if current}
+			{#if mode === 'new'}
+				{@render newForm()}
+			{:else if mode === 'delete' && current}
+				<h2 class="caps">{t.deleteTitle({ name: current.name })}</h2>
+				<p>{t.deleteSays({ mod: current.mod })}</p>
+				{#if error}<p class="notice error" role="alert">{error}</p>{/if}
+				<div class="footer">
+					<button type="button" class="button primary" disabled={!canDelete || working} onclick={confirmDelete}>{t.delete}</button>
+					<button type="button" class="button" onclick={() => leave('mode')}>{m.common.cancel}</button>
+				</div>
+			{:else if current}
 				<h2 class="caps">{current.name}</h2>
 				{#if current.title && current.title !== current.name}<p class="muted">{current.title}</p>{/if}
 				<dl>
@@ -119,7 +217,8 @@
 					<dt class="caps">{t.steps}</dt><dd>{count(current.steps)}</dd>
 				</dl>
 				<div class="summary">
-					{#if failing(current) === 0 && current.counts.unchecked === 0 && current.counts.modMissing === 0}
+					{#if current.new}<p class="notice">{t.newNotSaved}</p>{:else if current.drafted}<p class="notice">{t.draftHeld}</p>{/if}
+					{#if current.steps && failing(current) === 0 && current.counts.unchecked === 0 && current.counts.modMissing === 0}
 						<p>{t.allMatch({ count: current.steps })}</p>
 					{/if}
 					{#if current.counts.notFound + current.counts.notAllowed}<p class="notice warn">{t.wontReplay({ count: current.counts.notFound + current.counts.notAllowed })}</p>{/if}
@@ -137,6 +236,8 @@
 					{/if}
 				</div>
 				{#if data.status.openRecording === current.name}<p class="notice">{t.isOpen}</p>{/if}
+				{#if whyNot(current) && current.deletes !== 'new'}<p class="muted why">{whyNot(current)}</p>{/if}
+				{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 			{/if}
 		</aside>
 	</div>
@@ -302,6 +403,49 @@
 	}
 	.actions a {
 		text-decoration: none;
+	}
+	.new {
+		display: grid;
+		gap: var(--space-2);
+		justify-items: start;
+	}
+	.new label {
+		display: grid;
+		gap: var(--space-1);
+		width: 100%;
+	}
+	.new label span,
+	.label {
+		color: var(--muted);
+		font-size: var(--step--1);
+	}
+	.new .note,
+	.why {
+		font-size: var(--step--1);
+		margin: 0;
+	}
+	.why {
+		margin-top: var(--space-3);
+	}
+	/* A form's buttons stay in reach above the hint strip. */
+	.footer {
+		position: sticky;
+		bottom: 0;
+		display: flex;
+		gap: var(--space-2);
+		width: 100%;
+		margin-top: var(--space-3);
+		padding-top: var(--space-3);
+		background: var(--panel);
+		border-top: 1px solid var(--rule);
+	}
+	.lead {
+		margin: 0 0 var(--space-3);
+		max-width: 65ch;
+	}
+	.bar + .notice {
+		overflow-wrap: anywhere;
+		margin-bottom: var(--space-3);
 	}
 	.pane > .notice {
 		margin-top: var(--space-3);

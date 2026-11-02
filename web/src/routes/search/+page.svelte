@@ -10,6 +10,8 @@
 	import { count } from '#lib/format.ts';
 	import { menuHref, search } from '#lib/menus/api.ts';
 	import OptionPane from '#lib/menus/OptionPane.svelte';
+	import Adder from '#lib/recordings/Adder.svelte';
+	import { param } from '#lib/ui/address.svelte.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { allowed } from '#lib/menus/values.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -68,10 +70,12 @@
 		e.preventDefault();
 	}
 
+	// While the pane adds a step, the arrows don't move off its option.
+	let adding = $derived(param('mode') === 'add');
 	useShortcuts(() => [
-		{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
-		{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
-		{ key: 'Enter', label: t.openMenu, disabled: !current, run: () => current && openMenu(current) }
+		{ key: 'ArrowDown', label: m.common.next, hidden: true, disabled: adding, run: () => selection.move(1) },
+		{ key: 'ArrowUp', label: m.common.previous, hidden: true, disabled: adding, run: () => selection.move(-1) },
+		{ key: 'Enter', label: t.openMenu, hidden: adding, disabled: !current || adding, run: () => current && openMenu(current) }
 	]);
 </script>
 
@@ -117,8 +121,10 @@
 			{#if current}
 				{#key key(current)}
 					<div class="enter">
-						<OptionPane option={current.option} page={pageText(current)} menu={{ text: current.menuText, href: menuHref(current.menuId, current.page, current.position) }} />
-						<div class="actions"><a class="button primary" href={menuHref(current.menuId, current.page, current.position)}>{t.openMenu}</a></div>
+						<Adder option={current.option} menu={current.menuName} pageName={current.pageName}>
+							<OptionPane option={current.option} page={pageText(current)} menu={{ text: current.menuText, href: menuHref(current.menuId, current.page, current.position) }} />
+							<p class="open"><a class="textbutton" href={menuHref(current.menuId, current.page, current.position)}>{t.openMenu}</a></p>
+						</Adder>
 					</div>
 				{/key}
 			{/if}
@@ -232,11 +238,8 @@
 		border-left: 1px solid var(--rule-strong);
 		overflow-y: auto;
 	}
-	.actions {
-		margin-top: var(--space-4);
-	}
-	.actions a {
-		text-decoration: none;
+	.open {
+		margin-top: var(--space-2);
 	}
 	.enter {
 		animation: rise 180ms cubic-bezier(0.16, 1, 0.3, 1);

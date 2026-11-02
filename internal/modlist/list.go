@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"lexicon/internal/apperr"
@@ -78,6 +79,7 @@ type List struct {
 
 	plugins  []Plugin        // plugins.txt in order; nil when there is no plugins.txt
 	byName   map[string]bool // active plugins by lowercase name
+	mu       sync.RWMutex    // guards index, which Refresh changes while others read it
 	index    map[string][]File
 	archives []File           // the archives the game loads, in load order
 	problems []ArchiveProblem // the ones of those that couldn't be read
@@ -236,6 +238,8 @@ func IsPlugin(name string) bool {
 // are matched without regard to case, as Windows does. Files in the
 // archives the game loads sit beneath every loose file.
 func (l *List) Index(scope Scope) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.index = map[string][]File{}
 	l.archives, l.problems = nil, nil
 	top := map[string][]File{} // every mod's top-level plugins and archives, for finding what loads
@@ -392,9 +396,45 @@ func (l *List) Archives() []File { return l.archives }
 // ArchiveProblems is the archives the game loads that couldn't be read.
 func (l *List) ArchiveProblems() []ArchiveProblem { return l.problems }
 
+// Refresh reads the loose files under the subtree sub again, from every
+// enabled mod, replacing what Index found there: after MCM Lexicon writes
+// recordings, without scanning the whole list again.
+func (l *List) Refresh(sub string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.index == nil {
+		l.index = map[string][]File{}
+	}
+	prefix := key(sub) + "/"
+	for k := range l.index {
+		if strings.HasPrefix(k, prefix) {
+			delete(l.index, k)
+		}
+	}
+	for _, m := range l.Mods {
+		if !m.Enabled || m.Dir == "" {
+			continue
+		}
+		dir, rel, ok := Resolve(m.Dir, sub)
+		if !ok || !IsDir(dir) {
+			continue
+		}
+		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() || Clutter(d.Name()) {
+				return nil
+			}
+			inside, _ := filepath.Rel(dir, p)
+			l.add(m, rel+"/"+filepath.ToSlash(inside), p)
+			return nil
+		})
+	}
+}
+
 // Open is the copy of rel the game sees, if any. rel is a path under Data
 // with either kind of slash, in any case.
 func (l *List) Open(rel string) (File, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	copies := l.index[key(rel)]
 	if len(copies) == 0 {
 		return File{}, false
@@ -405,6 +445,8 @@ func (l *List) Open(rel string) (File, bool) {
 // Copies is every copy of rel in the list: the one the game sees first,
 // then the ones it overrides, highest priority first.
 func (l *List) Copies(rel string) []File {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	copies := l.index[key(rel)]
 	out := make([]File, len(copies))
 	for i, c := range copies {
@@ -416,6 +458,8 @@ func (l *List) Copies(rel string) []File {
 // Files is every file the game sees under the virtual folder prefix (or
 // everything indexed, for ""), in path order.
 func (l *List) Files(prefix string) []File {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	p := key(prefix)
 	if p != "" && !strings.HasSuffix(p, "/") {
 		p += "/"

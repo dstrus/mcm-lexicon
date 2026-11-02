@@ -6,6 +6,8 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
 	import OptionPane from '#lib/menus/OptionPane.svelte';
+	import Adder from '#lib/recordings/Adder.svelte';
+	import { param } from '#lib/ui/address.svelte.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { allowed, changed, hex, show } from '#lib/menus/values.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -41,9 +43,11 @@
 	});
 	const typeLabel = (o: Option) => (o.control === 'stepper' ? m.option.types.stepper : m.option.types[o.type]);
 
+	// While the pane adds a step, the arrows don't move off its option.
+	let adding = $derived(param('mode') === 'add');
 	useShortcuts(() => [
-		{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
-		{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
+		{ key: 'ArrowDown', label: m.common.next, hidden: true, disabled: adding, run: () => selection.move(1) },
+		{ key: 'ArrowUp', label: m.common.previous, hidden: true, disabled: adding, run: () => selection.move(-1) },
 		{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto(`/menus?item=${encodeURIComponent(menu.id)}`) }
 	]);
 </script>
@@ -95,7 +99,11 @@
 		<aside class="pane" aria-label={t.pane} use:fitToViewport>
 			{#if current}
 				{#key current.i}
-					<div class="enter"><OptionPane option={current.option} page={page && page.name !== '' ? pageText(page) : ''} /></div>
+					<div class="enter">
+						<Adder option={current.option} menu={menu.name} pageName={page?.name ?? ''}>
+							<OptionPane option={current.option} page={page && page.name !== '' ? pageText(page) : ''} />
+						</Adder>
+					</div>
 				{/key}
 			{/if}
 		</aside>

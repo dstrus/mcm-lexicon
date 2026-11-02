@@ -77,7 +77,7 @@
 	<header class="top">
 		<a class="name caps" href="/">{m.shell.name}</a>
 		<div class="state">
-			{#if data.recordings?.readable && recordings.length}
+			{#if recordings.length}
 				<label class="source">
 					<span class="caps muted">{m.shell.recording}</span>
 					<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>

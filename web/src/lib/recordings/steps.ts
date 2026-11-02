@@ -120,3 +120,52 @@ export function fileHeading(name: string): string {
 	const at = base.indexOf('_');
 	return at > 0 ? `${base.slice(0, at)} · ${base.slice(at + 1)}` : base;
 }
+
+// The kind of step that plays each option type.
+export const typeKind: Record<Option['type'], Kind> = {
+	toggle: 'toggle',
+	slider: 'slider',
+	menu: 'choose',
+	keymap: 'shortcut',
+	color: 'color',
+	input: 'text',
+	text: 'click'
+};
+
+// stepFor is a new step for an option, its value the option's default
+// where the catalog knows it: what adding from a menu starts with.
+export function stepFor(menu: string, page: string, o: Option): Step {
+	const kind = typeKind[o.type];
+	const d = o.default;
+	let value = '';
+	switch (kind) {
+		case 'toggle':
+			value = d?.kind === 'bool' && !d.bool ? 'off' : 'on';
+			break;
+		case 'slider':
+			value = String(d?.kind === 'number' ? d.number : (o.slider?.min ?? 0));
+			break;
+		case 'choose':
+			value = (d?.kind === 'number' ? o.choices?.[d.number]?.raw : undefined) ?? o.choices?.[0]?.raw ?? '';
+			break;
+		case 'shortcut':
+		case 'color':
+			value = d?.kind === 'number' && d.number >= 0 ? String(d.number) : '';
+			break;
+		case 'text':
+			value = d?.kind === 'string' ? d.string : '';
+			break;
+	}
+	return {
+		file: 0,
+		mod: menu,
+		page,
+		option: o.label,
+		index: o.index,
+		kind,
+		value,
+		side: kind === 'click' && !o.label ? 'right' : '',
+		state: '',
+		wildcard: false
+	};
+}

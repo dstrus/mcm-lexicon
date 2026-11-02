@@ -22,9 +22,9 @@ common:
 
 shell:
   name: MCM Lexicon
-  recording: Recording
+  recording: Adding to
   noRecording: None
-  recordingTitle: The recording new steps go to
+  recordingTitle: The recording A adds steps to, from any menu or search result
   profile: Profile
   catalog: Catalog
   gameRunning: Skyrim running · read-only
@@ -269,6 +269,12 @@ keys:
 # Controls many pages share.
 ui:
   shortcuts: Keyboard shortcuts
+  linesUnchanged:
+    one: "{count} line unchanged"
+    other: "{count} lines unchanged"
+  lineSame: Unchanged
+  lineAdded: Added
+  lineRemoved: Removed
 
 # The recordings in the list.
 recordings:
@@ -313,11 +319,32 @@ recordings:
     other: "{count} steps are for menus that aren’t in this list, which MCM Recorder skips."
   openForAdding: Open for adding
   isOpen: New steps go to this recording.
+  onlyNew: A catalog file is open, so only recordings made here are listed. Save writes each to a folder you choose.
+  notSavedYet: Not saved yet
+  unsavedChanges: Unsaved changes
+  newNotSaved: It’s new, and only here until you save it.
+  draftHeld: It has changes that aren’t saved yet.
+
+  # New.
+  new: New
+  newTitle: New recording
+  name: Name
+  nameNote: / and \ become _ in its file names, as MCM Recorder writes them.
+  autorunNote: With autorun on, MCM Recorder plays it by itself when a new game starts.
+  create: Create
+
+  # Delete.
+  delete: Delete
+  deleteTitle: Delete {name}?
+  deleteSays: Its info file and step files go from {mod} to MCM Lexicon’s backups beside the list, where you can restore them by hand.
+  deleted: Deleted {name}. Its files are in {backup}.
+  deleteNew: It isn’t saved anywhere yet; discard it from its own page.
+  deleteNotOurs: It’s in {mod}, where MCM Lexicon didn’t save it, so it isn’t deleted here. Delete it in its mod if you mean to.
   problems:
     unreadable: "{path} couldn’t be read: {detail}"
     noKind: "Step {detail} of {path} has nothing to set, so MCM Recorder can’t play it."
 
-# One recording, read-only for now.
+# One recording, in the editor.
 recording:
   up: Recordings
   tabs: Recording
@@ -380,6 +407,92 @@ steps:
     page: The menu has no page named “{page}”.
     option: The page has no option of this type with this selector.
     index: There are fewer options with this selector than its index, {index}, says.
+
+# The editor's Draft Rule line, and where Save writes.
+draft:
+  notSaved:
+    one: Not saved. Save writes {count} file to {folder}.
+    other: Not saved. Save writes {count} files to {folder}.
+  notSavedBackup:
+    one: Not saved. Save writes {count} file to {folder}, backing up the current ones first.
+    other: Not saved. Save writes {count} files to {folder}, backing up the current ones first.
+  saved: Saved to {folder} at {time}.
+  savedBackup: Saved to {folder} at {time}. The previous files are in {backup}.
+  discard: Discard changes
+  discardNew: Discard the recording
+  keptInMemory: Changes are kept until you save, close MCM Lexicon, or choose another list.
+  saveTo: Save to
+  overwrite: MO2’s overwrite folder
+  data: The Data folder
+  otherMod: Another mod folder…
+  modName: Mod folder’s name
+  folderPath: The folder’s full path
+  use: Use
+  running: Skyrim is running, so Save waits until you close it.
+  chooseFolder: Choose the folder Save writes to. It writes the recording into a McmRecorder folder there.
+  newMod: There’s no mod folder named {mod} yet. Save makes it, and MO2 then lists it as a new mod, unticked; tick it so the game reads the recording.
+  notListed: The mod folder {mod} is there, but this profile doesn’t list it yet. MO2 adds it as a new mod, unticked; tick it so the game reads the recording, then rescan here.
+  unticked: "{mod} is unticked in this profile, so the game won’t read the recording until you tick it in MO2."
+  losesTo: "{mod} also has this recording, and its copy wins, so the game replays that one instead."
+
+# Editing a recording's steps.
+edit:
+  edit: Edit
+  apply: Apply
+  moveUp: Move up
+  moveDown: Move down
+  remove: Remove
+  useIt: Use it
+  keptInDraft: Kept in the draft until you save the recording.
+  beyondASCII: It has characters beyond plain ASCII. MCM Recorder hasn’t yet been seen to match those in game, so check this step there once.
+  noSteps: This recording has no steps yet. Add them from any menu or search result with A.
+
+# The files Save writes.
+files:
+  inFolder: Written to {folder}.
+  changesTo: Changes to {file}
+  changes:
+    same: Unchanged
+    changed: Changed
+    new: New
+    removed: Removed
+
+# Adding the selected option to a recording, from a menu or a search.
+adding:
+  addTo: Add to {recording}
+  addToAny: Add to a recording
+  add: Add
+  into: A new step at the end of {recording}.
+  added: Added to {recording} as step {n}.
+  openIt: Open it
+  choose: Choose a recording
+  chooseLead: New steps go to the recording you choose, until you choose another in the top bar.
+  newRecording: New recording…
+  name: Name
+  nameNote: / and \ become _ in the recording’s file names, as MCM Recorder writes them.
+  create: Create
+
+# The value editors, for adding and editing a step.
+editor:
+  value: Value
+  entry: Entry
+  key: Key
+  color: Color
+  text: Text
+  side: Side
+  left: Left
+  right: Right
+  pressKey: Press the key to use
+  pressKeyHint: Focus the box, then press a key or a mouse button other than the left one.
+  noKeyYet: Press a key first.
+  noChoice: Choose an entry.
+  notANumber: The value is a number.
+  outOfRange: The value is from {min} to {max}.
+  range: "{min} to {max}, by {step}."
+  defaultIs: The default is {value}.
+  notInMenu: “{entry}” (not in this menu now)
+  entriesUnknown: The catalog doesn’t know this menu’s entries, so type one as the menu holds it.
+  clickOnly: The step clicks the option. There’s nothing to set.
 
 # Comparing the catalog with an older one.
 compare:

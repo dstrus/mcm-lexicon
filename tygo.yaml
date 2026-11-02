@@ -33,12 +33,13 @@ packages:
       catalog.State: catalog.State
       modlist.Source: modlist.Source
   - path: lexicon/internal/recordings
-    include_files: [recordings.go, validate.go, service.go]
+    include_files: [recordings.go, validate.go, service.go, write.go]
     output_path: web/src/lib/api/types/recordings.ts
     fallback_type: unknown
     enum_style: union
     frontmatter: |
       import type * as catalog from './catalog.ts';
     type_mappings:
+      time.Time: string
       catalog.Option: catalog.Option
       catalog.Diff: catalog.Diff

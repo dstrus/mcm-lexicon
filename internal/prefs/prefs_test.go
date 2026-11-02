@@ -3,6 +3,7 @@ package prefs
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -18,8 +19,16 @@ func TestChangesAreRemembered(t *testing.T) {
 func TestUnreadableFileRemembersNothing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	os.WriteFile(path, []byte("not json"), 0o644)
-	if got := Load(path).Get(); got != (Values{}) {
+	if got := Load(path).Get(); !reflect.DeepEqual(got, Values{}) {
 		t.Errorf("values = %+v, want none", got)
+	}
+}
+
+func TestWroteToIsKeptPerList(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	Load(path).Update(func(v *Values) { v.WroteTo = map[string][]string{"/games/mgo": {"MCM Lexicon Recordings"}} })
+	if got := Load(path).Get().WroteTo["/games/mgo"]; len(got) != 1 || got[0] != "MCM Lexicon Recordings" {
+		t.Errorf("wroteTo = %q", got)
 	}
 }
 

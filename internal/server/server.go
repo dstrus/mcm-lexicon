@@ -43,9 +43,10 @@ type Options struct {
 
 type Server struct {
 	Options
-	index   []byte // index.html, with the token filled in
-	api     *http.ServeMux
-	catalog *catalog.Service
+	index      []byte // index.html, with the token filled in
+	api        *http.ServeMux
+	catalog    *catalog.Service
+	recordings *recordings.Service
 
 	mu          sync.Mutex
 	source      *modlist.Source
@@ -103,7 +104,8 @@ func (s *Server) routes() {
 	}))
 
 	s.catalog.Routes(m)
-	recordings.Routes(m, s.catalog)
+	s.recordings = recordings.NewService(s.catalog, s.Prefs, s.Running)
+	s.recordings.Routes(m)
 	recordings.CompareRoutes(m, s.catalog)
 	m.Handle("PUT /api/recordings/open", httpapi.JSON(func(_ *http.Request, req OpenRequest) (Status, error) {
 		s.Prefs.Update(func(v *prefs.Values) { v.OpenRecording = strings.TrimSpace(req.Name) })

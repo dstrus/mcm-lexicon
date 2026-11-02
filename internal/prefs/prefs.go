@@ -18,11 +18,19 @@ type Values struct {
 	Theme       string `json:"theme,omitempty"`       // see Themes; "" follows the system
 	// The recording new steps go to, by name, for the list it belongs to.
 	OpenRecording string `json:"openRecording,omitempty"`
+	// The author new recordings are written with.
+	Author string `json:"author,omitempty"`
+	// Where new recordings are saved: a mod folder's name, or, with a
+	// catalog file open, a folder's path.
+	SaveTarget string `json:"saveTarget,omitempty"`
+	// The folders MCM Lexicon has saved recordings into, by list, so it
+	// deletes only recordings in those, never a mod list's own.
+	WroteTo map[string][]string `json:"wroteTo,omitempty"`
 }
 
 // keys are the names Values writes, so an omitted value is cleared from
 // the file rather than kept from last time.
-var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording"}
+var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording", "author", "saveTarget", "wroteTo"}
 
 // Themes are the themes MCM Lexicon has. "system" follows the operating
 // system's dark or light setting.

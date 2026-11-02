@@ -121,6 +121,14 @@ func (s *Service) Rescan() error {
 	return nil
 }
 
+// Source is what the catalog comes from: the list (nil if none) or the
+// catalog file open instead ("" if none).
+func (s *Service) Source() (*modlist.Source, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.source, s.file
+}
+
 // List is the list the current catalog was scanned from, with its files
 // indexed, or nil when a catalog file is open or nothing is.
 func (s *Service) List(r *http.Request) (*modlist.List, error) {

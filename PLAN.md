@@ -272,7 +272,9 @@ Then a recursive-descent parser for declarations, statements and expressions, wi
 
 ## 4. Recordings: reading, validating, writing
 
-- **Recording locations:** list every `McmRecorder/` folder in the virtual file index. The winning copy of each recording is what the game replays; show the owning mod. The **save target** is a mod folder the player chooses (remembered in prefs), defaulting to a new mod folder `MCM Lexicon Recordings`. Never write into `overwrite/` unless chosen, and never into the game's real `Data` folder under MO2. With a catalog file open instead of a live list, the target is any folder the player picks.
+- **Recording locations:** list every `McmRecorder/` folder in the virtual file index. The winning copy of each recording is what the game replays; show the owning mod.
+- **Where Save writes** (as built in Phase 9): a recording saves back into the mod folder holding the copy of its info file the game reads, overwrite included, so an edit replaces what the game replays. A new recording saves to the folder chosen last time, defaulting to a new mod folder `MCM Lexicon Recordings`; the editor's SAVE TO select changes it, for one recording. Never into the game's real `Data` folder under MO2. A new mod folder isn't in the profile until MO2 lists it, unticked, and the editor says to tick it; a target whose copy loses to another mod's says which. With a catalog file open, the target is any folder the player names by its full path.
+- **Deleting** is only for recordings in folders MCM Lexicon has saved recordings to (remembered per list), never a mod list's own, and backs up first.
 - **Validation:** match each step to the catalog by `mod`, `page`, type, `option`, `index`. Results:
   - **matched**
   - **value not allowed:** a menu choice not in the list, or a slider outside the range
@@ -285,11 +287,12 @@ Then a recursive-descent parser for declarations, statements and expressions, wi
 - **Drafts:** edits accumulate in a draft the server holds in memory, one per recording name, so a draft survives a page reload and is the same in every tab, but not a restart of the program; the editor says so while a draft is open. Nothing touches disk until Save.
 - **Writing:**
   - refuse while Skyrim runs (`gamecheck`), like Hermaeus
-  - back up the existing recording folder and info file (copies under `lexicon-backups/<recording>/<time>/`)
+  - back up the existing recording folder and info file (copies under `lexicon-backups/<recording>/<time>/`, beside the list where the game doesn't look: the MO2 instance's folder, or the game folder for a Data folder)
   - write the info file and step files atomically: write them to a temporary folder beside the target, then swap
-  - write keys in lowercase, slider values as floats (`25.0`), and toggles as `"on"`/`"off"`
+  - write keys in lowercase, in the alphabetical order JContainers writes them (as every recording in the snapshots has them), slider values as floats (`25.0`), and toggles as `"on"`/`"off"`; a click step has `click` and no `option`
   - number step files `0001…` in order, with a new file whenever the mod changes
-  - apply `FileSystemPathPart` to names
+  - apply `FileSystemPathPart` to names, and turn the other characters Windows refuses in a file name into `_` too
+  - a file Save would only reformat (keys in another case or order, `True` for `true`) counts as unchanged, since MCM Recorder reads it the same
   - pretty-print with 2-space indents, which matches what JContainers writes
 - **Non-ASCII labels.** Write JSON as UTF-8. JContainers' handling of non-ASCII characters against Skyrim's strings isn't verified, so flag such steps with a note until the author confirms one in game.
 
@@ -315,10 +318,12 @@ API routes follow Hermaeus's shape (`httpapi.JSON`, typed structs, `apperr` kind
 | `GET /api/recordings` | Recordings found, with owning mod and validation summary |
 | `PUT /api/recordings/open` | Which recording new steps go to (§5.3), or none; remembered |
 | `GET /api/recordings/{name}` | Steps with per-step validation; the draft instead, when one exists |
-| `PUT /api/recordings/{name}/draft` | Replace the draft's steps and info (§4, drafts) |
+| `POST /api/recordings` | A new recording, as a draft (name, author, autorun) |
+| `PUT /api/recordings/{name}/draft` | Replace the draft's steps, info, and save target (§4, drafts) |
+| `POST /api/recordings/{name}/steps` | Append one step to the draft, from adding (§5.4); says its number |
 | `DELETE /api/recordings/{name}/draft` | Discard the draft |
-| `POST /api/recordings/{name}/save` | Write the draft (target folder in the body, validated) |
-| `DELETE /api/recordings/{name}` | Only in the save target; backed up first |
+| `POST /api/recordings/{name}/save` | Write the draft to its save target (§4) |
+| `DELETE /api/recordings/{name}` | Only in a folder MCM Lexicon saved to (§4); backed up first |
 
 Scans can take a while on 1,800 mods. Run them in the background with progress shown in status, and serve the previous catalog until the new one is ready. Cache parsed scripts by (path, size, mtime) in the OS cache dir.
 
@@ -344,7 +349,7 @@ The grid is Hermaeus's: a top bar, a 13rem sections column, main (1.5rem top, 2r
 
 **Top bar.** The mark and MCM LEXICON at left, in headline caps. At right, in this order:
 
-- **Recording:** RECORDING in label caps and a select whose entries are the recordings found, *New recording…*, and *None*. The chosen one is the **open recording**, the one A adds steps to from any menu or search result (§5.4). It's remembered with the source (`PUT /api/recordings/open`), so it survives a reload.
+- **Adding to:** ADDING TO in label caps and a select whose entries are the recordings found and *None*; a new recording is made from the Recordings page or from A's dialog. The chosen one is the **open recording**, the one A adds steps to from any menu or search result (§5.4). It's remembered with the source (`PUT /api/recordings/open`), so it survives a reload.
 - **Source:** with a live list, PROFILE and a select of the instance's profiles, the counterpart of Hermaeus's playthrough select; changing it rescans. With a catalog file, CATALOG and the file's name, since there's nothing to choose. The select's `title` is the path on disk.
 - **Scan state,** label caps in muted ink: SCANNING · 412 OF 1,819 MODS while a scan runs (the count comes from `/api/status`, polled the way Skyrim's state is), then SCANNED 11:02 PM. A scan error is a `danger` notice on the Menus page, not in the bar.
 - **Skyrim's state:** SKYRIM CLOSED muted, or SKYRIM RUNNING · READ-ONLY in amber, exactly as Hermaeus.

@@ -83,6 +83,11 @@ export interface Problem {
 // source: service.go
 
 /**
+ * DefaultTarget is the mod folder new recordings are saved to until the
+ * player chooses another.
+ */
+export const DefaultTarget = "MCM Lexicon Recordings";
+/**
  * Summary is a recording without its steps, for the list of recordings.
  */
 export interface Summary {
@@ -99,24 +104,105 @@ export interface Summary {
   menus: number /* int */; // the menus its steps name
   counts: Counts;
   problems: Problem[];
+  drafted: boolean; // it has changes not yet saved
+  new: boolean; // it's only a draft, never saved
+  deletes: string; // why it can't be deleted; "" when it can
 }
 export interface ListReply {
   recordings: Summary[];
   /**
    * Readable is false when a catalog file is open: recordings live in a
-   * list's files.
+   * list's files, so only new ones, made here, are listed.
    */
   readable: boolean;
+  author: string; // the author new recordings are written with, remembered
 }
 /**
- * Detail is one recording with every step's check, and its files as
- * written.
+ * PlannedFile is a file Save writes, beside what the target folder holds
+ * now, or one Save removes.
  */
-export interface Detail {
-  recording?: Recording;
-  checks: Check[]; // one per step, in order
+export interface PlannedFile {
+  name: string;
+  path: string; // relative to the target folder
+  text: string; // "" for one Save removes
+  old: string; // what's on disk now; "" when it's new
+  change: FileChange;
+}
+export const FileChangeSame = "same";
+export const FileChangeChanged = "changed";
+export const FileChangeNew = "new";
+export const FileChangeRemoved = "removed";
+export type FileChange = typeof FileChangeSame | typeof FileChangeChanged | typeof FileChangeNew | typeof FileChangeRemoved;
+/**
+ * TargetKind is what kind of folder a recording saves to.
+ */
+export const TargetKindMod = "mod"; // a mod folder in the list
+export const TargetKindNewMod = "new-mod"; // a mod folder Save creates, which MO2 will list unticked
+export const TargetKindOverwrite = "overwrite"; // MO2's overwrite folder
+export const TargetKindData = "data"; // the game's Data folder, for a list that is one
+export const TargetKindFolder = "folder"; // a folder chosen with a catalog file open
+export const TargetKindNone = "none"; // none chosen yet (a catalog file is open)
+export type TargetKind = typeof TargetKindMod | typeof TargetKindNewMod | typeof TargetKindOverwrite | typeof TargetKindData | typeof TargetKindFolder | typeof TargetKindNone;
+/**
+ * Target is where Save writes, and what the game will make of it.
+ */
+export interface Target {
+  name: string; // the mod's name, or the folder's path
+  dir: string; // the folder's path
+  kind: TargetKind;
+  enabled: boolean; // the game reads the folder: its mod is ticked in this profile
+  exists: boolean; // the folder is on disk (a new mod folder once Save has made it)
+  losesTo: string; // a mod whose copy of the recording wins over this folder's
+}
+/**
+ * Editor is a recording as the editor shows it: the draft (or the saved
+ * recording, when there's no draft), each step's check, and the files Save
+ * would write.
+ */
+export interface Editor {
+  recording?: Recording; // as the game sees it now; nil for one never saved
+  draft: Draft;
+  drafted: boolean; // a draft is held
+  changed: boolean; // Save would change the target folder's files
+  checks: Check[]; // one per draft step
   counts: Counts;
-  texts: string[]; // each file's contents, as Files orders them
+  files: PlannedFile[];
+  target: Target;
+  saved?: Saved; // the last save this session
+  unsaved: string; // why Save can't write now; "" when it can
+  deletes: string; // why it can't be deleted; "" when it can
+  targets: string[]; // mod folders to choose from: those with recordings, and the default
+  problems: string[]; // what's wrong with the draft, so Save can't write it
+}
+/**
+ * CreateRequest makes a new recording, as a draft.
+ */
+export interface CreateRequest {
+  name: string;
+  author: string;
+  autorun: boolean;
+}
+/**
+ * AddRequest adds a step to a recording's draft.
+ */
+export interface AddRequest {
+  step: Step;
+}
+export interface AddReply {
+  number: number /* int */; // the step's position in the recording, from 1
+}
+/**
+ * DeleteReply says where a deleted recording's files went.
+ */
+export interface DeleteReply {
+  backup: string;
+}
+/**
+ * Service serves recordings from the list the catalog service last
+ * scanned, and holds the drafts: edits kept in memory, one per recording,
+ * until Save. Drafts last until the program stops or the list changes.
+ */
+export interface Service {
 }
 /**
  * CompareRequest names the catalog file to compare the current catalog
@@ -198,4 +284,42 @@ export interface Counts {
   notFound: number /* int */;
   modMissing: number /* int */;
   unchecked: number /* int */;
+}
+
+//////////
+// source: write.go
+
+/**
+ * Draft is a recording being edited: its info and its steps, in replay
+ * order, and where Save writes it. Nothing is on disk until Save.
+ */
+export interface Draft {
+  name: string; // the file name MCM Recorder plays it by
+  title: string; // the info file's name; Name when empty
+  version: string;
+  author: string;
+  autorun: boolean;
+  steps: Step[];
+  /**
+   * Target is the mod folder Save writes into, by name ("overwrite" for
+   * MO2's overwrite folder); with a catalog file open, a folder's path.
+   */
+  target: string;
+}
+/**
+ * OutFile is a file Save writes, relative to the target folder.
+ */
+export interface OutFile {
+  name: string; // such as 0001_Dirt & Blood.json, or the info file's name
+  path: string; // McmRecorder/…, with forward slashes
+  text: string;
+}
+/**
+ * Saved is what Save did.
+ */
+export interface Saved {
+  at: string;
+  dir: string; // the folder written to
+  written: string[]; // the files, relative to it
+  backup: string; // the folder the previous files went to; "" when there were none
 }

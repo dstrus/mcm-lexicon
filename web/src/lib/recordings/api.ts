@@ -1,15 +1,45 @@
 import { request } from '#lib/api/client.ts';
 import type { OpenRequest, Status } from '#lib/api/types/api.ts';
-import type { CompareReply, CompareRequest, Detail, ListReply } from '#lib/api/types/recordings.ts';
+import type { AddReply, CompareReply, CompareRequest, CreateRequest, DeleteReply, Draft, Editor, ListReply, Step } from '#lib/api/types/recordings.ts';
 
 export const recordingsDependency = 'app:recordings';
+
+const at = (name: string) => `/api/recordings/${encodeURIComponent(name)}`;
 
 export function getRecordings(fetchFn?: typeof fetch): Promise<ListReply> {
 	return request<ListReply>('GET', '/api/recordings', undefined, fetchFn);
 }
 
-export function getRecording(name: string, fetchFn?: typeof fetch): Promise<Detail> {
-	return request<Detail>('GET', `/api/recordings/${encodeURIComponent(name)}`, undefined, fetchFn);
+// getRecording is a recording as the editor shows it: its draft, or the
+// saved recording when there's none.
+export function getRecording(name: string, fetchFn?: typeof fetch): Promise<Editor> {
+	return request<Editor>('GET', at(name), undefined, fetchFn);
+}
+
+// create makes a new recording, held as a draft until it's saved.
+export function create(req: CreateRequest): Promise<Editor> {
+	return request<Editor>('POST', '/api/recordings', req);
+}
+
+export function putDraft(name: string, draft: Draft): Promise<Editor> {
+	return request<Editor>('PUT', `${at(name)}/draft`, draft);
+}
+
+export function discardDraft(name: string): Promise<Editor> {
+	return request<Editor>('DELETE', `${at(name)}/draft`);
+}
+
+// addStep appends a step to a recording's draft.
+export function addStep(name: string, step: Step): Promise<AddReply> {
+	return request<AddReply>('POST', `${at(name)}/steps`, { step });
+}
+
+export function save(name: string): Promise<Editor> {
+	return request<Editor>('POST', `${at(name)}/save`);
+}
+
+export function deleteRecording(name: string): Promise<DeleteReply> {
+	return request<DeleteReply>('DELETE', at(name));
 }
 
 // setOpen makes a recording the one new steps go to; "" closes it.
