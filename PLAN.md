@@ -400,7 +400,7 @@ Copy Hermaeus's `Makefile` (build, windows, release, notices, types, test, dev, 
 
 ## 7. Testing
 
-**Committed tests (always run).** Synthetic inputs built in temp dirs:
+**Committed tests (always run).** Realistic synthetic inputs built in temp dirs by `internal/testcorpus`:
 
 - an MO2 instance (`ModOrganizer.ini`, profile `modlist.txt` and `plugins.txt`, folders with brackets and apostrophes, a **disabled mod** whose MCM must not appear, an **inactive plugin**, and a profile with no `plugins.txt`)
 - hand-written `.psc` snippets covering each pattern in §2.3
@@ -411,7 +411,7 @@ Copy Hermaeus's `Makefile` (build, windows, release, notices, types, test, dev, 
 
 Plus round-trip tests for recordings: read the MGO-style files, including the duplicate `0001` numbering and the `Mod` key casing, then write and compare. Also round-trip catalog files, and test `diff` on hand-built catalog pairs.
 
-**Snapshot tests (opt-in).** `URAG_SNAPSHOTS=/path/to/snapshots go test ./...` runs acceptance tests against every snapshot (unzipped folder, or zip) in that folder. Skip them when the variable is unset. **Never commit snapshots:** they're other authors' work, for local testing only. Add them to `.gitignore`.
+**Snapshot tests.** The real lists' snapshots, unpacked under `snapshots/` in the repository (gitignored), are where the author tests live, and the acceptance tests read them too: `go test ./...` runs them whenever that folder holds any (`LEXICON_SNAPSHOTS` points somewhere else), and a test that finds none is skipped, not failed, so the committed tests pass on a machine without them. **Never commit snapshots:** they're other authors' work, for local testing only.
 
 There are two kinds of acceptance cases:
 

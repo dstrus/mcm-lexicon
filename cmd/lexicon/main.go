@@ -32,6 +32,13 @@ var version = "dev"
 
 func main() {
 	log.SetFlags(log.Ltime)
+	// A command-line mode runs and exits instead of serving.
+	if len(os.Args) > 1 {
+		if run, ok := commands[os.Args[1]]; ok {
+			run(os.Args[2:])
+			return
+		}
+	}
 	list := flag.String("list", "", "the mod list: a Mod Organizer 2 instance (the folder holding ModOrganizer.ini), or the game's Data folder")
 	profile := flag.String("profile", "", "the Mod Organizer 2 profile to read (default: the one MO2 has selected)")
 	port := flag.Int("port", 8766, "port to listen on; if it's taken, the next nine are tried, then any free port")
