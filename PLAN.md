@@ -354,9 +354,6 @@ The grid is Hermaeus's: a top bar, a 13rem sections column, main (1.5rem top, 2r
 
 **Top bar.** The mark and MCM LEXICON at left, in headline caps. At right, in this order:
 
-- **Mode:** a Segmented READ-ONLY / EDITING, read-only at every start (§4). While editing, the sections column adds CHANGES with the draft's count.
-
-- **Adding to:** ADDING TO in label caps and a select whose entries are the recordings found and *None*; a new recording is made from the Recordings page or from A's dialog. The chosen one is the **open recording**, the one A adds steps to from any menu or search result (§5.4). It's remembered with the source (`PUT /api/recordings/open`), so it survives a reload.
 - **Source:** with a live list, PROFILE and a select of the instance's profiles, the counterpart of Hermaeus's playthrough select; changing it rescans. With a catalog file, CATALOG and the file's name, since there's nothing to choose. The select's `title` is the path on disk.
 - **Scan state,** label caps in muted ink: SCANNING · 412 OF 1,819 MODS while a scan runs (the count comes from `/api/status`, polled the way Skyrim's state is), then SCANNED 11:02 PM. A scan error is a `danger` notice on the Menus page, not in the bar.
 - **Skyrim's state:** SKYRIM CLOSED muted, or SKYRIM RUNNING · READ-ONLY in amber, exactly as Hermaeus.
@@ -365,6 +362,8 @@ The grid is Hermaeus's: a top bar, a 13rem sections column, main (1.5rem top, 2r
 There are no quick toggles, so the bar is one line; under 60rem its right cluster wraps as Hermaeus's does.
 
 **Sections column.** Title-size caps, muted, the current one in the accent at weight 600: MENUS, SEARCH, RECORDINGS, COMPARE. Under them, under the muted group label RECORDINGS, each recording found, by name, the way Hermaeus lists each plugin's settings page: one click to any recording. With no source chosen there is no column, and main is the first-run form at 64rem.
+
+**The editing session** sits at the sections column's foot, pinned above the hint strip, not in the top bar (which held seven things and overflowed at 1280): the Segmented READ-ONLY / EDITING, read-only at every start (§4); while editing, ADDING TO and the select of the **open recording**, the one A adds steps to from any menu or search result (§5.4), remembered with the source (`PUT /api/recordings/open`), with a new recording made from the Recordings page or from A's dialog; and CHANGES with the draft's count, the way to the Changes page. Under 60rem it's one row under the sections row.
 
 **Hint strip.** As Hermaeus's: right-aligned, each hint a real shortcut, showing only what the current screen offers; the hints are listed per page in §5.4. `/` opens Quick Find from any page. Esc runs the page's Up link (back to the list an item came from) unless a form claims it for Cancel.
 

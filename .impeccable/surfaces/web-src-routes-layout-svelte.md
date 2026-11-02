@@ -23,7 +23,7 @@ OWN-WORLD: Smoked-glass ground (near-black in dark, pale smoke in light), hairli
 
 STORY: The visitor names their mod list (or opens a catalog) once, lands on Menus, and sees in the top bar which profile is read and whether Skyrim is running; the column takes them to Search, Recordings, and Compare as those are built.
 
-FIRST VIEWPORT: Top bar: MCM LEXICON at left; at right the profile select (or the catalog's file name), Skyrim's state, and the theme switch. Left: the sections column, with unbuilt sections under a muted "Not built yet" label as plain text. Centre: the page. Without a list: the form, "Where is your mod list?" in display caps, the folder and profile fields, a primary Use this list, and under a hairline the catalog file as the second way in.
+FIRST VIEWPORT: Top bar: MCM LEXICON at left; at right the profile select (or the catalog's file name), the scan state, Skyrim's state, and the theme switch, and nothing else: the editing session (READ-ONLY / EDITING, and while editing ADDING TO and CHANGES) sits at the sections column's foot, so the bar never crowds out Skyrim's state. Left: the sections column, with unbuilt sections under a muted "Not built yet" label as plain text. Centre: the page. Without a list: the form, "Where is your mod list?" in display caps, the folder and profile fields, a primary Use this list, and under a hairline the catalog file as the second way in.
 
 FORM: The Game's Own Menus, inherited from Hermaeus rather than chosen anew; the brief pins it.
 

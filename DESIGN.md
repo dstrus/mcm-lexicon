@@ -217,7 +217,7 @@ A near-monochrome palette, off-white on near-black (or near-black on pale smoke)
 
 ## Layout
 
-The shell is a CSS grid: a full-width top bar, then a 13rem sections column beside the main area, with the hint strip fixed along the bottom. The top bar holds the name at left and, at right, the open recording, the source (the profile select for an MO2 instance, or the catalog's file name), the scan state, Skyrim's state, and the theme switch. Main content has 1.5rem top padding, 2rem side padding and 5rem bottom padding to clear the hint strip.
+The shell is a CSS grid: a full-width top bar, then a 13rem sections column beside the main area, with the hint strip fixed along the bottom. The top bar holds the name at left and, at right, only what describes the list and the game, as Hermaeus's does: the source (the profile select for an MO2 instance, or the catalog's file name), the scan state, Skyrim's state, and the theme switch. The editing session isn't there: it sits at the foot of the sections column (Navigation, below). Main content has 1.5rem top padding, 2rem side padding and 5rem bottom padding to clear the hint strip.
 
 List screens split into the item table and a details pane of `clamp(18rem, 26vw, 24rem)`. The pane sticks to the top and is sized by script to end exactly at the hint strip, so a form's Save stays in view. A filter bar above the table stops at the pane's edge. The pages are Menus, a menu (its pages as tabs), Search, Recordings, a recording (Steps and Files tabs), and Compare; PLAN.md §5.4 composes each. Without a mod list there is no sections column, and main is the form that chooses one, at 64rem.
 
@@ -276,6 +276,7 @@ The core of every list screen.
 
 ### Navigation
 - **Sections column:** title-size caps in muted ink; hover turns ink, and the current section is the selected item, in the accent at weight 600. Menus, Search, Recordings, and Compare, unlabeled; then, under the muted label-caps name Recordings, each recording found, by name, never as bright as the current section. While a section isn't built, it sits under the label Not built yet, as plain muted text rather than a link.
+- **The editing session,** at the sections column's foot, set off by a hairline and pinned above the hint strip while the sections scroll: the Segmented READ-ONLY / EDITING; read-only, a muted line saying nothing can be changed until editing is on; while editing, ADDING TO in label caps over the select of the recording A adds steps to, and CHANGES, a link at title size with the draft's count at its right edge, in full ink while the draft holds anything (never the accent, which is selection's) and in the accent when it's the current page. Everything that acts on the draft is in one place, beside the recordings it acts on. Under 60rem it's one row under the sections row.
 - **Tabs:** title-size caps in muted ink, spaced 1.5rem apart over a `rule` baseline; the current tab is ink at weight 600 with a 2px accent underline. A tab's count follows in muted Jost: a menu's pages carry their option counts, a recording's Steps and Files their counts.
 - **Theme switch, and any segmented choice:** a 3px-radius outlined group of caps options; the chosen one fills with the accent, in accent-ink text at weight 600. The game's menus mark the chosen item plainly, and so do these.
 

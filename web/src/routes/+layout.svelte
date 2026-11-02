@@ -115,23 +115,6 @@
 	<header class="top">
 		<a class="name caps" href="/">{m.shell.name}</a>
 		<div class="state">
-			{#if open}
-				<span class="mode" title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
-					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
-				</span>
-			{/if}
-			{#if editing && recordings.length}
-				<label class="source">
-					<span class="caps muted">{m.shell.recording}</span>
-					<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>
-						<option value="">{m.shell.noRecording}</option>
-						{#each recordings as r (r.name)}
-							<option value={r.name}>{r.name}</option>
-						{/each}
-						{#if openRecording && !recordings.some((r) => r.name === openRecording)}<option value={openRecording}>{openRecording}</option>{/if}
-					</select>
-				</label>
-			{/if}
 			{#if source?.kind === 'mo2'}
 				<label class="source">
 					<span class="caps muted">{m.shell.profile}</span>
@@ -162,23 +145,47 @@
 	{#if !open}
 		<main class="solo"><SourceForm /></main>
 	{:else}
-		<nav class="sections" aria-label={m.nav.sections} use:fitToViewport>
-			<ul>
-				<li><a class="caps" href="/menus" aria-current={here('/menus') ? 'page' : undefined}>{m.nav.menus}</a></li>
-				<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
-				<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
-				<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
-				{#if editing}<li><a class="caps" href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>{m.nav.changes}{#if pending}<span class="count">{pending}</span>{/if}</a></li>{/if}
-			</ul>
-			{#if recordings.length}
-				<p class="group caps">{m.nav.recordingsGroup}</p>
-				<ul aria-label={m.nav.recordingsGroup}>
-					{#each recordings as r (r.name)}
-						<li><a class="caps clip" href={recordingHref(r.name)} title={r.name} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>{r.name}</a></li>
-					{/each}
+		<!-- The column: where to go, and, at its foot, the editing session,
+		     whose controls act on the recordings listed above it. -->
+		<div class="column" use:fitToViewport>
+			<nav class="sections" aria-label={m.nav.sections}>
+				<ul>
+					<li><a class="caps" href="/menus" aria-current={here('/menus') ? 'page' : undefined}>{m.nav.menus}</a></li>
+					<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
+					<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
+					<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
 				</ul>
-			{/if}
-		</nav>
+				{#if recordings.length}
+					<p class="group caps">{m.nav.recordingsGroup}</p>
+					<ul aria-label={m.nav.recordingsGroup}>
+						{#each recordings as r (r.name)}
+							<li><a class="caps clip" href={recordingHref(r.name)} title={r.name} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>{r.name}</a></li>
+						{/each}
+					</ul>
+				{/if}
+			</nav>
+			<section class="session" class:editing aria-label={m.shell.session}>
+				<span title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
+					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
+				</span>
+				{#if editing}
+					<label class="adding">
+						<span class="caps">{m.shell.recording}</span>
+						<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>
+							<option value="">{m.shell.noRecording}</option>
+							{#each recordings as r (r.name)}
+								<option value={r.name}>{r.name}</option>
+							{/each}
+						</select>
+					</label>
+					<a class="changes caps" class:pending={pending > 0} href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>
+						{m.nav.changes}<span class="count">{pending}</span>
+					</a>
+				{:else}
+					<p class="note">{m.shell.readOnlyNote}</p>
+				{/if}
+			</section>
+		</div>
 		<main>{@render children()}</main>
 		<QuickFind menus={data.menus?.menus ?? []} />
 		<dialog bind:this={leaveDialog} class="leave" aria-label={m.shell.leaveTitle} onclick={(e) => e.target === leaveDialog && leaveDialog?.close()} onclose={syncMode}>
@@ -257,16 +264,24 @@
 	.game.running {
 		color: var(--warn);
 	}
-	/* The sections column stays put as the page scrolls, fitted above the
-	   hints, and scrolls on its own when it runs longer than the window. */
-	.sections {
+	/* The column stays put as the page scrolls, fitted above the hints. Its
+	   sections scroll on their own when the recordings run long; the
+	   session stays at its foot. */
+	.column {
 		position: sticky;
 		top: 0;
 		align-self: start;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		border-right: 1px solid var(--rule);
+	}
+	.sections {
+		flex: 1 1 auto;
+		min-height: 0;
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: var(--space-5) var(--space-4) var(--space-5) var(--space-6);
-		border-right: 1px solid var(--rule);
+		padding: var(--space-5) var(--space-4) var(--space-4) var(--space-6);
 	}
 	.sections ul {
 		list-style: none;
@@ -321,13 +336,17 @@
 		.group {
 			display: none;
 		}
-		.sections {
+		/* The column becomes two rows under the bar: the sections, then the
+		   session. */
+		.column {
 			position: static;
+			border-right: 0;
+			border-bottom: 1px solid var(--rule);
+		}
+		.sections {
 			overflow: visible;
 			display: flex;
 			gap: var(--space-5);
-			border-right: 0;
-			border-bottom: 1px solid var(--rule);
 			padding: var(--space-2) var(--space-6);
 			overflow-x: auto;
 		}
@@ -337,14 +356,56 @@
 			margin: 0;
 		}
 	}
-	.mode {
-		display: inline-flex;
+	/* The editing session: the mode, and while editing, where A adds steps
+	   and the way to the draft. Set off from the sections by a hairline. */
+	.session {
+		flex: none;
+		display: grid;
+		gap: var(--space-3);
+		padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+		border-top: 1px solid var(--rule);
 	}
-	/* The draft's size beside CHANGES, in the section's own ink. */
-	.sections .count {
-		margin-left: var(--space-2);
-		font-variant-numeric: tabular-nums;
+	.adding {
+		display: grid;
+		gap: var(--space-1);
+		min-width: 0;
+	}
+	.adding > .caps {
+		font-size: var(--step--1);
 		color: var(--muted);
+	}
+	.adding select {
+		width: 100%;
+		padding: var(--space-1) var(--space-2);
+	}
+	.changes {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		font-size: var(--step-1);
+		text-decoration: none;
+		color: var(--muted);
+	}
+	/* A draft with something in it is worth noticing: full ink, not the
+	   accent, which is for selection. */
+	.changes:hover,
+	.changes.pending {
+		color: var(--ink);
+	}
+	.changes[aria-current='page'] {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	/* The draft's size, in the link's own ink: how many recordings it changes. */
+	.count {
+		font-variant-numeric: tabular-nums;
+		font-weight: 400;
+	}
+	.note {
+		margin: 0;
+		font-size: var(--step--1);
+		color: var(--muted);
+		max-width: 22ch;
 	}
 	.leave {
 		width: min(30rem, 90vw);
@@ -374,5 +435,32 @@
 	}
 	.leave .button {
 		text-decoration: none;
+	}
+	/* Under 60rem the session is one row under the sections; after its own
+	   rules above, so this wins. */
+	@media (max-width: 60rem) {
+		.session {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: var(--space-2) var(--space-5);
+			padding: var(--space-2) var(--space-6);
+		}
+		.adding {
+			display: flex;
+			align-items: center;
+			gap: var(--space-2);
+		}
+		.adding select {
+			width: auto;
+			max-width: 16rem;
+		}
+		.changes {
+			justify-content: flex-start;
+			gap: var(--space-2);
+		}
+		.note {
+			max-width: none;
+		}
 	}
 </style>

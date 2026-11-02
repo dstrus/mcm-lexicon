@@ -26,6 +26,8 @@ shell:
   noRecording: None
   recordingTitle: The recording A adds steps to, from any menu or search result
   mode: Read-only or editing
+  session: Editing session
+  readOnlyNote: Nothing can be changed until you turn on editing.
   readOnly: Read-only
   editing: Editing
   readOnlyTitle: Nothing can be changed. Turn on editing to make and change recordings.
