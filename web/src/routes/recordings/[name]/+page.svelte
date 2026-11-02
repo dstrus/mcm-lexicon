@@ -1,10 +1,8 @@
 <!-- A recording's steps in replay order, under a heading per step file,
-     each with its check, and the selected one in the pane. Read-only:
-     editing comes with writing recordings. -->
-<!-- A recording's steps in replay order, under a heading per step file,
      each with its check, and the selected one in the pane, where it's
-     edited (?mode=edit), moved, and removed. Every change goes to the
-     draft; nothing is written until Save. -->
+     moved and removed. Values change in the table: a toggle's checkbox
+     flips it, and any other value's cell becomes its editor (?mode=edit).
+     Every change goes to the draft; nothing is written until Save. -->
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { ApiError } from '#lib/api/client.ts';
@@ -16,7 +14,7 @@
 	import { hex } from '#lib/menus/values.ts';
 	import { change, move } from '#lib/recordings/draft.ts';
 	import { changed, failing, fileHeading, kindType, sentence, value, word } from '#lib/recordings/steps.ts';
-	import ValueEditor from '#lib/recordings/ValueEditor.svelte';
+	import InlineValue from '#lib/recordings/InlineValue.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
@@ -45,14 +43,13 @@
 	const beyondASCII = (s: Step) => /[^\x00-\x7f]/.test(s.mod + s.page + s.option + (s.kind === 'choose' || s.kind === 'text' ? s.value : ''));
 	const menuLink = (c: Check) => (c.option ? menuHref(c.menuId, c.page, c.position) : c.menuId ? menuHref(c.menuId) : '');
 
-	let editing = $derived(param('mode') === 'edit' && !!current);
+	// A toggle flips in place; a click has nothing to set; anything else is
+	// edited in its cell.
+	const editable = (s: Step) => s.kind !== 'toggle' && s.kind !== 'click';
+	let editing = $derived(param('mode') === 'edit' && !!current && editable(current.step));
 	let working = $state(false);
 	let error = $state('');
-	let problem = $state('');
-	let edited = $state({ value: '', side: '' });
-	$effect(() => {
-		if (editing && current) edited = { value: current.step.value, side: current.step.side };
-	});
+	let inline = $state<InlineValue>();
 
 	async function apply(edit: (s: Step[]) => void, select?: number) {
 		working = true;
@@ -67,16 +64,29 @@
 		}
 	}
 	const at = () => (current ? current.n - 1 : -1);
-	const startEdit = () => current && setParams({ mode: 'edit' });
-	async function saveEdit(ev?: SubmitEvent) {
-		ev?.preventDefault();
-		if (!current || problem) return;
+	const isOn = (s: Step) => s.value.toLowerCase() === 'on';
+	// flip turns the toggle step at i on or off.
+	const flip = (i: number) => {
+		const s = steps[i];
+		if (!s || s.kind !== 'toggle' || working) return;
+		apply((x) => (x[i]!.value = isOn(s) ? 'off' : 'on'));
+	};
+	// E: a toggle flips; anything else's cell becomes its editor.
+	const startEdit = () => {
+		if (!current) return;
+		if (current.step.kind === 'toggle') flip(at());
+		else if (editable(current.step)) setParams({ mode: 'edit' });
+	};
+	async function setValue(value: string) {
 		const i = at();
-		await apply((s) => {
-			s[i]!.value = edited.value;
-			s[i]!.side = edited.side;
-		});
-		if (!error) leave('mode');
+		if (i < 0) return;
+		await apply((x) => (x[i]!.value = value));
+		leave('mode');
+	}
+	// A value's cell: clicking it selects the row and starts editing it.
+	function editRow(r: (typeof rows)[number]) {
+		selection.select(r);
+		setParams({ item: String(r.n), mode: 'edit' });
 	}
 	const moveBy = (by: -1 | 1) => {
 		const i = at();
@@ -105,13 +115,16 @@
 	useShortcuts(() =>
 		editing
 			? [
-					{ key: 'Enter', label: e.apply, command: true, disabled: !!problem || working, run: () => saveEdit() },
+					// The cell's field takes these keys first; they're here so the
+					// strip shows them.
+					{ key: 'Enter', label: e.apply, disabled: working, run: () => inline?.done() },
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
 			: [
 					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
 					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
-					{ key: 'e', shown: 'E', label: e.edit, disabled: !current || working, run: startEdit },
+					{ key: ' ', shown: 'Space', label: current && isOn(current.step) ? e.turnOff : e.turnOn, hidden: current?.step.kind !== 'toggle', disabled: working, run: () => flip(at()) },
+					{ key: 'e', shown: 'E', label: e.edit, hidden: current?.step.kind === 'toggle', disabled: !current || !editable(current.step) || working, run: startEdit },
 					{ key: 'u', shown: 'U', label: e.moveUp, disabled: !current || at() === 0 || working, run: () => moveBy(-1) },
 					{ key: 'd', shown: 'D', label: e.moveDown, disabled: !current || at() === steps.length - 1 || working, run: () => moveBy(1) },
 					...deleteShortcuts({ label: e.remove, disabled: !current || working, run: remove }),
@@ -148,7 +161,20 @@
 						<td class="page muted">{pageText(r.step, r.check)}</td>
 						<td class="type caps">{m.option.types[kindType[r.step.kind]]}</td>
 						<td class="value" class:changed={changed(r.step, r.check.option)}>
-							{#if r.step.kind === 'color'}<span class="swatch" style:background={hex(Number(r.step.value))}></span>{/if}{value(r.step, r.check.option)}
+							{#if r.step.kind === 'toggle'}
+								<label class="flip">
+									<input type="checkbox" checked={isOn(r.step)} disabled={working} onchange={() => flip(r.n - 1)} aria-label={e.toggleLabel({ option: optionText(r.step, r.check) })} />
+									{value(r.step, r.check.option)}
+								</label>
+							{:else if editing && selection.is(r)}
+								<InlineValue bind:this={inline} kind={r.step.kind} option={r.check.option} value={r.step.value} apply={setValue} cancel={() => leave('mode')} />
+							{:else if editable(r.step)}
+								<button type="button" class="cell" title={e.editValue} onclick={(ev) => (ev.stopPropagation(), editRow(r))}>
+									{#if r.step.kind === 'color'}<span class="swatch" style:background={hex(Number(r.step.value))}></span>{/if}{value(r.step, r.check.option)}
+								</button>
+							{:else}
+								{value(r.step, r.check.option)}
+							{/if}
 						</td>
 						<td class="word caps" class:warn={failing(r.check)}>{word(r.check)}</td>
 					</tr>
@@ -163,18 +189,6 @@
 					<div class="enter">
 						<h2 class="caps">{optionText(s, c) || m.values.noLabel}</h2>
 						<p class="muted">{c.menuText || s.mod}{#if pageText(s, c)}{' · '}{pageText(s, c)}{/if}</p>
-						{#if editing}
-							<form class="edit" onsubmit={saveEdit}>
-								<ValueEditor kind={s.kind} option={c.option} bind:value={edited.value} bind:side={edited.side} bind:problem />
-								<div class="footer">
-									<p class="muted small">{e.keptInDraft}</p>
-									<div class="buttons">
-										<button class="button primary" disabled={!!problem || working}>{e.apply}</button>
-										<button type="button" class="button" onclick={() => leave('mode')}>{m.common.cancel}</button>
-									</div>
-								</div>
-							</form>
-						{:else}
 							<p class="check" class:warn={failing(c)}>{sentence(c, s)}</p>
 							{#if beyondASCII(s)}<p class="notice">{e.beyondASCII}</p>{/if}
 							{#if c.suggestion}
@@ -200,13 +214,16 @@
 								<dt class="caps">{t.file}</dt><dd class="raw">{fileNames[s.file]}</dd>
 							</dl>
 							<div class="actions">
-								<button type="button" class="button primary" disabled={working} onclick={startEdit}>{e.edit}</button>
+								{#if s.kind === 'toggle'}
+									<button type="button" class="button primary" disabled={working} onclick={startEdit}>{isOn(s) ? e.turnOff : e.turnOn}</button>
+								{:else if editable(s)}
+									<button type="button" class="button primary" disabled={working || editing} onclick={startEdit}>{e.edit}</button>
+								{/if}
 								<button type="button" class="button" disabled={working || current.n === 1} onclick={() => moveBy(-1)}>{e.moveUp}</button>
 								<button type="button" class="button" disabled={working || current.n === steps.length} onclick={() => moveBy(1)}>{e.moveDown}</button>
 								<button type="button" class="button" disabled={working} onclick={remove}>{e.remove}</button>
 							</div>
 							{#if menuLink(c)}<a class="textbutton open" href={menuLink(c)}>{t.openInMenus}</a>{/if}
-						{/if}
 						{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 					</div>
 				{/key}
@@ -369,29 +386,28 @@
 	.suggestion .textbutton {
 		margin-left: var(--space-2);
 	}
-	.edit {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-3);
-		margin-top: var(--space-4);
-	}
-	/* The form's buttons stay in reach above the hint strip. */
-	.footer {
-		position: sticky;
-		bottom: 0;
-		display: grid;
+	/* A toggle's cell is its checkbox, with the value beside it. */
+	.flip {
+		display: inline-flex;
+		align-items: center;
 		gap: var(--space-2);
-		padding-top: var(--space-3);
-		background: var(--panel);
-		border-top: 1px solid var(--rule);
+		cursor: pointer;
 	}
-	.footer p {
-		margin: 0;
-		font-size: var(--step--1);
+	/* Any other value's cell is a button that turns into its editor. */
+	.cell {
+		background: none;
+		border: 0;
+		padding: 0;
+		font: inherit;
+		color: inherit;
+		text-align: left;
+		cursor: text;
+		border-bottom: 1px dashed transparent;
 	}
-	.buttons {
-		display: flex;
-		gap: var(--space-2);
+	.cell:hover,
+	.cell:focus-visible {
+		border-bottom-color: var(--rule-strong);
+		outline: none;
 	}
 	.notice {
 		margin-top: var(--space-3);

@@ -92,14 +92,16 @@
 		</p>
 	{:else if ed.saved}
 		<p class="line">{ed.saved.backup ? d.savedBackup({ folder, time: time(ed.saved.at), backup: ed.saved.backup }) : d.saved({ folder, time: time(ed.saved.at) })}</p>
+	{:else if target.kind !== 'none'}
+		<p class="line">{d.upToDate({ folder })}</p>
 	{/if}
-	{#if ed.changed}
-		<div class="actions">
-			<button type="button" class="button primary" disabled={!canSave} onclick={saveNow} title={ed.unsaved === 'running' ? m.common.gameRunning : undefined}>{m.common.save}</button>
-			{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
-			{#if ed.drafted}<span class="muted small">{d.keptInMemory}</span>{/if}
-		</div>
-	{/if}
+	<!-- Always here, so the table below doesn't move when the first change
+	     is made in it. -->
+	<div class="actions">
+		<button type="button" class="button primary" disabled={!canSave || !ed.changed} onclick={saveNow} title={ed.unsaved === 'running' ? m.common.gameRunning : undefined}>{m.common.save}</button>
+		{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
+		{#if ed.drafted}<span class="muted small">{d.keptInMemory}</span>{/if}
+	</div>
 
 	{#if target.kind === 'data'}
 		<!-- A Data folder: there's nowhere else to write. -->
@@ -165,8 +167,10 @@
 		margin: var(--space-3) 0 var(--space-4);
 		max-width: 70ch;
 	}
+	/* Two lines' room whatever it says, so the table doesn't move. */
 	.line {
 		margin: 0;
+		min-height: 3.1em;
 		color: var(--muted);
 	}
 	.actions,
