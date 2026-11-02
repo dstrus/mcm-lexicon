@@ -1,0 +1,25 @@
+# Other authors' mod files, for local testing only (PLAN.md §7)
+/snapshots/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# impeccable-ignore-start
+# Ephemeral output, runtime state, and per-dev overrides.
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/review/
+**/.impeccable/questions/
+**/.impeccable/live/
+# impeccable-ignore-end
+
+# Other tools
+.claude
+CLAUDE.local.md
