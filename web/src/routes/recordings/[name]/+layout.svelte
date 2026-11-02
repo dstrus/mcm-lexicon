@@ -149,7 +149,8 @@
 	label={t.tabs}
 	tabs={[
 		{ href: recordingHref(draft.name), label: t.steps, count: draft.steps.length },
-		{ href: recordingHref(draft.name, 'files'), label: t.files, count: ed.files.length }
+		{ href: recordingHref(draft.name, 'files'), label: t.files, count: ed.files.length },
+		{ href: recordingHref(draft.name, 'info'), label: t.infoTab }
 	]}
 />
 {@render children()}

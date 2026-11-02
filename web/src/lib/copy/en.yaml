@@ -381,6 +381,7 @@ recording:
   tabs: Recording
   steps: Steps
   files: Files
+  infoTab: Info
   stepCount:
     one: "{count} step"
     other: "{count} steps"
@@ -510,6 +511,17 @@ changes:
   saved: Saved {name}.
   deleted: Deleted {name}.
   backupIn: The previous files are in {backup}.
+
+# A recording's info file.
+info:
+  name: Name
+  nameNote: The name MCM Recorder shows in its list. The files keep their name, {file}, which is how MCM Recorder finds the recording.
+  author: Author
+  version: Version
+  autorun: Autorun
+  autorunNote: With autorun on, MCM Recorder plays it by itself when a new game starts.
+  none: None
+  kept: Each change goes into the draft as you make it; Save all on Changes writes it.
 
 # The files Save writes.
 files:

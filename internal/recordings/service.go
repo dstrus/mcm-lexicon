@@ -763,10 +763,15 @@ func sameJSON(a, b string) bool {
 	if json.Unmarshal(bytes.TrimPrefix([]byte(a), []byte{0xEF, 0xBB, 0xBF}), &x) != nil || json.Unmarshal([]byte(b), &y) != nil {
 		return false
 	}
-	return sameValue(x, y)
+	return sameValue(x, y, "")
 }
 
-func sameValue(a, b any) bool {
+// exactText is the keys whose text is read as written: what people see
+// (a recording's name, author, and version) and what an input option is
+// given. Everything else MCM Recorder compares without regard to case.
+var exactText = map[string]bool{"name": true, "author": true, "version": true, "text": true}
+
+func sameValue(a, b any, key string) bool {
 	switch x := a.(type) {
 	case map[string]any:
 		y, ok := b.(map[string]any)
@@ -778,7 +783,7 @@ func sameValue(a, b any) bool {
 			return false
 		}
 		for k, v := range lx {
-			if w, ok := ly[k]; !ok || !sameValue(v, w) {
+			if w, ok := ly[k]; !ok || !sameValue(v, w, k) {
 				return false
 			}
 		}
@@ -789,13 +794,16 @@ func sameValue(a, b any) bool {
 			return false
 		}
 		for i := range x {
-			if !sameValue(x[i], y[i]) {
+			if !sameValue(x[i], y[i], key) {
 				return false
 			}
 		}
 		return true
 	case string:
 		y, ok := b.(string)
+		if exactText[key] {
+			return ok && x == y
+		}
 		return ok && strings.EqualFold(x, y)
 	default:
 		return a == b // numbers as float64: 25 and 25.0 alike

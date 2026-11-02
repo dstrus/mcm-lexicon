@@ -282,3 +282,28 @@ func TestRecordAllKeepsWhatsRecorded(t *testing.T) {
 		t.Errorf("a bad setting: %d, %d steps", code, len(ed.Draft.Steps))
 	}
 }
+
+// The info is edited in the draft; a name or author changed only in case is
+// a change, autorun's True for true isn't.
+func TestEditingTheInfo(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	var ed Editor
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	d := ed.Draft
+	d.Author = "moyce"
+	h.call("PUT", "/api/recordings/MGO/draft", d, &ed)
+	if !ed.Changed || ed.Files[0].Change != FileChangeChanged {
+		t.Fatalf("author in lowercase: changed %v, %s", ed.Changed, ed.Files[0].Change)
+	}
+	d.Author, d.Title, d.Version, d.Autorun = "Moyce", "MGO Defaults", "1.1.0", false
+	h.call("PUT", "/api/recordings/MGO/draft", d, &ed)
+	for _, want := range []string{`"name": "MGO Defaults"`, `"version": "1.1.0"`, `"autorun": "false"`} {
+		if !strings.Contains(ed.Files[0].Text, want) {
+			t.Errorf("info lacks %s:\n%s", want, ed.Files[0].Text)
+		}
+	}
+	if ed.Draft.Name != "MGO" {
+		t.Errorf("the file name changed to %q", ed.Draft.Name)
+	}
+}
