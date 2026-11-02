@@ -1,0 +1,291 @@
+/*
+ * MCM Lexicon's look, which is Hermaeus's: one more menu of the game you just closed. A smoked-glass
+ * ground, hairline rules, tracked condensed capitals for anything that labels,
+ * and one accent, only for selection and action: verdigris (old bronze) in
+ * dark, frost blue in light. Copper, the bronze under the verdigris, marks
+ * only what the player set, where it differs from the mod's default. Dark follows the game's own menus; light is the
+ * same world in pale smoke. The page's data-theme is "dark",
+ * "light" or "system" (follow the OS); anything else counts as "system".
+ */
+@import '@fontsource/jost/400.css';
+@import '@fontsource/jost/500.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/dm-mono/400.css';
+
+:root {
+	--font-text: 'Jost', system-ui, sans-serif;
+	--font-label: 'Barlow Condensed', 'Jost', sans-serif;
+	--font-mono: 'DM Mono', ui-monospace, monospace; /* what's matched character for character: selectors, and files as written */
+	--track: 0.12em;
+
+	--step--1: 0.8125rem;
+	--step-0: 0.9375rem;
+	--step-1: 1.125rem;
+	--step-2: 1.375rem;
+	--step-3: 2.5rem;
+
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 2.5rem;
+
+	--radius: 3px;
+}
+
+/* Dark: the game's menus. */
+:root,
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--ground: #0b0b0b;
+	--smoke: #1c1c1c; /* the lighter heart of the smoked glass */
+	--glass: rgb(255 255 255 / 0.04);
+	--glass-strong: rgb(0 0 0 / 0.38);
+	--panel: #121212; /* opaque, for zones that scroll beneath fixed parts */
+	--ink: #f2efe6;
+	--muted: #a8a293;
+	--rule: #2a2a2a;
+	--rule-strong: #3a3a3a;
+	--accent: #7fb8a0; /* verdigris */
+	--on-accent: #0e1a15;
+	--changed: #d2996b; /* copper: what the player set, where it differs from the mod's default */
+	--chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8a293' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); /* a select's arrow, in the muted ink */
+	--select: rgb(242 239 230 / 0.07);
+	--warn: #d9a441;
+	--danger: #e57368;
+}
+
+/* Light: the same world in pale smoke. */
+:root[data-theme='light'] {
+	color-scheme: light;
+	--ground: #e4e3df;
+	--smoke: #f3f2ef;
+	--glass: rgb(0 0 0 / 0.025);
+	--glass-strong: rgb(255 255 255 / 0.55);
+	--panel: #eceae6;
+	--ink: #1b1a17;
+	--muted: #5d5a52;
+	--rule: #cdcbc4;
+	--rule-strong: #b3b0a7;
+	--accent: #2a5f86; /* frost blue */
+	--on-accent: #eef4f9;
+	--changed: #9a4a20; /* copper */
+	--chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d5a52' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--select: rgb(27 26 23 / 0.06);
+	--warn: #8a5a00;
+	--danger: #b3261e;
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme='dark']):not([data-theme='light']) {
+		color-scheme: light;
+		--ground: #e4e3df;
+		--smoke: #f3f2ef;
+		--glass: rgb(0 0 0 / 0.025);
+		--glass-strong: rgb(255 255 255 / 0.55);
+		--panel: #eceae6;
+		--ink: #1b1a17;
+		--muted: #5d5a52;
+		--rule: #cdcbc4;
+		--rule-strong: #b3b0a7;
+		--accent: #2a5f86; /* frost blue */
+		--on-accent: #eef4f9;
+		--changed: #9a4a20; /* copper */
+		--chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235d5a52' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		--select: rgb(27 26 23 / 0.06);
+		--warn: #8a5a00;
+		--danger: #b3261e;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--ground);
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: radial-gradient(ellipse 70% 60% at 65% 25%, var(--smoke), var(--ground) 75%) fixed;
+	color: var(--ink);
+	font: 400 var(--step-0) / 1.5 var(--font-text);
+	font-variant-numeric: tabular-nums;
+	caret-color: var(--accent);
+	scrollbar-color: var(--rule-strong) transparent;
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+	margin: 0;
+}
+
+/* A link keeps its text's color and is marked by its underline: the accent,
+   a step quieter than full strength so a page of links doesn't shout, but
+   above 3:1 on every ground in both themes. Hover brings it to full. */
+a {
+	color: inherit;
+	text-underline-offset: 0.2em;
+	text-decoration-thickness: 1px;
+	text-decoration-color: color-mix(in srgb, var(--accent) 75%, var(--ground));
+}
+
+a:hover {
+	text-decoration-color: var(--accent);
+}
+
+/* Anything that labels rather than reads: categories, headings, column heads, keys. */
+.caps {
+	font-family: var(--font-label);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: var(--track);
+}
+
+.muted {
+	color: var(--muted);
+}
+
+/* Standard controls, in the world's materials. */
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+	background: var(--glass-strong);
+	border: 1px solid var(--rule-strong);
+	border-radius: var(--radius);
+	padding: var(--space-2) var(--space-3);
+}
+
+/* A select draws its own arrow, the same in every browser, with room for it. */
+select {
+	appearance: none;
+	background-image: var(--chevron);
+	background-repeat: no-repeat;
+	background-position: right var(--space-3) center;
+	background-size: 10px 6px;
+	padding-right: calc(var(--space-3) * 2 + 10px);
+}
+
+input::placeholder,
+textarea::placeholder {
+	color: var(--muted);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+	accent-color: var(--accent);
+}
+
+.button {
+	font-family: var(--font-label);
+	font-weight: 500;
+	font-size: var(--step-0);
+	text-transform: uppercase;
+	letter-spacing: var(--track);
+	background: transparent;
+	border: 1px solid var(--rule-strong);
+	border-radius: var(--radius);
+	padding: var(--space-1) var(--space-3);
+	cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+	border-color: var(--accent);
+}
+
+.button.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+}
+
+.button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* A link-looking button, for actions inside text. */
+.textbutton {
+	background: none;
+	border: 0;
+	padding: 0;
+	color: var(--accent);
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.notice {
+	color: var(--muted);
+}
+
+.notice.warn {
+	color: var(--warn);
+}
+
+.notice.error {
+	color: var(--danger);
+}
+
+/* A day's heading in a list of dated records stays at the top of the window
+   while its day scrolls past, on the pane's opaque material so rows pass
+   beneath it. */
+.sticky-day {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--panel);
+}
+
+/* The tip beneath text cut short with an ellipsis (see clipped.ts): the
+   pane's material, lifted a little, never in the way of the pointer. */
+.tip {
+	position: fixed;
+	z-index: 3;
+	max-width: 28rem;
+	padding: var(--space-1) var(--space-2);
+	background: var(--panel);
+	color: var(--ink);
+	border: 1px solid var(--rule-strong);
+	border-radius: var(--radius);
+	box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 0.35);
+	font-size: var(--step--1);
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0s !important;
+		animation-duration: 0s !important;
+	}
+}

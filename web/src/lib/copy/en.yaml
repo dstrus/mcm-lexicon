@@ -1,0 +1,79 @@
+# Every word MCM Lexicon shows, grouped by page. Components use these as
+# m.<group>.<name>, so renaming or removing one means changing them too;
+# a mistake fails `make test`.
+#
+# - {name} is filled in when the message is shown.
+# - A message with `one:` and `other:` picks one by its count; {count} is
+#   the number, written as the reader's locale writes numbers.
+# - Typographic quotes and apostrophes: ’ “ ”.
+
+# Words many pages share.
+common:
+  next: Next
+  previous: Previous
+  selected: Selected
+  open: Open
+  cancel: Cancel
+  save: Save
+  gameRunning: Skyrim is running, so nothing can be written until you close it.
+
+shell:
+  name: MCM Lexicon
+  profile: Profile
+  catalog: Catalog
+  gameRunning: Skyrim running · read-only
+  gameClosed: Skyrim closed
+  notResponding: MCM Lexicon isn’t responding. Check that it’s still running, then reload the page.
+  # A request that failed without saying why.
+  requestFailed: "{method} {path} failed ({status})"
+
+  # The error page.
+  notFound: Not found
+  wentWrong: Something went wrong
+  backHome: Back to Menus
+
+  theme:
+    label: Theme
+    auto: Auto
+    autoTitle: Follow your system’s dark or light setting
+    dark: Dark
+    light: Light
+
+# The sections column.
+nav:
+  sections: Sections
+  menus: Menus
+  search: Search
+  recordings: Recordings
+  compare: Compare
+  notBuiltYet: Not built yet
+
+# Choosing what to read: a mod list, or a catalog file.
+source:
+  title: Where is your mod list?
+  notFound: >-
+    MCM Lexicon didn’t find a mod list next to it. Point it at your Mod
+    Organizer 2 instance, the folder holding {ini}, {mods}, and {profiles}; or
+    at the game’s {data} folder if you use Vortex or install mods by hand.
+  folder: Mod list folder
+  profile: Profile
+  profileHint: Only with Mod Organizer 2. Left empty, the profile MO2 has selected is read.
+  use: Use this list
+  orCatalog: Or open a catalog file
+  catalogLead: >-
+    A catalog is what MCM Lexicon knows about a list, saved as one file, so a
+    list can be explored on a machine where it isn’t installed.
+  catalogFile: Catalog file
+  open: Open this catalog
+
+# The menus of the list: every MCM it holds.
+menus:
+  title: Menus
+  inInstance: Mod Organizer 2 instance at {path}, profile {profile}
+  inData: Data folder at {path}
+  inCatalog: Catalog {path}
+  notYet: MCM Lexicon doesn’t read the list yet. This page fills in once it does.
+
+# Controls many pages share.
+ui:
+  shortcuts: Keyboard shortcuts

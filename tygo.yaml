@@ -1,0 +1,25 @@
+# TypeScript types for the API, generated from the Go types the server sends
+# and receives. Run `make types` after changing any of these files; the
+# output in web/src/lib/api/types/ is generated, so don't edit it by hand.
+#
+# A type from another package needs a type_mappings entry and an import in
+# frontmatter. Without one it comes out as `unknown`, which TypeScript then
+# refuses to use, rather than `any`, which it would let through unchecked.
+packages:
+  - path: lexicon/internal/httpapi
+    include_files: [httpapi.go]
+    output_path: web/src/lib/api/types/httpapi.ts
+    fallback_type: unknown
+  - path: lexicon/internal/modlist
+    include_files: [modlist.go]
+    output_path: web/src/lib/api/types/modlist.ts
+    fallback_type: unknown
+    enum_style: union
+  - path: lexicon/internal/server
+    include_files: [api.go]
+    output_path: web/src/lib/api/types/api.ts
+    fallback_type: unknown
+    frontmatter: |
+      import type * as modlist from './modlist.ts';
+    type_mappings:
+      modlist.Source: modlist.Source

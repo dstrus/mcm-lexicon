@@ -1,5 +1,36 @@
-# Other authors' mod files, for local testing only (PLAN.md §7)
+# Build output
+/dist/
+/lexicon
+*.exe
+*.syso
+*.syso.tmp
+
+# Go
+*.test
+*.out
+coverage.*
+/vendor/
+
+# Frontend
+/web/build/
+/web/.svelte-kit/
+/web/src/lib/copy/messages.ts
+node_modules/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Other authors' mod files, for local testing only (PLAN.md §7), and backups
 /snapshots/
+*.bak
+lexicon-backups/
+
+# Local environment
+.env
+.env.*
+!.env.example
 
 # OS and editors
 .DS_Store
@@ -11,13 +42,26 @@ desktop.ini
 
 # impeccable-ignore-start
 # Ephemeral output, runtime state, and per-dev overrides.
+# The **/ prefix covers .impeccable at the repo root or in a nested workspace.
+# Shared artifacts stay tracked: config.json, live/config.json,
+# design.json, surfaces/*.md, critique/*.md.
 **/.impeccable/config.local.json
 **/.impeccable/hook.cache.json
 **/.impeccable/hook.pending.json
 **/.impeccable/*.png
 **/.impeccable/review/
 **/.impeccable/questions/
-**/.impeccable/live/
+**/.impeccable/live/server.json
+**/.impeccable/live/sessions/
+**/.impeccable/live/previews/
+**/.impeccable/live/annotations/
+**/.impeccable/live/cache/
+**/.impeccable/live/manual-edit-apply-transaction.json
+**/.impeccable/live/manual-edit-events.jsonl
+**/.impeccable/live/manual-edit-evidence/
+**/.impeccable/live/pending-manual-edits.json
+**/.impeccable/live/deferred-svelte-component-accepts.json
+**/.impeccable/live/*.png
 # impeccable-ignore-end
 
 # Other tools

@@ -1,0 +1,197 @@
+// Package server is MCM Lexicon's web server. It serves the app's pages, and
+// mounts each domain's API routes behind the checks every request needs:
+// addressed to this machine, and carrying the token from the page.
+package server
+
+import (
+	"bytes"
+	"crypto/subtle"
+	"fmt"
+	"io/fs"
+	"log"
+	"net/http"
+	"path"
+	"slices"
+	"strings"
+	"sync"
+
+	"lexicon/internal/apperr"
+	"lexicon/internal/httpapi"
+	"lexicon/internal/modlist"
+	"lexicon/internal/prefs"
+)
+
+// Placeholders in index.html (see app.html): the session's token, and the
+// saved theme, so the page never loads in the wrong one first.
+var (
+	tokenPlaceholder = []byte("__LEXICON_TOKEN__")
+	themePlaceholder = []byte("__LEXICON_THEME__")
+)
+
+type Options struct {
+	Source  *modlist.Source // the list to read, or nil until one is chosen
+	Catalog string          // a catalog file opened instead of a list, or ""
+	Prefs   *prefs.Prefs
+	Running func() bool // whether Skyrim is running
+	Token   string
+	Port    int
+	Files   fs.FS // the built frontend, with index.html at its root
+	Version string
+}
+
+type Server struct {
+	Options
+	index []byte // index.html, with the token filled in
+	api   *http.ServeMux
+
+	mu      sync.Mutex
+	source  *modlist.Source
+	catalog string
+}
+
+func New(o Options) (*Server, error) {
+	index, err := fs.ReadFile(o.Files, "index.html")
+	if err != nil {
+		return nil, fmt.Errorf("the frontend isn't built: %w", err)
+	}
+	s := &Server{Options: o, index: bytes.ReplaceAll(index, tokenPlaceholder, []byte(o.Token)), api: http.NewServeMux(), source: o.Source, catalog: o.Catalog}
+	if s.source != nil {
+		s.catalog = "" // a list and a catalog aren't open at once
+	}
+	s.routes()
+	return s, nil
+}
+
+func (s *Server) routes() {
+	m := s.api
+	m.Handle("GET /api/status", httpapi.JSON(func(*http.Request, httpapi.None) (Status, error) {
+		return s.status(), nil
+	}))
+	m.Handle("PUT /api/theme", httpapi.JSON(func(_ *http.Request, req ThemeRequest) (Status, error) {
+		if !slices.Contains(prefs.Themes, req.Theme) {
+			return Status{}, apperr.New(apperr.Invalid, "Unknown theme %q", req.Theme)
+		}
+		s.Prefs.Update(func(v *prefs.Values) { v.Theme = req.Theme })
+		return s.status(), nil
+	}))
+	m.Handle("PUT /api/source", httpapi.JSON(func(_ *http.Request, req SourceRequest) (Status, error) {
+		switch {
+		case req.Catalog != "" && req.Path != "":
+			return Status{}, apperr.New(apperr.Invalid, "Choose a mod list or a catalog file, not both")
+		case req.Catalog != "":
+			if err := s.OpenCatalog(req.Catalog); err != nil {
+				return Status{}, err
+			}
+		default:
+			if _, err := s.SetSource(req.Path, req.Profile); err != nil {
+				return Status{}, err
+			}
+		}
+		return s.status(), nil
+	}))
+
+	m.Handle("/api/", httpapi.JSON(func(r *http.Request, _ httpapi.None) (httpapi.None, error) {
+		return httpapi.None{}, apperr.New(apperr.NotFound, "Unknown endpoint: %s %s", r.Method, r.URL.Path)
+	}))
+}
+
+// SetSource makes the mod list at path (with profile, for an MO2 instance)
+// the one being read, and remembers it.
+func (s *Server) SetSource(path, profile string) (modlist.Source, error) {
+	src, err := modlist.Check(path, profile)
+	if err != nil {
+		return modlist.Source{}, err
+	}
+	s.mu.Lock()
+	s.source = &src
+	s.catalog = ""
+	s.mu.Unlock()
+	log.Printf("Mod list: %s", src.Path)
+	s.Prefs.Update(func(v *prefs.Values) {
+		v.ListDir = src.Path
+		v.Profile = src.Profile
+		v.CatalogFile = ""
+	})
+	return src, nil
+}
+
+// OpenCatalog opens a catalog file instead of a list, and remembers it.
+// Reading what it holds comes with the catalog itself; for now this checks
+// that the file is there.
+func (s *Server) OpenCatalog(path string) error {
+	file, err := modlist.CheckCatalog(path)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.source = nil
+	s.catalog = file
+	s.mu.Unlock()
+	log.Printf("Catalog: %s", file)
+	s.Prefs.Update(func(v *prefs.Values) {
+		v.ListDir = ""
+		v.Profile = ""
+		v.CatalogFile = file
+	})
+	return nil
+}
+
+// Source is the list being read (nil if none) and the catalog file opened
+// instead ("" if none).
+func (s *Server) Source() (*modlist.Source, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.source, s.catalog
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Only answer requests addressed to this machine by name (blocks DNS-rebinding tricks).
+	if r.Host != fmt.Sprintf("localhost:%d", s.Port) && r.Host != fmt.Sprintf("127.0.0.1:%d", s.Port) {
+		httpapi.Send(w, http.StatusForbidden, httpapi.Error{Error: "Forbidden"})
+		return
+	}
+	switch {
+	case r.URL.Path == "/api/ping":
+		// Needs no token: it only says that this is MCM Lexicon.
+		httpapi.Send(w, http.StatusOK, Ping{App: AppID})
+	case strings.HasPrefix(r.URL.Path, "/api/"):
+		s.guard(w, r)
+	default:
+		s.page(w, r)
+	}
+}
+
+// guard requires the per-session token embedded in the page, so other
+// websites open in the same browser can't read or change anything.
+func (s *Server) guard(w http.ResponseWriter, r *http.Request) {
+	if subtle.ConstantTimeCompare([]byte(r.Header.Get(TokenHeader)), []byte(s.Token)) != 1 {
+		httpapi.Send(w, http.StatusForbidden, httpapi.Error{Error: "Missing or invalid MCM Lexicon token. Reload the page."})
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	s.api.ServeHTTP(w, r)
+}
+
+// page serves the frontend's files. Any other path is a view inside the app
+// (every view has its own address), so it gets index.html.
+func (s *Server) page(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+	if name != "" && name != "index.html" {
+		if info, err := fs.Stat(s.Files, name); err == nil && !info.IsDir() {
+			if strings.HasPrefix(name, "_app/immutable/") {
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			}
+			http.ServeFileFS(w, r, s.Files, name)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store") // it carries this session's token
+	w.Write(bytes.Replace(s.index, themePlaceholder, []byte(s.Prefs.Get().ThemeOf()), 1))
+}

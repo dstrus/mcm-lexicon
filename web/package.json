@@ -1,0 +1,30 @@
+{
+	"name": "lexicon-web",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#lib": "./src/lib",
+		"#lib/*": "./src/lib/*"
+	},
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"check": "node copy.ts && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
+	},
+	"devDependencies": {
+		"@fontsource/barlow-condensed": "5.3.0",
+		"@fontsource/jost": "5.3.0",
+		"@sveltejs/adapter-static": "4.0.0",
+		"@sveltejs/kit": "3.1.0",
+		"@sveltejs/vite-plugin-svelte": "7.3.1",
+		"@types/node": "24.19.2",
+		"svelte": "5.57.2",
+		"svelte-check": "4.7.7",
+		"typescript": "6.0.3",
+		"vite": "8.3.4",
+		"yaml": "2.9.1"
+	},
+	"dependencies": {
+		"@fontsource/dm-mono": "^5.3.0"
+	}
+}

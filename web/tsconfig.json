@@ -1,0 +1,12 @@
+{
+	"extends": "$app/tsconfig",
+	"include": ["src", "*"],
+	"compilerOptions": {
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"forceConsistentCasingInFileNames": true,
+		"skipLibCheck": true,
+		"sourceMap": true
+	}
+}
