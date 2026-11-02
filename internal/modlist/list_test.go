@@ -162,6 +162,17 @@ func TestDataFolderIsOneLayer(t *testing.T) {
 	}
 }
 
+func TestClutterIsNotIndexed(t *testing.T) {
+	inst := testcorpus.New(t, "mgo", "Default")
+	inst.Mod("Browsed", true, map[string]string{"MCM/Config/X/config.json": "{}", "MCM/.DS_Store": "x", "MCM/Config/._config.json": "x", "McmRecorder/Thumbs.db": "x", "MCM/desktop.ini": "x"})
+	src, _ := Check(inst.Dir, "")
+	l, _ := Read(src)
+	l.Index(MCMScope)
+	if files := l.Files(""); len(files) != 1 || files[0].Path != "MCM/Config/X/config.json" {
+		t.Errorf("indexed %+v", files)
+	}
+}
+
 func TestResolveMatchesCaseAsWindowsDoes(t *testing.T) {
 	root := t.TempDir()
 	os.MkdirAll(filepath.Join(root, "Source", "scripts"), 0o755)

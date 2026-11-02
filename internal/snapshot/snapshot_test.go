@@ -49,6 +49,7 @@ func build(t *testing.T) *testcorpus.Instance {
 	})
 	inst.Mod("Recs", true, map[string]string{
 		"McmRecorder/My.json":            `{"name": "My", "version": "1.0.0", "author": "me", "autorun": "false"}`,
+		"McmRecorder/.DS_Store":          "Finder was here",
 		"McmRecorder/My/0001_Alpha.json": `[{"Mod": "Alpha", "page": "Settings", "option": "Thing", "toggle": "on"}, {"mod": "Alpha", "option": "Slide ", "index": 2, "slider": 25.0}]`,
 	})
 	inst.Mod("Off", false, map[string]string{"MCM/Config/Off/config.json": "{}", "Off.esp": "p"})
@@ -231,8 +232,10 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 				t.Fatal(err)
 			}
 			have := map[string]bool{}
+			// What the snapshot holds, without what browsing it left (Finder's
+			// .DS_Store files).
 			filepath.WalkDir(filepath.Join(snap.Dir), func(p string, d os.DirEntry, err error) error {
-				if err == nil && !d.IsDir() {
+				if err == nil && !d.IsDir() && !modlist.Clutter(d.Name()) {
 					rel, _ := filepath.Rel(snap.Dir, p)
 					have[filepath.ToSlash(rel)] = true
 				}
@@ -243,7 +246,7 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 			for _, f := range inv.Files {
 				got[f.Path] = true
 				if !have[f.Path] {
-					t.Errorf("copied %s, which the script didn't", f.Path)
+					t.Errorf("copied %s, which the snapshot doesn't hold", f.Path)
 				}
 			}
 			// The script found MCM scripts by a text search, which also took
@@ -266,7 +269,7 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 					continue
 				}
 				if !got[p] {
-					t.Errorf("missed %s, which the script copied", p)
+					t.Errorf("missed %s, which the snapshot holds", p)
 				}
 			}
 			// plugins.txt comes out the same, line for line. modlist.txt keeps

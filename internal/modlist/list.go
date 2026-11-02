@@ -180,6 +180,17 @@ var MCMScope = Scope{
 	TopLevel: IsPlugin,
 }
 
+// Clutter reports whether a file is one an operating system leaves in
+// folders it shows (Finder's .DS_Store and ._ files, Windows's Thumbs.db
+// and desktop.ini), which no game or mod reads.
+func Clutter(name string) bool {
+	switch strings.ToLower(name) {
+	case ".ds_store", "thumbs.db", "desktop.ini":
+		return true
+	}
+	return strings.HasPrefix(name, "._")
+}
+
 // IsPlugin reports whether name is a plugin file's.
 func IsPlugin(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
@@ -212,7 +223,7 @@ func (l *List) Index(scope Scope) {
 				continue
 			}
 			filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
+				if err != nil || d.IsDir() || Clutter(d.Name()) {
 					return nil
 				}
 				inside, _ := filepath.Rel(dir, p)

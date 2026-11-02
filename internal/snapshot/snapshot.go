@@ -557,7 +557,7 @@ func listFiles(dir string) []string {
 func allFiles(dir string) []string {
 	var out []string
 	filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() {
+		if err == nil && !d.IsDir() && !modlist.Clutter(d.Name()) {
 			out = append(out, p)
 		}
 		return nil
