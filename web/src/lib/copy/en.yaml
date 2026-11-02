@@ -473,8 +473,8 @@ draft:
   use: Use
   running: Skyrim is running, so Save waits until you close it.
   chooseFolder: Choose the folder Save writes to. It writes the recording into a McmRecorder folder there.
-  newMod: There’s no mod folder named {mod} yet. Save makes it, and MO2 then lists it as a new mod, disabled; enable it so the game reads the recording.
-  notListed: The mod folder {mod} is there, but this profile doesn’t list it yet. MO2 adds it as a new mod, disabled; enable it so the game reads the recording, then rescan here.
+  newMod: There’s no mod folder named {mod} yet. Save makes it, and MO2 then lists it as a new mod, disabled. Enable it so the game reads the recording.
+  notListed: The mod folder {mod} is there, but this profile doesn’t list it yet. MO2 adds it as a new mod, disabled. Enable it so the game reads the recording, then rescan here.
   disabled: "{mod} is disabled in this profile, so the game won’t read the recording until you enable it in MO2."
   losesTo: "{mod} also has this recording, and its copy wins, so the game replays that one instead."
 
