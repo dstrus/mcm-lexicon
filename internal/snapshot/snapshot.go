@@ -154,6 +154,7 @@ type writer struct {
 	inv    Inventory
 	kinds  map[string][]string // by mod
 	copied map[string]bool     // lowercase paths under mo2/
+	packed []modlist.File      // the archives copied
 }
 
 func (w *writer) run() error {
@@ -178,6 +179,11 @@ func (w *writer) run() error {
 		if err := w.mod(m, langs); err != nil {
 			return err
 		}
+	}
+	// An archive loads only beside its plugin, which may be another mod's
+	// (Sofia's SkyUI replacer holds only the archive).
+	if err := w.archivePlugins(); err != nil {
+		return err
 	}
 	// Translations often live in a mod without scripts (a separate "MCM"
 	// or translation mod), so pick up translation files from every enabled
@@ -299,6 +305,7 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 				return err
 			}
 			w.addKind(m.Name, fmt.Sprintf("archive:%d", packed))
+			w.packed = append(w.packed, af)
 		}
 	}
 	if source > 0 {
@@ -361,6 +368,32 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 					return err
 				}
 			}
+		}
+	}
+	return nil
+}
+
+// archivePlugins copies the plugin each copied archive is named after, as
+// the game sees it, when it isn't copied already.
+func (w *writer) archivePlugins() error {
+	for _, af := range w.packed {
+		base := strings.TrimSuffix(af.Path, filepath.Ext(af.Path))
+		if i := strings.LastIndex(strings.ToLower(base), " - textures"); i >= 0 && i == len(base)-len(" - textures") {
+			base = base[:i]
+		}
+		for _, ext := range []string{".esp", ".esm", ".esl"} {
+			p, ok := w.list.Open(base + ext)
+			if !ok || !w.list.PluginActive(p.Path) {
+				continue
+			}
+			dest := "mods/" + p.Mod + "/" + p.Path
+			if !w.copied[strings.ToLower(dest)] {
+				if err := w.copy(p.Abs, dest, p.Mod); err != nil {
+					return err
+				}
+				w.addKind(p.Mod, "plugin")
+			}
+			break
 		}
 	}
 	return nil
@@ -482,7 +515,7 @@ func (w *writer) markdown() string {
 	}
 	fmt.Fprintf(&b, "`mo2/` is a trimmed MO2 instance: %d of %d enabled mods, %d files, %.1f MB. It holds other authors' files: local testing only, never commit or share it.\n\n", inv.List.IncludedMods, inv.List.EnabledMods, len(inv.Files), float64(bytes)/(1024*1024))
 	b.WriteString("## Mods included\n\n")
-	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `recordings`, `translations` (only translation files for an included plugin).\n\n")
+	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `plugin` the plugin such an archive is named after, from a mod with nothing else included, `recordings`, `translations` (only translation files for an included plugin).\n\n")
 	b.WriteString("| Priority | Mod | Kinds |\n|---|---|---|\n")
 	// Numbered from the top of modlist.txt, counting enabled mods: the
 	// highest priority is 1.

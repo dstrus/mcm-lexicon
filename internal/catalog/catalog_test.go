@@ -468,9 +468,11 @@ func find(c *Catalog, mod, page string, typ OptionType, label string, index int)
 	return Option{}, false
 }
 
+// hasChoice compares as Papyrus does, without regard to case: R.A.S.S.'s
+// recording in Nordic chooses "off" from a menu that offers "Off".
 func hasChoice(o Option, raw string) bool {
 	for _, ch := range o.Choices {
-		if ch.Raw == raw {
+		if strings.EqualFold(ch.Raw, raw) {
 			return true
 		}
 	}

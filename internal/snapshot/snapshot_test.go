@@ -22,6 +22,15 @@ import (
 func build(t *testing.T) *testcorpus.Instance {
 	t.Helper()
 	inst := testcorpus.New(t, "[NoDelete] MGO", "VR")
+	// A replacer holding only an archive, whose plugin is in a mod with
+	// nothing else of interest (Sofia's SkyUI BSA replacer).
+	inst.Mod("Sofia", true, map[string]string{
+		"SofiaFollower.esp": "plugin",
+		"SofiaFollower.bsa": testcorpus.Archive(testcorpus.ArchiveOptions{}, map[string]string{"sound/voice/a.fuz": "x"}),
+	})
+	inst.Mod("Sofia - Replacer", true, map[string]string{
+		"SofiaFollower.bsa": testcorpus.Archive(testcorpus.ArchiveOptions{}, map[string]string{"scripts/sofia_mcm.pex": testcorpus.Compiled("Sofia_MCM", "SKI_ConfigBase")}),
+	})
 	inst.Mod("Nothing", true, map[string]string{"meshes/a.nif": "x", "Nothing.esp": "p", "Interface/Translations/Nothing_ENGLISH.txt": "t"})
 	inst.Mod("Alpha", true, map[string]string{
 		"Scripts/Alpha_MCM.pex":                    testcorpus.Compiled("Alpha_MCM", "Framework_Base"),
@@ -66,7 +75,7 @@ func build(t *testing.T) *testcorpus.Instance {
 	inst.Mod("Off", false, map[string]string{"MCM/Config/Off/config.json": "{}", "Off.esp": "p"})
 	inst.Unmanaged("DLC: Dawnguard")
 	inst.Overwrite(map[string]string{"MCM/Settings/Alpha.ini": "a=1", "McmRecorder/Late.json": "{}", "SKSE/Plugins/x.log": "no"})
-	inst.Plugins("*Alpha.esp", "Beta.esp", "*BetaPatch.esl", "*Nothing.esp", "*Packed.esp", "Inactive.esp", "*Off.esp")
+	inst.Plugins("*Alpha.esp", "Beta.esp", "*BetaPatch.esl", "*Nothing.esp", "*Packed.esp", "Inactive.esp", "*SofiaFollower.esp", "*Off.esp")
 	return inst
 }
 
@@ -136,6 +145,8 @@ func TestWriteFolder(t *testing.T) {
 		"mods/Recs/McmRecorder/My.json",
 		"mods/Recs/McmRecorder/My/0001_Alpha.json",
 		"mods/Settings Patch/MCM/Config/Beta/settings.ini",
+		"mods/Sofia - Replacer/SofiaFollower.bsa",
+		"mods/Sofia/SofiaFollower.esp",
 		"overwrite/MCM/Settings/Alpha.ini",
 		"overwrite/McmRecorder/Late.json",
 	}
@@ -153,7 +164,7 @@ func TestWriteFolder(t *testing.T) {
 			t.Errorf("%s: hash or size is off", f.Path)
 		}
 	}
-	if sum.Files != len(want) || sum.Mods != 6 || sum.Steps != 2 || sum.Out != out {
+	if sum.Files != len(want) || sum.Mods != 8 || sum.Steps != 2 || sum.Out != out {
 		t.Errorf("summary = %+v", sum)
 	}
 
@@ -162,10 +173,10 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range inv.Mods {
 		mods = append(mods, m.Name+" "+strings.Join(m.Kinds, ","))
 	}
-	if want := "Packed archive:1,source:1; Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1"; strings.Join(mods, "; ") != want {
+	if want := "Packed archive:1,source:1; Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1; Sofia - Replacer archive:1; Sofia plugin"; strings.Join(mods, "; ") != want {
 		t.Errorf("mods = %q", mods)
 	}
-	if inv.List.EnabledMods != 7 || inv.List.IncludedMods != 6 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
+	if inv.List.EnabledMods != 9 || inv.List.IncludedMods != 8 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
 		t.Errorf("list = %+v", inv.List)
 	}
 	// Steps, with keys in any case, and the value by its kind.
@@ -182,7 +193,7 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range l.Mods {
 		order = append(order, m.Name)
 	}
-	if want := "Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, Packed, DLC: Dawnguard, overwrite"; strings.Join(order, ", ") != want {
+	if want := "Sofia, Sofia - Replacer, Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, Packed, DLC: Dawnguard, overwrite"; strings.Join(order, ", ") != want {
 		t.Errorf("snapshot's order = %q", order)
 	}
 	if l.PluginActive("Beta.esp") || !l.PluginActive("Alpha.esp") || l.PluginActive("Nothing.esp") || !l.PluginActive("Packed.esp") || l.PluginActive("Inactive.esp") {
@@ -193,12 +204,15 @@ func TestWriteFolder(t *testing.T) {
 	if f, ok := l.Open("Scripts/Packed_MCM.pex"); !ok || f.Archive != "Packed.bsa" {
 		t.Errorf("the snapshot's packed script = %+v, %v", f, ok)
 	}
+	if f, ok := l.Open("Scripts/Sofia_MCM.pex"); !ok || f.Mod != "Sofia - Replacer" {
+		t.Errorf("the snapshot's replaced archive = %+v, %v", f, ok)
+	}
 	ini, _ := os.ReadFile(filepath.Join(out, "mo2", "ModOrganizer.ini"))
 	if string(ini) != "[General]\ngameName=Skyrim VR\nselected_profile=@ByteArray(VR)\n" {
 		t.Errorf("ModOrganizer.ini = %q", ini)
 	}
 	md, _ := os.ReadFile(filepath.Join(out, "SNAPSHOT.md"))
-	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "6 of 7 enabled mods, 21 files", "| 1 | Packed | archive:1, source:1 |", "| 2 | Recs | recordings |", "| 4 | Settings Patch | settings:1 |", "| 6 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
+	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "8 of 9 enabled mods, 23 files", "| 1 | Packed | archive:1, source:1 |", "| 2 | Recs | recordings |", "| 4 | Settings Patch | settings:1 |", "| 6 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
 		if !strings.Contains(string(md), want) {
 			t.Errorf("SNAPSHOT.md lacks %q:\n%s", want, md)
 		}
