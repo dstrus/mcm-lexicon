@@ -14,13 +14,17 @@
 </nav>
 
 <style>
+	/* Many tabs (a menu with a dozen pages) wrap to more rows; a label
+	   never breaks. */
 	nav {
 		display: flex;
-		gap: var(--space-5);
+		flex-wrap: wrap;
+		gap: 0 var(--space-5);
 		margin-top: var(--space-4);
 		border-bottom: 1px solid var(--rule);
 	}
 	a {
+		white-space: nowrap;
 		padding: var(--space-2) 0;
 		font-size: var(--step-1);
 		color: var(--muted);

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"lexicon/internal/catalog"
 	"lexicon/internal/prefs"
 	"lexicon/internal/testcorpus"
 )
@@ -160,16 +161,26 @@ func TestStatusAndSource(t *testing.T) {
 	}
 
 	// A catalog file takes the list's place, and the other way round.
-	catalog := filepath.Join(t.TempDir(), "mgo.json")
-	os.WriteFile(catalog, []byte("{}"), 0o644)
+	file := filepath.Join(t.TempDir(), "mgo.json")
+	if err := catalog.WriteFile(file, &catalog.Catalog{SchemaVersion: catalog.SchemaVersion, List: catalog.ListInfo{Name: "mgo"}}); err != nil {
+		t.Fatal(err)
+	}
+	notCatalog := filepath.Join(t.TempDir(), "notes.json")
+	os.WriteFile(notCatalog, []byte("{}"), 0o644)
 	h.call(400, "PUT", "/api/source", `{"catalog": "`+filepath.ToSlash(filepath.Join(t.TempDir(), "missing.json"))+`"}`, nil)
-	body, _ = json.Marshal(SourceRequest{Catalog: catalog})
+	h.call(400, "PUT", "/api/source", `{"catalog": "`+filepath.ToSlash(notCatalog)+`"}`, nil)
+	body, _ = json.Marshal(SourceRequest{Catalog: file})
 	h.call(200, "PUT", "/api/source", string(body), &st)
-	if st.Source != nil || st.CatalogFile != catalog {
+	if st.Source != nil || st.CatalogFile != file {
 		t.Errorf("after opening a catalog: %+v", st)
 	}
-	if v := h.prefs.Get(); v.ListDir != "" || v.CatalogFile != catalog {
+	if v := h.prefs.Get(); v.ListDir != "" || v.CatalogFile != file {
 		t.Errorf("remembered = %+v", v)
+	}
+	var menus catalog.MenusReply
+	w := h.request("GET", "/api/menus", "")
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &menus) != nil || menus.List.Name != "mgo" {
+		t.Errorf("menus from the catalog file: %d %s", w.Code, w.Body)
 	}
 	body, _ = json.Marshal(SourceRequest{Path: h.list})
 	h.call(200, "PUT", "/api/source", string(body), &st)

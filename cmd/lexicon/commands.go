@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"lexicon/internal/catalog"
 	"lexicon/internal/modlist"
 	"lexicon/internal/snapshot"
 )
@@ -43,13 +45,33 @@ func listFlags(fs *flag.FlagSet) func() *modlist.List {
 }
 
 // runScan reads a list and prints its mods with the files the game sees
-// from each, within what MCM Lexicon reads.
+// from each, within what MCM Lexicon reads; or, with -json, writes the
+// list's catalog.
 func runScan(args []string) {
 	fs := flag.NewFlagSet("lexicon scan", flag.ExitOnError)
 	read := listFlags(fs)
 	all := fs.Bool("all", false, "list every enabled mod, not only those with files MCM Lexicon reads")
+	asJSON := fs.Bool("json", false, "write the list's catalog as JSON, to -o or to standard output")
+	out := fs.String("o", "", "with -json, the catalog file to write (a .json file)")
+	language := fs.String("language", "ENGLISH", "the translations to read, as their file names spell the language")
 	fs.Parse(args)
 	l := read()
+	if *asJSON {
+		c := catalog.Scan(l, catalog.Options{Language: *language, Version: version})
+		if *out == "" {
+			b, err := catalog.Marshal(c)
+			if err != nil {
+				exit("%v", err)
+			}
+			os.Stdout.Write(b)
+			return
+		}
+		if err := catalog.WriteFile(*out, c); err != nil {
+			exit("%v", err)
+		}
+		fmt.Printf("Wrote %s: %d menus, %d not read\n", *out, len(c.Menus), len(c.Skipped))
+		return
+	}
 	l.Index(modlist.MCMScope)
 
 	fmt.Printf("%s", describe(l))

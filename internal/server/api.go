@@ -1,6 +1,9 @@
 package server
 
-import "lexicon/internal/modlist"
+import (
+	"lexicon/internal/catalog"
+	"lexicon/internal/modlist"
+)
 
 // The server's own requests and replies; each domain declares its own.
 
@@ -19,6 +22,7 @@ type Ping struct {
 type Status struct {
 	Source      *modlist.Source `json:"source,omitempty"` // the list being read; absent until one is chosen
 	CatalogFile string          `json:"catalogFile"`      // a catalog opened instead of a list; "" otherwise
+	Scan        catalog.State   `json:"scan"`             // the catalog: scanning, when it was scanned, and any failure
 	GameRunning bool            `json:"gameRunning"`
 	Version     string          `json:"version"` // MCM Lexicon's own
 	Theme       string          `json:"theme"`   // "system", "dark" or "light"
@@ -36,10 +40,11 @@ type ThemeRequest struct {
 }
 
 func (s *Server) status() Status {
-	source, catalog := s.Source()
+	source, file := s.Source()
 	return Status{
 		Source:      source,
-		CatalogFile: catalog,
+		CatalogFile: file,
+		Scan:        s.catalog.State(),
 		GameRunning: s.Running != nil && s.Running(),
 		Version:     s.Version,
 		Theme:       s.Prefs.Get().ThemeOf(),

@@ -1,9 +1,11 @@
 <script lang="ts">
 	import '#lib/ui/theme.css';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
-	import { live, watchGame } from '#lib/api/live.svelte.ts';
+	import { live, watchStatus } from '#lib/api/live.svelte.ts';
+	import { menusDependency } from '#lib/menus/api.ts';
+	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import { setSource } from '#lib/api/status.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import SourceForm from '#lib/source/SourceForm.svelte';
@@ -16,7 +18,7 @@
 
 	let { data, children }: LayoutProps = $props();
 
-	$effect(() => watchGame(data.status.gameRunning));
+	$effect(() => watchStatus(data.status, () => invalidate(menusDependency)));
 
 	let source = $derived(data.status.source);
 	let catalog = $derived(data.status.catalogFile);
@@ -41,7 +43,14 @@
 	// A section is current at its URL or below it.
 	const here = (path: string) => page.url.pathname === path || page.url.pathname.startsWith(`${path}/`);
 	// The sections that aren't built yet, named in the column as they'll be.
-	const unbuilt = [m.nav.search, m.nav.recordings, m.nav.compare];
+	const unbuilt = [m.nav.recordings, m.nav.compare];
+
+	// When the catalog was scanned: the time today, the date before that.
+	function scannedLabel(iso: string): string {
+		const when = new Date(iso);
+		const today = new Date().toDateString() === when.toDateString();
+		return m.shell.scannedAt({ when: today ? when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : when.toLocaleDateString(undefined, { dateStyle: 'medium' }) });
+	}
 </script>
 
 <svelte:window onkeydown={handleKey} />
@@ -65,6 +74,11 @@
 					<span class="file" title={catalog} use:clipped>{fileName(catalog)}</span>
 				</span>
 			{/if}
+			{#if open && live.scan.scanning}
+				<span class="scan caps" role="status">{m.shell.scanning}</span>
+			{:else if open && live.scan.scannedAt}
+				<span class="scan caps">{scannedLabel(live.scan.scannedAt)}</span>
+			{/if}
 			<span class="game caps" class:running={live.gameRunning} role="status">
 				{live.gameRunning ? m.shell.gameRunning : m.shell.gameClosed}
 			</span>
@@ -78,6 +92,7 @@
 		<nav class="sections" aria-label={m.nav.sections} use:fitToViewport>
 			<ul>
 				<li><a class="caps" href="/menus" aria-current={here('/menus') ? 'page' : undefined}>{m.nav.menus}</a></li>
+				<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
 			</ul>
 			<p class="group caps">{m.nav.notBuiltYet}</p>
 			<ul aria-label={m.nav.notBuiltYet}>
@@ -87,6 +102,7 @@
 			</ul>
 		</nav>
 		<main>{@render children()}</main>
+		<QuickFind menus={data.menus?.menus ?? []} />
 	{/if}
 
 	<HintBar />
@@ -146,7 +162,8 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.game {
+	.game,
+	.scan {
 		font-size: var(--step--1);
 		color: var(--muted);
 	}

@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"lexicon/internal/apperr"
+	"lexicon/internal/catalog"
 	"lexicon/internal/httpapi"
 	"lexicon/internal/modlist"
 	"lexicon/internal/prefs"
@@ -41,12 +42,13 @@ type Options struct {
 
 type Server struct {
 	Options
-	index []byte // index.html, with the token filled in
-	api   *http.ServeMux
+	index   []byte // index.html, with the token filled in
+	api     *http.ServeMux
+	catalog *catalog.Service
 
-	mu      sync.Mutex
-	source  *modlist.Source
-	catalog string
+	mu          sync.Mutex
+	source      *modlist.Source
+	catalogFile string
 }
 
 func New(o Options) (*Server, error) {
@@ -54,9 +56,18 @@ func New(o Options) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the frontend isn't built: %w", err)
 	}
-	s := &Server{Options: o, index: bytes.ReplaceAll(index, tokenPlaceholder, []byte(o.Token)), api: http.NewServeMux(), source: o.Source, catalog: o.Catalog}
-	if s.source != nil {
-		s.catalog = "" // a list and a catalog aren't open at once
+	s := &Server{Options: o, index: bytes.ReplaceAll(index, tokenPlaceholder, []byte(o.Token)), api: http.NewServeMux(), catalog: catalog.NewService(o.Version)}
+	switch {
+	case o.Source != nil:
+		s.source = o.Source
+		s.catalog.UseList(*o.Source)
+	case o.Catalog != "":
+		// A catalog file remembered from last time, if it still reads.
+		if err := s.catalog.UseFile(o.Catalog); err != nil {
+			log.Printf("Not opening the catalog from last time: %v", err)
+		} else {
+			s.catalogFile = o.Catalog
+		}
 	}
 	s.routes()
 	return s, nil
@@ -90,6 +101,8 @@ func (s *Server) routes() {
 		return s.status(), nil
 	}))
 
+	s.catalog.Routes(m)
+
 	m.Handle("/api/", httpapi.JSON(func(r *http.Request, _ httpapi.None) (httpapi.None, error) {
 		return httpapi.None{}, apperr.New(apperr.NotFound, "Unknown endpoint: %s %s", r.Method, r.URL.Path)
 	}))
@@ -104,8 +117,9 @@ func (s *Server) SetSource(path, profile string) (modlist.Source, error) {
 	}
 	s.mu.Lock()
 	s.source = &src
-	s.catalog = ""
+	s.catalogFile = ""
 	s.mu.Unlock()
+	s.catalog.UseList(src)
 	log.Printf("Mod list: %s", src.Path)
 	s.Prefs.Update(func(v *prefs.Values) {
 		v.ListDir = src.Path
@@ -116,16 +130,17 @@ func (s *Server) SetSource(path, profile string) (modlist.Source, error) {
 }
 
 // OpenCatalog opens a catalog file instead of a list, and remembers it.
-// Reading what it holds comes with the catalog itself; for now this checks
-// that the file is there.
 func (s *Server) OpenCatalog(path string) error {
 	file, err := modlist.CheckCatalog(path)
 	if err != nil {
 		return err
 	}
+	if err := s.catalog.UseFile(file); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	s.source = nil
-	s.catalog = file
+	s.catalogFile = file
 	s.mu.Unlock()
 	log.Printf("Catalog: %s", file)
 	s.Prefs.Update(func(v *prefs.Values) {
@@ -141,7 +156,7 @@ func (s *Server) OpenCatalog(path string) error {
 func (s *Server) Source() (*modlist.Source, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.source, s.catalog
+	return s.source, s.catalogFile
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

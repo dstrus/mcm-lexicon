@@ -15,11 +15,20 @@ packages:
     output_path: web/src/lib/api/types/modlist.ts
     fallback_type: unknown
     enum_style: union
+  - path: lexicon/internal/catalog
+    include_files: [model.go, search.go, service.go]
+    output_path: web/src/lib/api/types/catalog.ts
+    fallback_type: unknown
+    enum_style: union
+    type_mappings:
+      time.Time: string
   - path: lexicon/internal/server
     include_files: [api.go]
     output_path: web/src/lib/api/types/api.ts
     fallback_type: unknown
     frontmatter: |
+      import type * as catalog from './catalog.ts';
       import type * as modlist from './modlist.ts';
     type_mappings:
+      catalog.State: catalog.State
       modlist.Source: modlist.Source

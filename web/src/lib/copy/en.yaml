@@ -16,6 +16,7 @@ common:
   cancel: Cancel
   save: Save
   gameRunning: Skyrim is running, so nothing can be written until you close it.
+  noMatch: Nothing matches “{query}”.
 
 shell:
   name: MCM Lexicon
@@ -23,6 +24,8 @@ shell:
   catalog: Catalog
   gameRunning: Skyrim running · read-only
   gameClosed: Skyrim closed
+  scanning: Scanning
+  scannedAt: Scanned {when}
   notResponding: MCM Lexicon isn’t responding. Check that it’s still running, then reload the page.
   # A request that failed without saying why.
   requestFailed: "{method} {path} failed ({status})"
@@ -66,13 +69,188 @@ source:
   catalogFile: Catalog file
   open: Open this catalog
 
+# Quick find, from any page.
+find:
+  shortcut: Find
+  title: Find a menu
+  input: Menu name
+  matches: Menus found
+
 # The menus of the list: every MCM it holds.
 menus:
   title: Menus
   inInstance: Mod Organizer 2 instance at {path}, profile {profile}
   inData: Data folder at {path}
-  inCatalog: Catalog {path}
-  notYet: MCM Lexicon doesn’t read the list yet. This page fills in once it does.
+  inCatalog: Catalog {path}, made from {list}
+  which:
+    label: Which menus
+    all: All
+    active: Active
+  count:
+    one: "{count} menu"
+    other: "{count} menus"
+  inactiveCount: "{count} inactive"
+  filter: Filter by name or mod
+  filterLabel: Filter menus
+  rescan: Rescan
+  firstScan: Reading the list’s menus. This takes a moment on a large list.
+  scanFailed: "The scan failed: {error}"
+  none: No menus were found in this list. MCM Lexicon looks in each mod’s MCM folder for MCM Helper’s menus.
+  pane: Menu
+
+  # The table.
+  menu: Menu
+  mod: Mod
+  kind: Kind
+  pages: Pages
+  options: Options
+  kinds:
+    mcmhelper: MCM Helper
+    source: Source
+    compiled: Compiled
+    framework: Framework
+
+  # What isn't read yet.
+  papyrus:
+    one: "{count} menu is a Papyrus script, which MCM Lexicon doesn’t read yet, so it isn’t listed."
+    other: "{count} menus are Papyrus scripts, which MCM Lexicon doesn’t read yet, so they aren’t listed."
+  showThem: Show them
+  hideThem: Hide them
+  unreadable:
+    one: "{count} file couldn’t be read:"
+    other: "{count} files couldn’t be read:"
+
+  # The pane.
+  plugin: Plugin
+  config: Config
+  script: Script
+  definedIn: Defined in
+  certainty: Certainty
+  allExact:
+    one: Its option is exact.
+    other: All {count} options are exact.
+  someUncertain: "{uncertain} of {count} options are built at runtime."
+  noOptions: It has no options a recording can set.
+  inactive: "Its plugin, {plugin}, isn’t active in this profile, so the game won’t show this menu."
+  noPlugin: Its mod has no plugin, so whether the game loads this menu isn’t known.
+  overridden: Also in {mod}, which loses to this copy.
+
+# One menu: its pages as tabs, and its options.
+menu:
+  up: Menus
+  pages: Pages
+  mainPage: Main
+  noOptions: This page has nothing a recording can set.
+  noPages: This menu has nothing a recording can set.
+  pane: Option
+
+  # The table.
+  option: Option
+  type: Type
+  allowed: Allowed
+  default: Default
+  saved: Saved
+  indexOf: "{n} of {count}"
+
+# One option, in the pane.
+option:
+  selector: Selector
+  type: Type
+  index: Index
+  indexOf: "{n} of the options with this label and type on this page; a recording says which"
+  range: Range
+  shownAs: Shown as {example}
+  choices: Choices
+  default: Default
+  saved: Saved
+  setting: Setting
+  definedIn: Defined in
+  help: In the menu
+  pattern: This label is built while the game runs, so a recording can only match it with a *wildcard* around its fixed parts.
+  unknown: This label is only known while the game runs, so a recording can’t name it.
+  stepper: A stepper moves to its next choice on each click, so a recording can only click it.
+  savedNote: Your saved value, {value}, differs from the mod’s default.
+  types:
+    toggle: Toggle
+    slider: Slider
+    menu: Menu
+    keymap: Key
+    color: Color
+    input: Text input
+    text: Text
+    stepper: Stepper
+
+# How values read.
+values:
+  "on": "On"
+  "off": "Off"
+  empty: (empty)
+  noLabel: (no label)
+  edgeSpace: Ends with a space. MCM Recorder matches it exactly.
+  choiceNumber: Choice {n}
+  onOrOff: On or off
+  range: "{min} to {max} by {step}"
+  aNumber: A number
+  aChoice: A choice
+  andMore: "{shown}, +{count} more"
+  aKey: A key
+  aColor: A color
+  text: Text
+  click: Click
+  clickToCycle: Click to cycle
+
+# Search across every menu.
+search:
+  title: Search
+  input: Search every menu’s options
+  inputLabel: Search options
+  lead: Every option in every menu, by its label, its page, its menu, or its mod.
+  results:
+    one: "{count} option"
+    other: "{count} options"
+  cut: Showing the first {shown} of {count}. Add a word to narrow it.
+  openMenu: Open menu
+  page: Page
+  pane: Option
+
+# Key names, for keymap options.
+keys:
+  none: No key
+  code: Key {code}
+  esc: Esc
+  backspace: Backspace
+  tab: Tab
+  enter: Enter
+  space: Space
+  capsLock: Caps Lock
+  leftShift: Left Shift
+  rightShift: Right Shift
+  leftCtrl: Left Ctrl
+  rightCtrl: Right Ctrl
+  leftAlt: Left Alt
+  rightAlt: Right Alt
+  numpad: Num {key}
+  numpadEnter: Num Enter
+  numLock: Num Lock
+  scrollLock: Scroll Lock
+  printScreen: Print Screen
+  pause: Pause
+  home: Home
+  end: End
+  pageUp: Page Up
+  pageDown: Page Down
+  insert: Insert
+  delete: Delete
+  up: Up
+  down: Down
+  left: Left
+  right: Right
+  leftMouse: Left Mouse
+  rightMouse: Right Mouse
+  middleMouse: Middle Mouse
+  mouseButton: Mouse {n}
+  wheelUp: Wheel Up
+  wheelDown: Wheel Down
 
 # Controls many pages share.
 ui:
