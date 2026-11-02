@@ -1,6 +1,7 @@
 // What can change while a page is open: whether Skyrim is running (and so
 // whether anything can be saved), and the catalog's scan. The root layout
 // keeps it current, more often while a scan runs.
+import { untrack } from 'svelte';
 import type { Status } from './types/api.ts';
 import type { State } from './types/catalog.ts';
 import { getStatus } from './status.ts';
@@ -15,8 +16,14 @@ const whileScanning = 1_000;
 
 // watchStatus starts keeping live current from the status the page loaded
 // with, calling onScanned when a scan finishes; it returns a function that
-// stops it.
+// stops it. It's called from an effect, so it reads live untracked: the
+// effect writes live, and depending on it too would rerun the effect each
+// time it ran.
 export function watchStatus(initial: Status, onScanned: () => void): () => void {
+	return untrack(() => start(initial, onScanned));
+}
+
+function start(initial: Status, onScanned: () => void): () => void {
 	live.gameRunning = initial.gameRunning;
 	live.scan = initial.scan;
 	let timer: ReturnType<typeof setTimeout>;
