@@ -24,6 +24,7 @@ shell:
   name: MCM Lexicon
   recording: Adding to
   chooseRecording: Choose a recording
+  untickedOption: "{name} (mod not ticked)"
   recordingTitle: The recording A adds steps to, from any menu or search result
   mode: Read-only or editing
   session: Editing session
@@ -77,6 +78,7 @@ nav:
   recordingsGroup: Recordings
   addingHere: New steps go here
   unsavedHere: Has unsaved changes
+  untickedHere: Its mod isn’t ticked, so the game won’t play it
 
 # Choosing what to read: a mod list, or a catalog file.
 source:
@@ -370,6 +372,8 @@ recordings:
   delete: Delete
   restore: Restore
   deletedInDraft: Deleted in the draft
+  unlistedShort: Its mod isn’t ticked
+  unlisted: It’s saved in {mod}, which this profile doesn’t tick, so the game won’t play it. Tick the mod in MO2, then rescan here.
   deletedSays: The draft deletes it. Save removes its files from {mod}, after backing them up beside the list.
   deleteNew: It isn’t saved anywhere yet; discard it from its own page.
   deleteNotOurs: It’s in {mod}, where MCM Lexicon didn’t save it, so it isn’t deleted here. Delete it in its mod if you mean to.
@@ -523,7 +527,7 @@ info:
   autorun: Autorun
   autorunNote: With autorun on, MCM Recorder plays it by itself when a new game starts.
   none: None
-  kept: Each change goes into the draft as you make it; Save all on Changes writes it.
+  kept: Each change goes into a draft as you make it. Save the draft on the Changes page.
 
 # The files Save writes.
 files:

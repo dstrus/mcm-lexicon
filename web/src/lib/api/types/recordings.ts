@@ -30,6 +30,12 @@ export interface Recording {
   losing: string[]; // other mods with a copy of its info file, which lose
   problems: Problem[];
   steps: Step[]; // every step, in replay order
+  /**
+   * Unlisted is a recording in a folder MCM Lexicon saved to that the
+   * profile doesn't have ticked (a new mod MO2 hasn't listed, or one left
+   * unticked): it's on disk, but the game won't play it.
+   */
+  unlisted: boolean;
 }
 /**
  * File is a step file.
@@ -108,6 +114,7 @@ export interface Summary {
   deleted: boolean; // the draft deletes it
   new: boolean; // it's only a draft, never saved
   deletes: string; // why it can't be deleted; "" when it can
+  unlisted: boolean; // in a folder MCM Lexicon saved to that the profile doesn't tick
 }
 export interface ListReply {
   recordings: Summary[];

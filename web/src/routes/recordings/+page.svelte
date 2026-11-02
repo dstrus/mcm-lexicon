@@ -190,7 +190,7 @@
 						<td class="name">
 							<a href={recordingHref(r.name)}>{r.name}</a>
 							{#if r.title && r.title !== r.name}<span class="muted sub">{r.title}</span>{/if}
-							{#if r.deleted}<span class="muted sub">{t.deletedInDraft}</span>{:else if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
+							{#if r.deleted}<span class="muted sub">{t.deletedInDraft}</span>{:else if r.unlisted}<span class="sub warn">{t.unlistedShort}</span>{:else if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
 						</td>
 						<td class="mod muted"><span use:clipped>{r.mod}</span>{#if r.losing.length}<span class="sub">{t.losing({ mods: r.losing.join(', ') })}</span>{/if}</td>
 						<td class="n">{count(r.steps)}</td>
@@ -217,6 +217,7 @@
 					<dt class="caps">{t.steps}</dt><dd>{count(current.steps)}</dd>
 				</dl>
 				<div class="summary">
+					{#if current.unlisted && !current.deleted}<p class="notice warn">{t.unlisted({ mod: current.mod })}</p>{/if}
 					{#if current.deleted}<p class="notice warn">{t.deletedSays({ mod: current.mod })}</p>{:else if current.new}<p class="notice">{t.newNotSaved}</p>{:else if current.drafted}<p class="notice">{t.draftHeld}</p>{/if}
 					{#if current.steps && failing(current) === 0 && current.counts.unchecked === 0 && current.counts.modMissing === 0}
 						<p>{t.allMatch({ count: current.steps })}</p>
@@ -326,6 +327,9 @@
 	}
 	.name a:hover {
 		text-decoration: underline;
+	}
+	.sub.warn {
+		color: var(--warn);
 	}
 	.sub {
 		display: block;

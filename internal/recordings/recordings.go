@@ -12,8 +12,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,7 +37,11 @@ type Recording struct {
 	Losing   []string  `json:"losing"` // other mods with a copy of its info file, which lose
 	Problems []Problem `json:"problems"`
 	Steps    []Step    `json:"steps"` // every step, in replay order
-	byFile   [][]Step  // the steps of each file
+	// Unlisted is a recording in a folder MCM Lexicon saved to that the
+	// profile doesn't have ticked (a new mod MO2 hasn't listed, or one left
+	// unticked): it's on disk, but the game won't play it.
+	Unlisted bool     `json:"unlisted"`
+	byFile   [][]Step // the steps of each file
 }
 
 // File is a step file.
@@ -95,6 +101,37 @@ type Problem struct {
 // Read reads every recording in the list, in name order. The list must be
 // indexed.
 func Read(l *modlist.List) []*Recording {
+	return read(l.Files("McmRecorder"), l.Copies)
+}
+
+// ReadFolder reads the recordings in one mod folder's McmRecorder, as if
+// it were the only mod: for a folder the list doesn't read (unticked, or
+// not listed yet).
+func ReadFolder(dir, mod string) []*Recording {
+	root, rel, ok := modlist.Resolve(dir, "McmRecorder")
+	if !ok || !modlist.IsDir(root) {
+		return nil
+	}
+	var files []modlist.File
+	filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || modlist.Clutter(d.Name()) {
+			return nil
+		}
+		inside, _ := filepath.Rel(root, p)
+		files = append(files, modlist.File{Path: rel + "/" + filepath.ToSlash(inside), Abs: p, Mod: mod})
+		return nil
+	})
+	sort.Slice(files, func(i, j int) bool { return strings.ToLower(files[i].Path) < strings.ToLower(files[j].Path) })
+	recs := read(files, func(string) []modlist.File { return []modlist.File{{}} })
+	for _, r := range recs {
+		r.Unlisted = true
+	}
+	return recs
+}
+
+// read builds recordings from the McmRecorder files the game sees; copies
+// is every copy of a path, the winning one first.
+func read(files []modlist.File, copies func(string) []modlist.File) []*Recording {
 	byName := map[string]*Recording{}
 	get := func(name string) *Recording {
 		k := strings.ToLower(name)
@@ -105,7 +142,7 @@ func Read(l *modlist.List) []*Recording {
 		byName[k] = r
 		return r
 	}
-	for _, f := range l.Files("McmRecorder") {
+	for _, f := range files {
 		parts := strings.Split(f.Path, "/")
 		if !strings.EqualFold(path.Ext(f.Path), ".json") || strings.HasPrefix(parts[1], ".") {
 			continue
@@ -115,7 +152,7 @@ func Read(l *modlist.List) []*Recording {
 			r := get(strings.TrimSuffix(parts[1], path.Ext(parts[1])))
 			r.Info, r.Mod = f.Path, f.Mod
 			readInfo(r, f)
-			for _, c := range l.Copies(f.Path)[1:] {
+			for _, c := range copies(f.Path)[1:] {
 				r.Losing = append(r.Losing, c.Mod)
 			}
 		case 3:

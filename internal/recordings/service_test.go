@@ -307,3 +307,59 @@ func TestEditingTheInfo(t *testing.T) {
 		t.Errorf("the file name changed to %q", ed.Draft.Name)
 	}
 }
+
+// A recording saved to a new mod folder stays listed, marked, after Save,
+// after a restart, and once MO2 lists the folder unticked.
+func TestSavedToANewFolderStaysListed(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	h.call("POST", "/api/recordings", CreateRequest{Name: "Fresh"}, nil)
+	h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "on"}}, nil)
+	if code := h.call("POST", "/api/changes/save", nil, nil); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+	listed := func(svc *Service) *Summary {
+		t.Helper()
+		h.svc = svc
+		var list ListReply
+		h.call("GET", "/api/recordings", nil, &list)
+		for i, r := range list.Recordings {
+			if r.Name == "Fresh" {
+				return &list.Recordings[i]
+			}
+		}
+		return nil
+	}
+	if r := listed(h.svc); r == nil || !r.Unlisted || r.New || r.Drafted || r.Steps != 1 || r.Mod != DefaultTarget {
+		t.Fatalf("after saving: %+v", r)
+	}
+	// A restart: the draft is gone, the folder's still read.
+	mux := http.NewServeMux()
+	restarted := NewService(h.svc.cat, h.svc.prefs, nil)
+	restarted.Routes(mux)
+	h.mux = mux
+	if r := listed(restarted); r == nil || !r.Unlisted {
+		t.Fatalf("after a restart: %+v", r)
+	}
+	// MO2 lists the folder, unticked; it's still shown, and can be added to.
+	h.inst.Mod(DefaultTarget, false, nil)
+	src, _ := modlist.Check(h.inst.Dir, "")
+	cat := catalog.NewService("test")
+	cat.UseList(src)
+	unticked := NewService(cat, h.svc.prefs, nil)
+	unticked.SetEditing(true, false)
+	h.mux = http.NewServeMux()
+	unticked.Routes(h.mux)
+	if r := listed(unticked); r == nil || !r.Unlisted {
+		t.Fatalf("listed unticked: %+v", r)
+	}
+	var added AddReply
+	if code := h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Height", Kind: KindSlider, Value: "2"}}, &added); code != 200 || added.Number != 2 {
+		t.Errorf("adding to it: %d, %+v", code, added)
+	}
+	var ed Editor
+	h.call("GET", "/api/recordings/Fresh", nil, &ed)
+	if ed.Target.Kind != TargetKindMod || ed.Target.Enabled || ed.Target.Name != DefaultTarget {
+		t.Errorf("its target: %+v", ed.Target)
+	}
+}

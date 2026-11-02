@@ -40,10 +40,11 @@ type Summary struct {
 	Menus    int       `json:"menus"` // the menus its steps name
 	Counts   Counts    `json:"counts"`
 	Problems []Problem `json:"problems"`
-	Drafted  bool      `json:"drafted"` // it has changes not yet saved
-	Deleted  bool      `json:"deleted"` // the draft deletes it
-	New      bool      `json:"new"`     // it's only a draft, never saved
-	Deletes  string    `json:"deletes"` // why it can't be deleted; "" when it can
+	Drafted  bool      `json:"drafted"`  // it has changes not yet saved
+	Deleted  bool      `json:"deleted"`  // the draft deletes it
+	New      bool      `json:"new"`      // it's only a draft, never saved
+	Deletes  string    `json:"deletes"`  // why it can't be deleted; "" when it can
+	Unlisted bool      `json:"unlisted"` // in a folder MCM Lexicon saved to that the profile doesn't tick
 }
 
 type ListReply struct {
@@ -257,16 +258,36 @@ func (s *Service) env(r *http.Request) (*env, error) {
 	default:
 		e.key = file
 	}
-	if l != nil {
-		e.recs = Read(l)
-	}
 	s.mu.Lock()
 	if s.from != e.key {
 		s.from = e.key
 		s.reset()
 	}
 	s.mu.Unlock()
+	s.read(e)
 	return e, nil
+}
+
+// read reads the recordings: those the list's game sees, then those in the
+// folders MCM Lexicon saved to that the profile doesn't tick, marked as
+// such (a recording saved to a new mod folder stays in view until MO2
+// lists it and it's ticked).
+func (s *Service) read(e *env) {
+	if e.list == nil {
+		return
+	}
+	e.recs = Read(e.list)
+	for _, name := range s.prefs.Get().WroteTo[e.key] {
+		if m, ok := e.list.Mod(name); ok && (m.Enabled || m.Layer != modlist.LayerMod) {
+			continue // read with the list
+		}
+		for _, r := range ReadFolder(filepath.Join(e.list.Source.Path, "mods", name), name) {
+			if e.recording(r.Name) == nil {
+				e.recs = append(e.recs, r)
+			}
+		}
+	}
+	sort.Slice(e.recs, func(i, j int) bool { return strings.ToLower(e.recs[i].Name) < strings.ToLower(e.recs[j].Name) })
 }
 
 func (e *env) recording(name string) *Recording {
@@ -974,7 +995,7 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 	})
 	if e.list != nil {
 		e.list.Refresh("McmRecorder")
-		e.recs = Read(e.list)
+		s.read(e)
 	}
 	if e.list == nil || e.recording(name) == nil {
 		// Saved where this list doesn't see it (a new mod folder, unticked,
@@ -1077,7 +1098,7 @@ func (s *Service) deleteNow(e *env, name string) (DeleteReply, error) {
 	delete(s.saved, strings.ToLower(rec.Name))
 	s.mu.Unlock()
 	e.list.Refresh("McmRecorder")
-	e.recs = Read(e.list)
+	s.read(e)
 	s.prefs.Update(func(v *prefs.Values) {
 		if strings.EqualFold(v.OpenRecording, rec.Name) {
 			v.OpenRecording = ""
@@ -1198,7 +1219,7 @@ func summarize(r *Recording, c *catalog.Catalog) Summary {
 	return Summary{
 		Name: r.Name, Title: r.Title, Version: r.Version, Author: r.Author, Autorun: r.Autorun,
 		Mod: r.Mod, Info: r.Info, Losing: r.Losing, Steps: len(r.Steps), Files: len(r.Files), Menus: len(menus),
-		Counts: Count(checks), Problems: r.Problems,
+		Counts: Count(checks), Problems: r.Problems, Unlisted: r.Unlisted,
 	}
 }
 
