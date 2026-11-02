@@ -17,6 +17,8 @@ common:
   save: Save
   gameRunning: Skyrim is running, so nothing can be written until you close it.
   noMatch: Nothing matches “{query}”.
+  # A file packed in a Bethesda archive (.bsa), after the file's path.
+  inArchive: in {archive}
 
 shell:
   name: MCM Lexicon

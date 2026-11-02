@@ -147,7 +147,7 @@ func Read(l *modlist.List) []*Recording {
 }
 
 func readInfo(r *Recording, f modlist.File) {
-	b, err := os.ReadFile(f.Abs)
+	b, err := f.Read()
 	if err != nil {
 		r.Problems = append(r.Problems, Problem{Kind: ProblemUnreadable, Path: f.Path, Detail: err.Error()})
 		return

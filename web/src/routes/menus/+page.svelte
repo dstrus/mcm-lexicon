@@ -105,7 +105,7 @@
 			<li class:inactive={s.plugin && !s.active}>
 				{#if s.nameText}<span class="title">{s.nameText}</span>{/if}
 				<span class="file">{s.path.replace(/^Scripts\//i, '')}</span>
-				<span class="muted">{s.plugin || s.mod}{#if s.plugin && !s.active}{' · '}{t.notActive}{/if}</span>
+				<span class="muted">{s.plugin || s.mod}{#if s.archive}{' · '}{m.common.inArchive({ archive: s.archive })}{/if}{#if s.plugin && !s.active}{' · '}{t.notActive}{/if}</span>
 			</li>
 		{/each}
 	</ul>
@@ -120,7 +120,7 @@
 		{#if unreadable.length}
 			<p class="notice warn">{t.unreadable({ count: unreadable.length })}</p>
 			<ul class="files">
-				{#each unreadable as s (s.path)}<li><span class="file">{s.path}</span> <span class="muted">{s.mod}: {s.detail}</span></li>{/each}
+				{#each unreadable as s (s.path)}<li><span class="file">{s.path}</span> <span class="muted">{s.mod}{#if s.archive}{' · '}{m.common.inArchive({ archive: s.archive })}{/if}: {s.detail}</span></li>{/each}
 			</ul>
 		{/if}
 	</div>
@@ -166,7 +166,7 @@
 					{#if current.name !== current.nameText}<dt class="caps">{m.option.selector}</dt><dd class="raw">{current.name}</dd>{/if}
 					{#if current.plugin}<dt class="caps">{t.plugin}</dt><dd>{current.plugin}</dd>{/if}
 					<dt class="caps">{current.kind === 'mcmhelper' ? t.config : t.script}</dt><dd>{current.script}</dd>
-					<dt class="caps">{t.definedIn}</dt><dd><span class="raw">{current.source.path}</span></dd>
+					<dt class="caps">{t.definedIn}</dt><dd><span class="raw">{current.source.path}</span>{#if current.source.archive}<span class="muted small">{m.common.inArchive({ archive: current.source.archive })}</span>{/if}</dd>
 					{#if current.pages}<dt class="caps">{t.pages}</dt><dd>{count(current.pages)}</dd>{/if}
 					<dt class="caps">{t.options}</dt><dd>{count(current.options)}</dd>
 					<dt class="caps">{t.certainty}</dt>
@@ -353,6 +353,10 @@
 	.pane dd {
 		margin: 0;
 		overflow-wrap: anywhere;
+	}
+	.pane dd .small {
+		display: block;
+		font-size: var(--step--1);
 	}
 	.raw {
 		font-family: var(--font-mono);

@@ -131,11 +131,13 @@ type Value struct {
 }
 
 // SourceRef is where something is defined: a file as the game sees it, the
-// mod it comes from, and a line when known.
+// mod it comes from, the archive it's packed in if it is, and a line when
+// known.
 type SourceRef struct {
-	Path string `json:"path"`
-	Mod  string `json:"mod"`
-	Line int    `json:"line"`
+	Path    string `json:"path"`
+	Mod     string `json:"mod"`
+	Archive string `json:"archive,omitempty"`
+	Line    int    `json:"line"`
 }
 
 // NoteKind says what a note is about; the page words it.
@@ -168,10 +170,11 @@ const (
 )
 
 type Skipped struct {
-	Path   string     `json:"path"`
-	Mod    string     `json:"mod"`
-	Reason SkipReason `json:"reason"`
-	Detail string     `json:"detail"`
+	Path    string     `json:"path"`
+	Mod     string     `json:"mod"`
+	Archive string     `json:"archive,omitempty"` // the archive it's packed in, if it is
+	Reason  SkipReason `json:"reason"`
+	Detail  string     `json:"detail"`
 	// For a Papyrus menu, what its quest in a plugin says, when one was
 	// found: the display name and pages its script's properties hold.
 	Name     string   `json:"name"`     // raw: may be a $KEY

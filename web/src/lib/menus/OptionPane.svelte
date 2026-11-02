@@ -54,7 +54,7 @@
 		<dd class="raw">{o.setting}</dd>
 	{/if}
 	<dt class="caps">{t.definedIn}</dt>
-	<dd><span class="raw">{o.source.path}</span><span class="muted small">{o.source.mod}</span></dd>
+	<dd><span class="raw">{o.source.path}</span>{#if o.source.archive}<span class="muted small">{m.common.inArchive({ archive: o.source.archive })}</span>{/if}<span class="muted small">{o.source.mod}</span></dd>
 </dl>
 
 {#if o.certainty !== 'exact'}

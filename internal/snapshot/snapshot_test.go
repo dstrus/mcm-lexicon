@@ -52,10 +52,21 @@ func build(t *testing.T) *testcorpus.Instance {
 		"McmRecorder/.DS_Store":          "Finder was here",
 		"McmRecorder/My/0001_Alpha.json": `[{"Mod": "Alpha", "page": "Settings", "option": "Thing", "toggle": "on"}, {"mod": "Alpha", "option": "Slide ", "index": 2, "slider": 25.0}]`,
 	})
+	// A menu packed in an archive, its source loose beside it (Extended
+	// Encounters); its textures archive, and an archive whose plugin is
+	// inactive, aren't copied.
+	inst.Mod("Packed", true, map[string]string{
+		"Packed.esp":            "plugin",
+		"Packed.bsa":            testcorpus.Archive(testcorpus.ArchiveOptions{}, map[string]string{"scripts/packed_mcm.pex": testcorpus.Compiled("Packed_MCM", "SKI_ConfigBase"), "meshes/a.nif": "x"}),
+		"Packed - Textures.bsa": testcorpus.Archive(testcorpus.ArchiveOptions{}, map[string]string{"textures/a.dds": "x"}),
+		"Source/packed_mcm.psc": "ScriptName Packed_MCM extends SKI_ConfigBase",
+		"Inactive.esp":          "plugin",
+		"Inactive.bsa":          testcorpus.Archive(testcorpus.ArchiveOptions{}, map[string]string{"scripts/inactive_mcm.pex": testcorpus.Compiled("Inactive_MCM", "SKI_ConfigBase")}),
+	})
 	inst.Mod("Off", false, map[string]string{"MCM/Config/Off/config.json": "{}", "Off.esp": "p"})
 	inst.Unmanaged("DLC: Dawnguard")
 	inst.Overwrite(map[string]string{"MCM/Settings/Alpha.ini": "a=1", "McmRecorder/Late.json": "{}", "SKSE/Plugins/x.log": "no"})
-	inst.Plugins("*Alpha.esp", "Beta.esp", "*BetaPatch.esl", "*Nothing.esp", "*Off.esp")
+	inst.Plugins("*Alpha.esp", "Beta.esp", "*BetaPatch.esl", "*Nothing.esp", "*Packed.esp", "Inactive.esp", "*Off.esp")
 	return inst
 }
 
@@ -118,6 +129,10 @@ func TestWriteFolder(t *testing.T) {
 		"mods/Beta Helper/MCM/Config/Beta/settings.ini",
 		"mods/Beta Helper/MCM/Settings/Beta.ini",
 		"mods/Beta Helper/Scripts/Beta_MCM.pex",
+		"mods/Packed/Inactive.esp",
+		"mods/Packed/Packed.bsa",
+		"mods/Packed/Packed.esp",
+		"mods/Packed/Source/packed_mcm.psc",
 		"mods/Recs/McmRecorder/My.json",
 		"mods/Recs/McmRecorder/My/0001_Alpha.json",
 		"mods/Settings Patch/MCM/Config/Beta/settings.ini",
@@ -138,7 +153,7 @@ func TestWriteFolder(t *testing.T) {
 			t.Errorf("%s: hash or size is off", f.Path)
 		}
 	}
-	if sum.Files != len(want) || sum.Mods != 5 || sum.Steps != 2 || sum.Out != out {
+	if sum.Files != len(want) || sum.Mods != 6 || sum.Steps != 2 || sum.Out != out {
 		t.Errorf("summary = %+v", sum)
 	}
 
@@ -147,10 +162,10 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range inv.Mods {
 		mods = append(mods, m.Name+" "+strings.Join(m.Kinds, ","))
 	}
-	if want := "Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1"; strings.Join(mods, "; ") != want {
+	if want := "Packed archive:1,source:1; Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1"; strings.Join(mods, "; ") != want {
 		t.Errorf("mods = %q", mods)
 	}
-	if inv.List.EnabledMods != 6 || inv.List.IncludedMods != 5 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
+	if inv.List.EnabledMods != 7 || inv.List.IncludedMods != 6 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
 		t.Errorf("list = %+v", inv.List)
 	}
 	// Steps, with keys in any case, and the value by its kind.
@@ -167,18 +182,23 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range l.Mods {
 		order = append(order, m.Name)
 	}
-	if want := "Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, DLC: Dawnguard, overwrite"; strings.Join(order, ", ") != want {
+	if want := "Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, Packed, DLC: Dawnguard, overwrite"; strings.Join(order, ", ") != want {
 		t.Errorf("snapshot's order = %q", order)
 	}
-	if l.PluginActive("Beta.esp") || !l.PluginActive("Alpha.esp") || l.PluginActive("Nothing.esp") {
+	if l.PluginActive("Beta.esp") || !l.PluginActive("Alpha.esp") || l.PluginActive("Nothing.esp") || !l.PluginActive("Packed.esp") || l.PluginActive("Inactive.esp") {
 		t.Error("plugins.txt wasn't trimmed with its marks kept")
+	}
+	// The copied archive loads in the snapshot as it did in the list.
+	l.Index(modlist.MCMScope)
+	if f, ok := l.Open("Scripts/Packed_MCM.pex"); !ok || f.Archive != "Packed.bsa" {
+		t.Errorf("the snapshot's packed script = %+v, %v", f, ok)
 	}
 	ini, _ := os.ReadFile(filepath.Join(out, "mo2", "ModOrganizer.ini"))
 	if string(ini) != "[General]\ngameName=Skyrim VR\nselected_profile=@ByteArray(VR)\n" {
 		t.Errorf("ModOrganizer.ini = %q", ini)
 	}
 	md, _ := os.ReadFile(filepath.Join(out, "SNAPSHOT.md"))
-	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "5 of 6 enabled mods, 17 files", "| 1 | Recs | recordings |", "| 3 | Settings Patch | settings:1 |", "| 5 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
+	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "6 of 7 enabled mods, 21 files", "| 1 | Packed | archive:1, source:1 |", "| 2 | Recs | recordings |", "| 4 | Settings Patch | settings:1 |", "| 6 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
 		if !strings.Contains(string(md), want) {
 			t.Errorf("SNAPSHOT.md lacks %q:\n%s", want, md)
 		}

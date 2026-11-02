@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"fmt"
-	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -47,6 +46,9 @@ func Scan(l *modlist.List, o Options) *Catalog {
 		Skipped: []Skipped{},
 	}
 	s := &scan{list: l, cat: c, tr: loadTranslations(l, c.List.Language), ids: map[string]bool{}}
+	for _, p := range l.ArchiveProblems() {
+		s.skip(p.File, SkipReasonUnreadable, p.Detail)
+	}
 	s.scripts()
 	s.plugins()
 	s.mcmHelper()
@@ -92,7 +94,7 @@ func loadTranslations(l *modlist.List, language string) *translations.Table {
 		if !ok || lang != language || strings.Count(f.Path, "/") != 2 {
 			continue
 		}
-		if b, err := os.ReadFile(f.Abs); err == nil {
+		if b, err := f.Read(); err == nil {
 			t.Add(base, b)
 		}
 	}
@@ -107,7 +109,7 @@ func (s *scan) mcmHelper() {
 			continue
 		}
 		id := parts[2]
-		b, err := os.ReadFile(f.Abs)
+		b, err := f.Read()
 		if err != nil {
 			s.skip(f, SkipReasonUnreadable, err.Error())
 			continue
@@ -144,7 +146,7 @@ func (s *scan) helperMenu(f modlist.File, id string, cfg mcmhelper.Config) Menu 
 		Script:    id,
 		Certainty: CertaintyExact,
 		Notes:     []Note{},
-		Source:    SourceRef{Path: f.Path, Mod: f.Mod},
+		Source:    SourceRef{Path: f.Path, Mod: f.Mod, Archive: f.Archive},
 	}
 	if plugin == "" {
 		m.Notes = append(m.Notes, Note{Kind: NoteKindNoPlugin, Detail: f.Mod})
@@ -324,7 +326,7 @@ func (s *scan) ini(rel string) mcmhelper.INI {
 	if !ok {
 		return mcmhelper.INI{}
 	}
-	b, err := os.ReadFile(f.Abs)
+	b, err := f.Read()
 	if err != nil {
 		return mcmhelper.INI{}
 	}
@@ -383,7 +385,7 @@ func (s *scan) quest(script string) (attachment, bool) {
 }
 
 func (s *scan) skip(f modlist.File, reason SkipReason, detail string) {
-	s.cat.Skipped = append(s.cat.Skipped, Skipped{Path: f.Path, Mod: f.Mod, Reason: reason, Detail: detail, Pages: []string{}})
+	s.cat.Skipped = append(s.cat.Skipped, Skipped{Path: f.Path, Mod: f.Mod, Archive: f.Archive, Reason: reason, Detail: detail, Pages: []string{}})
 }
 
 // id is a menu's ID: its kind and name, lowercased with anything but

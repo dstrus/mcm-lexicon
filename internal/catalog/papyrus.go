@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"os"
 	"path"
 	"sort"
 	"strings"
@@ -93,8 +92,11 @@ func (s *scan) form(name string) *form {
 	c, hasCompiled := s.compiled[name]
 	var compiled *pex.File
 	if hasCompiled {
-		var err error
-		if compiled, err = pex.ReadFile(c.Abs); err != nil {
+		b, err := c.Read()
+		if err == nil {
+			compiled, err = pex.Read(b)
+		}
+		if err != nil {
 			s.skip(c, SkipReasonUnreadable, err.Error())
 			compiled = nil
 		}
@@ -135,7 +137,7 @@ func (s *scan) source(name, mod string) (*parsedSource, string) {
 			break
 		}
 	}
-	b, err := os.ReadFile(f.Abs)
+	b, err := f.Read()
 	if err != nil {
 		return nil, ""
 	}
@@ -151,7 +153,7 @@ func (s *scan) source(name, mod string) (*parsedSource, string) {
 func (s *scan) papyrus() {
 	for _, sc := range s.classic {
 		a, attached := s.quest(sc.name)
-		sk := Skipped{Path: sc.pex.Path, Mod: sc.pex.Mod, Pages: []string{}}
+		sk := Skipped{Path: sc.pex.Path, Mod: sc.pex.Mod, Archive: sc.pex.Archive, Pages: []string{}}
 		if attached {
 			sk.Name, sk.Plugin, sk.Quest, sk.Active = a.modName, a.plugin, a.quest, a.active
 			sk.NameText = s.tr.Text(a.modName, strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), sc.name)
@@ -195,7 +197,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 	}
 	result := mcm.Extract(chain, properties(a.props))
 	prefer := []string{strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), sc.name}
-	src := SourceRef{Path: f.file.Path, Mod: f.file.Mod}
+	src := SourceRef{Path: f.file.Path, Mod: f.file.Mod, Archive: f.file.Archive}
 	m := Menu{
 		ID:        s.id("papyrus", sc.name),
 		Name:      result.ModName,
@@ -234,7 +236,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 				HelpText:  s.tr.Text(o.Help, prefer...),
 				Certainty: Certainty(o.Certainty),
 				Notes:     []Note{},
-				Source:    SourceRef{Path: src.Path, Mod: src.Mod, Line: o.Line},
+				Source:    SourceRef{Path: src.Path, Mod: src.Mod, Archive: src.Archive, Line: o.Line},
 			}
 			if o.Certainty == mcm.Exact {
 				opt.Text = s.tr.Text(o.Label, prefer...)

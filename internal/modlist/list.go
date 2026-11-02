@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"lexicon/internal/apperr"
+	"lexicon/internal/bsa"
 )
 
 // Layer is where a mod's files sit in the order the game sees them.
@@ -33,12 +34,32 @@ type Mod struct {
 }
 
 // File is a file as the game sees it: one copy, and the mod it comes from.
+// A file packed in an archive has the archive's name, and Abs is the
+// archive's; Read reads either kind.
 type File struct {
 	Path    string    `json:"path"` // its virtual path with forward slashes, spelled as this copy spells it
 	Abs     string    `json:"abs"`
 	Mod     string    `json:"mod"`
+	Archive string    `json:"archive,omitempty"` // the archive it's packed in, as the game names it; "" for a loose file
 	Size    int64     `json:"size"`
 	ModTime time.Time `json:"modTime"`
+
+	packed *bsa.Archive
+	entry  bsa.File
+}
+
+// Read is the file's contents, from disk or from its archive.
+func (f File) Read() ([]byte, error) {
+	if f.packed != nil {
+		return f.packed.ReadFile(f.entry)
+	}
+	return os.ReadFile(f.Abs)
+}
+
+// ArchiveProblem is an archive the game loads that couldn't be read.
+type ArchiveProblem struct {
+	File   File
+	Detail string
 }
 
 // Plugin is a line of plugins.txt.
@@ -55,9 +76,11 @@ type List struct {
 	DataPath string // the game folder ModOrganizer.ini names, whether or not it's here
 	DataDir  string // the game's Data folder, when it's here; "" otherwise
 
-	plugins []Plugin        // plugins.txt in order; nil when there is no plugins.txt
-	byName  map[string]bool // active plugins by lowercase name
-	index   map[string][]File
+	plugins  []Plugin        // plugins.txt in order; nil when there is no plugins.txt
+	byName   map[string]bool // active plugins by lowercase name
+	index    map[string][]File
+	archives []File           // the archives the game loads, in load order
+	problems []ArchiveProblem // the ones of those that couldn't be read
 }
 
 // Core masters are always loaded, so MO2 leaves them out of plugins.txt.
@@ -166,19 +189,27 @@ func (l *List) Mod(name string) (Mod, bool) {
 }
 
 // Scope is which of a mod's files Index reads: whole subtrees by their
-// path under the mod, and top-level files by name. Reading only what MCM
+// path under the mod, top-level files by name, and the subtrees read from
+// the archives the game loads (PLAN.md §2.6). Reading only what MCM
 // Lexicon needs keeps a scan of 1,800 mods quick.
 type Scope struct {
 	Subtrees []string
 	TopLevel func(name string) bool
+	Archived []string
 }
 
 // MCMScope covers what MCMs are made of: scripts and their sources, MCM
 // Helper's configs and settings, recordings, translations, and plugins.
+// Settings and recordings are read only loose, since what writes them
+// can't write into an archive.
 var MCMScope = Scope{
 	Subtrees: []string{"Scripts", "Source", "MCM", "McmRecorder", "Interface/Translations"},
 	TopLevel: IsPlugin,
+	Archived: []string{"Scripts", "Source", "MCM/Config", "Interface/Translations"},
 }
+
+// IsArchive reports whether name is a Bethesda archive's.
+func IsArchive(name string) bool { return strings.EqualFold(filepath.Ext(name), ".bsa") }
 
 // Clutter reports whether a file is one an operating system leaves in
 // folders it shows (Finder's .DS_Store and ._ files, Windows's Thumbs.db
@@ -202,19 +233,27 @@ func IsPlugin(name string) bool {
 
 // Index reads the files in scope from every enabled mod, in load order, so
 // Open and Files can say which copy the game sees. Folder and file names
-// are matched without regard to case, as Windows does.
+// are matched without regard to case, as Windows does. Files in the
+// archives the game loads sit beneath every loose file.
 func (l *List) Index(scope Scope) {
 	l.index = map[string][]File{}
+	l.archives, l.problems = nil, nil
+	top := map[string][]File{} // every mod's top-level plugins and archives, for finding what loads
 	for _, m := range l.Mods {
 		if !m.Enabled || m.Dir == "" {
 			continue
 		}
-		if scope.TopLevel != nil {
-			entries, _ := os.ReadDir(m.Dir)
-			for _, e := range entries {
-				if !e.IsDir() && scope.TopLevel(e.Name()) {
-					l.add(m, e.Name(), filepath.Join(m.Dir, e.Name()))
-				}
+		entries, _ := os.ReadDir(m.Dir)
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			abs := filepath.Join(m.Dir, e.Name())
+			if scope.TopLevel != nil && scope.TopLevel(e.Name()) {
+				l.add(m, e.Name(), abs)
+			}
+			if IsPlugin(e.Name()) || IsArchive(e.Name()) {
+				top[strings.ToLower(e.Name())] = append(top[strings.ToLower(e.Name())], stat(File{Path: e.Name(), Abs: abs, Mod: m.Name}))
 			}
 		}
 		for _, sub := range scope.Subtrees {
@@ -232,16 +271,126 @@ func (l *List) Index(scope Scope) {
 			})
 		}
 	}
+	if len(scope.Archived) > 0 {
+		l.indexArchives(top, scope.Archived)
+	}
 }
 
 func (l *List) add(m Mod, rel, abs string) {
-	f := File{Path: rel, Abs: abs, Mod: m.Name}
-	if info, err := os.Stat(abs); err == nil {
-		f.Size, f.ModTime = info.Size(), info.ModTime()
-	}
+	f := stat(File{Path: rel, Abs: abs, Mod: m.Name})
 	key := strings.ToLower(rel)
 	l.index[key] = append(l.index[key], f)
 }
+
+func stat(f File) File {
+	if info, err := os.Stat(f.Abs); err == nil {
+		f.Size, f.ModTime = info.Size(), info.ModTime()
+	}
+	return f
+}
+
+// indexArchives adds the files under subtrees from each archive the game
+// loads, beneath the loose files: an archive's files lose to any loose
+// copy, and to those of an archive loaded after it.
+func (l *List) indexArchives(top map[string][]File, subtrees []string) {
+	l.archives = loadedArchives(top, l.loadOrder(top))
+	packed := map[string][]File{}
+	for _, af := range l.archives {
+		a, err := bsa.Open(af.Abs)
+		if err != nil {
+			l.problems = append(l.problems, ArchiveProblem{File: af, Detail: err.Error()})
+			continue
+		}
+		for _, e := range a.Files {
+			if !under(e.Path, subtrees) {
+				continue
+			}
+			f := File{Path: e.Path, Abs: af.Abs, Mod: af.Mod, Archive: af.Path, Size: int64(e.Size), ModTime: af.ModTime, packed: a, entry: e}
+			packed[e.Path] = append(packed[e.Path], f)
+		}
+	}
+	for k, copies := range packed {
+		l.index[k] = append(copies, l.index[k]...)
+	}
+}
+
+func under(p string, subtrees []string) bool {
+	for _, s := range subtrees {
+		if s := key(s) + "/"; strings.HasPrefix(p, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// loadOrder is the plugins present and active, in the order the game
+// loads them: the game's own masters, then plugins.txt's order. Without a
+// plugins.txt, every plugin present loads, in the order of the mods
+// holding them.
+func (l *List) loadOrder(top map[string][]File) []string {
+	var out []string
+	seen := map[string]bool{}
+	addIf := func(name string) {
+		k := strings.ToLower(name)
+		if seen[k] || !IsPlugin(k) || len(top[k]) == 0 || !l.PluginActive(name) {
+			return
+		}
+		seen[k] = true
+		out = append(out, k)
+	}
+	for _, m := range []string{"skyrim.esm", "skyrimvr.esm", "update.esm", "dawnguard.esm", "hearthfires.esm", "dragonborn.esm"} {
+		addIf(m)
+	}
+	if l.plugins != nil {
+		for _, p := range l.plugins {
+			addIf(p.Name)
+		}
+		return out
+	}
+	var rest []File
+	for k, copies := range top {
+		if IsPlugin(k) {
+			rest = append(rest, copies[len(copies)-1])
+		}
+	}
+	priority := map[string]int{}
+	for i, m := range l.Mods {
+		priority[m.Name] = i
+	}
+	sort.SliceStable(rest, func(i, j int) bool {
+		if pi, pj := priority[rest[i].Mod], priority[rest[j].Mod]; pi != pj {
+			return pi < pj
+		}
+		return strings.ToLower(rest[i].Path) < strings.ToLower(rest[j].Path)
+	})
+	for _, f := range rest {
+		addIf(f.Path)
+	}
+	return out
+}
+
+// loadedArchives is the archives each plugin in order brings in: the
+// game loads <plugin>.bsa and <plugin> - Textures.bsa, as the winning
+// copies of those files.
+func loadedArchives(top map[string][]File, order []string) []File {
+	var out []File
+	for _, p := range order {
+		base := strings.TrimSuffix(p, filepath.Ext(p))
+		for _, name := range []string{base + ".bsa", base + " - textures.bsa"} {
+			if copies := top[name]; len(copies) > 0 {
+				out = append(out, copies[len(copies)-1])
+			}
+		}
+	}
+	return out
+}
+
+// Archives is the archives the game loads, in load order, once Index has
+// run with archives in scope.
+func (l *List) Archives() []File { return l.archives }
+
+// ArchiveProblems is the archives the game loads that couldn't be read.
+func (l *List) ArchiveProblems() []ArchiveProblem { return l.problems }
 
 // Open is the copy of rel the game sees, if any. rel is a path under Data
 // with either kind of slash, in any case.

@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -21,6 +22,7 @@ import (
 	"time"
 
 	"lexicon/internal/apperr"
+	"lexicon/internal/bsa"
 	"lexicon/internal/catalog"
 	"lexicon/internal/modlist"
 )
@@ -94,6 +96,7 @@ var gaps = []string{
 	"MCM scripts were found by following each compiled script's Extends chain to SKI_ConfigBase or MCM_ConfigBase, frameworks between included. A chain through a script that isn't in the list is lost.",
 	"Plugins are copied whole, from mods with MCM content only. A mod whose MCM quest lives in a plugin from a different mod (a patch) needs that plugin added by hand.",
 	"Loose files in the game's real Data folder (outside MO2) aren't included.",
+	"Archives are included only when the game loads them (named after an active plugin) and they hold an MCM script or MCM Helper config; the INI files' archive lists aren't read.",
 }
 
 // Write makes a snapshot of list at out: a zip when out ends in .zip,
@@ -260,6 +263,42 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 			} else {
 				compiled++
 			}
+		}
+	}
+	// Archives this mod brings that the game loads, holding MCM scripts or
+	// MCM Helper configs: copied whole, with the loose sources of the
+	// scripts inside.
+	for _, af := range w.list.Archives() {
+		if af.Mod != m.Name {
+			continue
+		}
+		a, err := bsa.Open(af.Abs)
+		if err != nil {
+			continue // the scan lists it as unreadable
+		}
+		packed := 0
+		for _, e := range a.Files {
+			dir, name := path.Split(e.Path)
+			base := strings.TrimSuffix(name, path.Ext(name))
+			switch {
+			case dir == "scripts/" && path.Ext(name) == ".pex" && w.mcm[base]:
+				packed++
+				if psc, found := findFile(m.Dir, base+".psc"); found {
+					inside, _ := filepath.Rel(m.Dir, psc)
+					if err := w.copy(psc, prefix+filepath.ToSlash(inside), m.Name); err != nil {
+						return err
+					}
+					source++
+				}
+			case strings.HasPrefix(e.Path, "mcm/config/") && name == "config.json":
+				packed++
+			}
+		}
+		if packed > 0 {
+			if err := w.copy(af.Abs, prefix+af.Path, m.Name); err != nil {
+				return err
+			}
+			w.addKind(m.Name, fmt.Sprintf("archive:%d", packed))
 		}
 	}
 	if source > 0 {
@@ -443,7 +482,7 @@ func (w *writer) markdown() string {
 	}
 	fmt.Fprintf(&b, "`mo2/` is a trimmed MO2 instance: %d of %d enabled mods, %d files, %.1f MB. It holds other authors' files: local testing only, never commit or share it.\n\n", inv.List.IncludedMods, inv.List.EnabledMods, len(inv.Files), float64(bytes)/(1024*1024))
 	b.WriteString("## Mods included\n\n")
-	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `recordings`, `translations` (only translation files for an included plugin).\n\n")
+	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `recordings`, `translations` (only translation files for an included plugin).\n\n")
 	b.WriteString("| Priority | Mod | Kinds |\n|---|---|---|\n")
 	// Numbered from the top of modlist.txt, counting enabled mods: the
 	// highest priority is 1.

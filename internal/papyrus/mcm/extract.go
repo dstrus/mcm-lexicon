@@ -132,7 +132,9 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	// The initialization events. SKI_ConfigBase's own functions do nothing
 	// the menu's contents depend on, so calls to them are ignored. A script
 	// that defers its setup by registering for an update (EVG Conditional
-	// Idles) gets that update once the events have run.
+	// Idles) gets that update once the events have run. Then OnConfigOpen,
+	// which SkyUI runs each time the menu opens, before any page: what it
+	// sets (Accuracy's checks for what the menu needs) holds for every page.
 	pending := map[string]bool{}
 	var deferred []string
 	m.call = func(site *ir.Call, args []Value) (Value, bool) {
@@ -161,6 +163,10 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 			m.budget = budget
 			m.invoke(f, nil)
 		}
+	}
+	if f := m.function("", "OnConfigOpen"); f != nil {
+		m.budget = budget
+		m.invoke(f, nil)
 	}
 	initial := m.snapshot()
 	menu := Menu{}
@@ -203,6 +209,8 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 func initial(m *machine, v ir.Variable, property bool) *Value {
 	val := Value{k: kNone}
 	switch {
+	case v.Computed:
+		val = unknown
 	case v.Init != nil:
 		val = m.eval(v.Init)
 	case strings.HasSuffix(v.Type, "]"):

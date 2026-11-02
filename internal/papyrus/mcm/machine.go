@@ -1,6 +1,8 @@
 package mcm
 
 import (
+	"strings"
+
 	"lexicon/internal/papyrus/ir"
 )
 
@@ -142,7 +144,30 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 
 // ifStmt runs the arm a known condition picks, or every arm a condition
 // that depends on the game might pick, each with its place in the path.
+// Arms that might run, run one after another, so a counter one arm bumps
+// keeps counting in the next and every option is found. But where some arm
+// is certain to run (an Else, or a condition known to hold) and the arms
+// leave a variable differently, it depends on the game, so it's unknown
+// afterward (option IDs are pooled): Accuracy's "If found / Status = True /
+// Else / Status = False".
 func (m *machine) ifStmt(s *ir.If) (bool, Value) {
+	names := ifAssigned(s)
+	var outcomes [][]*Value // the variables' values after each arm that carries on
+	run := func(arm int, body []ir.Stmt, scope *Value) (bool, Value) {
+		m.path = append(m.path, step{s, arm})
+		if scope != nil {
+			m.scope = append(m.scope, scope.ids)
+		}
+		r, v := m.exec(body)
+		if scope != nil {
+			m.scope = m.scope[:len(m.scope)-1]
+		}
+		m.path = m.path[:len(m.path)-1]
+		if !r {
+			outcomes = append(outcomes, m.values(names))
+		}
+		return r, v
+	}
 	certain := false
 	for i, b := range s.Branches {
 		c := m.eval(b.Cond)
@@ -150,29 +175,182 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 		if known && !t {
 			continue
 		}
-		m.path = append(m.path, step{s, i})
+		var scope *Value
 		if c.k == kScoped {
-			m.scope = append(m.scope, c.ids)
+			scope = &c
 		}
-		r, v := m.exec(b.Body)
-		if c.k == kScoped {
-			m.scope = m.scope[:len(m.scope)-1]
-		}
-		m.path = m.path[:len(m.path)-1]
+		r, v := run(i, b.Body, scope)
 		if known {
 			certain = true
-			if r {
-				return true, v
+			if r && len(outcomes) == 0 {
+				return true, v // the only way through returns
 			}
 			break
 		}
 	}
-	if !certain && s.Else != nil {
-		m.path = append(m.path, step{s, len(s.Branches)})
-		m.exec(s.Else)
-		m.path = m.path[:len(m.path)-1]
+	if !certain {
+		if s.Else == nil {
+			return false, unknown // an arm may not run: what they set may hold
+		}
+		run(len(s.Branches), s.Else, nil)
+		if !exhaustive(s) {
+			return false, unknown
+		}
+	}
+	if len(outcomes) < 2 {
+		return false, unknown
+	}
+	for i, name := range names {
+		if outcomes[0][i] == nil {
+			continue
+		}
+		merged := *outcomes[0][i]
+		for _, o := range outcomes[1:] {
+			merged = join(merged, o[i])
+		}
+		m.set(name, merged)
 	}
 	return false, unknown
+}
+
+// exhaustive reports whether an If's arms cover every way through: it
+// ends in an Else that's more than the rest of an ElseIf chain. A compiled
+// script's ElseIf is an Else holding the condition's temporaries and an
+// If, so this reads it as its source does.
+func exhaustive(s *ir.If) bool {
+	for s.Else != nil {
+		inner := continuation(s.Else)
+		if inner == nil {
+			return true
+		}
+		s = inner
+	}
+	return false
+}
+
+// continuation is the If an Else holds when it's only the next step of an
+// ElseIf chain: temporaries, then that If.
+func continuation(body []ir.Stmt) *ir.If {
+	if len(body) == 0 {
+		return nil
+	}
+	for _, st := range body[:len(body)-1] {
+		a, ok := st.(*ir.Assign)
+		if !ok {
+			return nil
+		}
+		if id, ok := a.Target.(*ir.Ident); !ok || !strings.HasPrefix(id.Name, "::") {
+			return nil
+		}
+	}
+	inner, _ := body[len(body)-1].(*ir.If)
+	return inner
+}
+
+// ifAssigned is the plain variables an If's arms assign to, once each.
+func ifAssigned(s *ir.If) []string {
+	var body []ir.Stmt
+	for _, b := range s.Branches {
+		body = append(body, b.Body...)
+	}
+	body = append(body, s.Else...)
+	seen := map[string]bool{}
+	var out []string
+	for _, n := range assigned(body) {
+		if k := ir.Key(n); !seen[k] {
+			seen[k] = true
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// values is the variables' values now: copies, or nil for one not set.
+func (m *machine) values(names []string) []*Value {
+	out := make([]*Value, len(names))
+	for i, n := range names {
+		if p := m.lookup(n); p != nil {
+			c := *p
+			out[i] = &c
+		}
+	}
+	return out
+}
+
+// join is what a variable holds after two ways through: the value both
+// agree on, every option ID either holds, the longer of two lists where
+// one starts the other, or unknown.
+func join(a Value, b *Value) Value {
+	if b == nil {
+		return unknown
+	}
+	switch {
+	case a.k == kOption && b.k == kOption:
+		ids := append([]int{}, a.ids...)
+		for _, id := range b.ids {
+			if !containsInt(ids, id) {
+				ids = append(ids, id)
+			}
+		}
+		return Value{k: kOption, ids: ids}
+	case same(a, *b):
+		return a
+	case a.k == kArray && b.k == kArray && a.arr != nil && b.arr != nil:
+		// One list that starts the other, such as Pages with a VR-only
+		// page last: the longer, so every page is found.
+		short, long := *a.arr, *b.arr
+		if len(short) > len(long) {
+			short, long = long, short
+		}
+		for i := range short {
+			if !same(short[i], long[i]) {
+				return unknown
+			}
+		}
+		if len(long) == len(*a.arr) {
+			return a
+		}
+		return *b
+	}
+	return unknown
+}
+
+// same reports whether two values are known to be equal: the same scalar,
+// or arrays holding the same values (two arrays built alike, as a script
+// that rebuilds Pages on every version update does).
+func same(a, b Value) bool {
+	if a.k != b.k {
+		return false
+	}
+	switch a.k {
+	case kNone:
+		return true
+	case kString, kInt, kFloat, kBool:
+		return a.s == b.s && a.n == b.n
+	case kArray:
+		if a.arr == b.arr {
+			return true
+		}
+		if a.arr == nil || b.arr == nil || len(*a.arr) != len(*b.arr) {
+			return false
+		}
+		for i := range *a.arr {
+			if !same((*a.arr)[i], (*b.arr)[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func containsInt(xs []int, x int) bool {
+	for _, y := range xs {
+		if y == x {
+			return true
+		}
+	}
+	return false
 }
 
 // loop runs a loop while its condition is known to hold, up to a bound;

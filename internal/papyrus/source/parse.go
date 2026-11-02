@@ -182,9 +182,20 @@ func (p *parser) declaration() {
 		full := !p.lineHas("Auto") && !p.lineHas("AutoReadOnly")
 		p.endLine()
 		if full {
-			// Get and Set functions until EndProperty; their bodies don't
-			// matter to MCMs.
+			// Get and Set functions until EndProperty. A Get that returns a
+			// constant gives the property's value, as the compiled script
+			// reads it; any other Get computes it.
 			for !p.atWord("EndProperty") && !p.at(tEOF) {
+				if p.atWord("Function") || p.isTypedFunction() {
+					if f := p.function(); strings.EqualFold(f.Name, "Get") {
+						if c := constantReturn(f); c != nil {
+							v.Init = c
+						} else {
+							v.Computed = true
+						}
+					}
+					continue
+				}
 				p.next()
 			}
 			p.endLine()
@@ -199,6 +210,20 @@ func (p *parser) declaration() {
 	}
 	p.endLine()
 	p.script.Variables = append(p.script.Variables, v)
+}
+
+// constantReturn is the constant a function's whole body returns, if
+// that's all it does.
+func constantReturn(f *ir.Function) ir.Expr {
+	if len(f.Body) != 1 {
+		return nil
+	}
+	if r, ok := f.Body[0].(*ir.Return); ok {
+		if c, ok := r.Value.(*ir.Const); ok {
+			return c
+		}
+	}
+	return nil
 }
 
 func (p *parser) state(auto bool) {

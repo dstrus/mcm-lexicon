@@ -6,9 +6,12 @@ package testcorpus
 
 import (
 	"bytes"
+	"compress/zlib"
 	"encoding/binary"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -286,4 +289,146 @@ func Compiled(name, parent string, strs ...string) string {
 	be(uint16(0)) // properties
 	be(uint16(0)) // states
 	return b.String()
+}
+
+// ArchiveOptions is how Archive packs its files.
+type ArchiveOptions struct {
+	Version    int             // 104 (zlib) or 105 (LZ4); 105 when 0
+	Compressed bool            // compress files by default
+	Flip       map[string]bool // paths whose compression is the opposite of the default
+	EmbedNames bool            // start each file's data with its full path
+}
+
+// Archive is the bytes of a Bethesda archive holding files, by their
+// paths with forward slashes. LZ4 is written as uncompressed literals,
+// which any reader must handle, so the reader's own tests cover real
+// compressed data.
+func Archive(opts ArchiveOptions, files map[string]string) string {
+	version := uint32(opts.Version)
+	if version == 0 {
+		version = 105
+	}
+	byFolder := map[string][]string{}
+	for p := range files {
+		dir, name := path.Split(strings.ToLower(p))
+		byFolder[strings.Trim(dir, "/")] = append(byFolder[strings.Trim(dir, "/")], name)
+	}
+	var folders []string
+	for f := range byFolder {
+		folders = append(folders, f)
+		sort.Strings(byFolder[f])
+	}
+	sort.Strings(folders)
+	flags := uint32(0x1 | 0x2)
+	if opts.Compressed {
+		flags |= 0x4
+	}
+	if opts.EmbedNames {
+		flags |= 0x100
+	}
+	folderRecord := 16
+	if version == 105 {
+		folderRecord = 24
+	}
+	var names bytes.Buffer
+	folderNames := 0
+	for _, f := range folders {
+		folderNames += len(f) + 1
+		for _, n := range byFolder[f] {
+			names.WriteString(n)
+			names.WriteByte(0)
+		}
+	}
+	// The data follows the header, the folder records, the folders' names
+	// and file records, and the file names.
+	dataAt := 36 + len(folders)*folderRecord + len(folders) + folderNames + len(files)*16 + names.Len()
+	var data, records bytes.Buffer
+	le := func(b *bytes.Buffer, v any) { binary.Write(b, binary.LittleEndian, v) }
+	var folderRecs bytes.Buffer
+	for _, f := range folders {
+		le(&folderRecs, uint64(0)) // hash: unread
+		le(&folderRecs, uint32(len(byFolder[f])))
+		if version == 105 {
+			le(&folderRecs, uint32(0))
+			le(&folderRecs, uint64(0))
+		} else {
+			le(&folderRecs, uint32(0))
+		}
+		records.WriteByte(byte(len(f) + 1))
+		records.WriteString(f)
+		records.WriteByte(0)
+		for _, n := range byFolder[f] {
+			full := n
+			if f != "" {
+				full = f + "/" + n
+			}
+			var content string
+			for p, c := range files {
+				if strings.EqualFold(p, full) {
+					content = c
+				}
+			}
+			compressed := opts.Compressed != opts.Flip[full]
+			var stored bytes.Buffer
+			if opts.EmbedNames {
+				embedded := strings.ReplaceAll(full, "/", `\`)
+				stored.WriteByte(byte(len(embedded)))
+				stored.WriteString(embedded)
+			}
+			if compressed {
+				le(&stored, uint32(len(content)))
+				if version == 104 {
+					z := zlib.NewWriter(&stored)
+					z.Write([]byte(content))
+					z.Close()
+				} else {
+					stored.Write(lz4Literals(content))
+				}
+			} else {
+				stored.WriteString(content)
+			}
+			size := uint32(stored.Len())
+			if opts.Flip[full] {
+				size |= 0x40000000
+			}
+			le(&records, uint64(0))
+			le(&records, size)
+			le(&records, uint32(dataAt+data.Len()))
+			data.Write(stored.Bytes())
+		}
+	}
+	var b bytes.Buffer
+	b.WriteString("BSA\x00")
+	for _, v := range []uint32{version, 36, flags, uint32(len(folders)), uint32(len(files)), uint32(folderNames), uint32(names.Len())} {
+		le(&b, v)
+	}
+	le(&b, uint32(0)) // file flags and padding
+	b.Write(folderRecs.Bytes())
+	b.Write(records.Bytes())
+	b.Write(names.Bytes())
+	b.Write(data.Bytes())
+	return b.String()
+}
+
+// lz4Literals is an LZ4 frame holding s as one block of literals.
+func lz4Literals(s string) []byte {
+	var block bytes.Buffer
+	n := len(s)
+	if n < 15 {
+		block.WriteByte(byte(n << 4))
+	} else {
+		block.WriteByte(0xF0)
+		for n -= 15; n >= 255; n -= 255 {
+			block.WriteByte(255)
+		}
+		block.WriteByte(byte(n))
+	}
+	block.WriteString(s)
+	var b bytes.Buffer
+	binary.Write(&b, binary.LittleEndian, uint32(0x184D2204))
+	b.Write([]byte{0x60, 0x40, 0x82}) // version 1, independent blocks; 64 KB blocks; header checksum (unread)
+	binary.Write(&b, binary.LittleEndian, uint32(block.Len()))
+	b.Write(block.Bytes())
+	binary.Write(&b, binary.LittleEndian, uint32(0))
+	return b.Bytes()
 }

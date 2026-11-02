@@ -336,3 +336,116 @@ EndEvent
 		t.Errorf("menu = %+v", m)
 	}
 }
+
+// What the menu's opening sets holds for every page (Accuracy), a flag an
+// If and its Else set differently depends on the game, a counter bumped
+// only in some arms keeps counting (STFU), and a property worked out by its
+// Get function is unknown (MCM Recorder), while Pages built two ways keeps
+// the longer list.
+const opening = `Scriptname Opening_MCM extends SKI_ConfigBase
+bool Status
+int Count
+bool Property IsVR
+	bool Function Get()
+		return Game.GetModByName("SkyrimVR.esm") != 255
+	EndFunction
+EndProperty
+int Property Version
+	int Function Get()
+		return 3
+	EndFunction
+EndProperty
+
+Event OnConfigOpen()
+	If Framework.GetVersion() > 2
+		Status = True
+	Else
+		Status = False
+	EndIf
+	If IsVR
+		Pages = new string[2]
+		Pages[0] = "Main"
+		Pages[1] = "VR"
+	Else
+		Pages = new string[1]
+		Pages[0] = "Main"
+	EndIf
+	If Framework.HasA()
+		Count += 1
+	EndIf
+	If Framework.HasB()
+		Count += 1
+	EndIf
+EndEvent
+
+Event OnPageReset(string page)
+	If !Status
+		AddTextOption("Framework missing", "")
+		Return
+	EndIf
+	AddToggleOption("Enabled", true)
+	If Count == 2
+		AddToggleOption("Both", true)
+	EndIf
+	If Version == 3
+		AddToggleOption("Version three", true)
+	EndIf
+	If page == "VR"
+		AddToggleOption("Gestures", true)
+	EndIf
+EndEvent
+`
+
+func TestOpeningAndUncertainBranches(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, opening)}, nil)
+	if m.PagesGuessed {
+		t.Error("pages were guessed")
+	}
+	main := page(t, m, "Main")
+	for _, label := range []string{"Framework missing", "Enabled", "Both", "Version three"} {
+		opt(t, main, label)
+	}
+	opt(t, page(t, m, "VR"), "Gestures")
+}
+
+func TestJoin(t *testing.T) {
+	list := func(s ...string) Value {
+		v := newArray(len(s))
+		for i, x := range s {
+			(*v.arr)[i] = str(x)
+		}
+		return v
+	}
+	ptr := func(v Value) *Value { return &v }
+	for name, c := range map[string]struct {
+		a, b Value
+		want string
+	}{
+		"same":         {str("a"), str("a"), `"a"`},
+		"differ":       {boolean(true), boolean(false), "unknown"},
+		"options":      {option(1), option(2), "options [1 2]"},
+		"prefix":       {list("Main"), list("Main", "VR"), "[Main VR]"},
+		"not a prefix": {list("Main"), list("Other", "VR"), "unknown"},
+		"kinds":        {str("1"), integer(1), "unknown"},
+	} {
+		got := join(c.a, ptr(c.b))
+		var s string
+		switch got.k {
+		case kUnknown:
+			s = "unknown"
+		case kString:
+			s = fmt.Sprintf("%q", got.s)
+		case kOption:
+			s = fmt.Sprintf("options %v", got.ids)
+		case kArray:
+			var parts []string
+			for _, v := range *got.arr {
+				parts = append(parts, v.s)
+			}
+			s = "[" + strings.Join(parts, " ") + "]"
+		}
+		if s != c.want {
+			t.Errorf("%s: join = %s, want %s", name, s, c.want)
+		}
+	}
+}

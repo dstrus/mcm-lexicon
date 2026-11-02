@@ -33,7 +33,11 @@ func (f *File) Script() *ir.Script {
 			// constant.
 			if v := p.Get.Instructions[0].Args[0]; v.Kind > OperandIdent {
 				prop.Init = operand(v, names)
+			} else {
+				prop.Computed = true
 			}
+		} else if p.Get != nil {
+			prop.Computed = true // its Get works the value out
 		}
 		s.Properties = append(s.Properties, prop)
 	}

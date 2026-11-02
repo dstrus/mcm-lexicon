@@ -183,11 +183,13 @@ export interface Value {
 }
 /**
  * SourceRef is where something is defined: a file as the game sees it, the
- * mod it comes from, and a line when known.
+ * mod it comes from, the archive it's packed in if it is, and a line when
+ * known.
  */
 export interface SourceRef {
   path: string;
   mod: string;
+  archive?: string;
   line: number /* int */;
 }
 /**
@@ -217,6 +219,7 @@ export type SkipReason = typeof SkipReasonNoQuest | typeof SkipReasonEmpty | typ
 export interface Skipped {
   path: string;
   mod: string;
+  archive?: string; // the archive it's packed in, if it is
   reason: SkipReason;
   detail: string;
   /**

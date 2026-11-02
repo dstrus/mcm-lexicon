@@ -26,6 +26,9 @@ type Variable struct {
 	Name string
 	Type string // as declared, such as "string[]"
 	Init Expr   // nil when not given
+	// Computed is a property whose Get function works its value out each
+	// time it's read (MCM Recorder's IsSkyrimVR): the game decides it.
+	Computed bool
 }
 
 type State struct {
