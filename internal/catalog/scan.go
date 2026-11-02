@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path"
@@ -64,9 +63,11 @@ type scan struct {
 	tr   *translations.Table
 	ids  map[string]bool
 
-	classic []modlist.File          // compiled scripts that extend SKI_ConfigBase directly
-	helpers map[string][]string     // MCM Helper's scripts (extending MCM_ConfigBase), by mod
+	classic []script                // scripts whose Extends chain reaches SKI_ConfigBase
+	helpers map[string][]string     // MCM Helper's scripts (whose chain reaches MCM_ConfigBase), by mod
 	quests  map[string][]attachment // quests by the lowercase name of a script attached to them
+	sources map[string][]modlist.File
+	parsed  map[string]*parsedSource
 }
 
 // attachment is a quest in a plugin with a script attached, and what the
@@ -78,6 +79,7 @@ type attachment struct {
 	quest   string
 	modName string
 	pages   []string
+	props   []plugin.Property
 }
 
 // loadTranslations reads every translation file the game would load for
@@ -328,35 +330,6 @@ func (s *scan) ini(rel string) mcmhelper.INI {
 	return mcmhelper.ParseINI(b)
 }
 
-// scripts finds the compiled scripts that make MCMs. A compiled script
-// names the script it extends in its string table: SKI_ConfigBase for a
-// classic MCM, MCM_ConfigBase for MCM Helper's (whose config.json defines
-// the menu). Following Extends chains properly comes with reading scripts.
-func (s *scan) scripts() {
-	s.helpers = map[string][]string{}
-	marker, helper := []byte("ski_configbase"), []byte("mcm_configbase")
-	for _, f := range s.list.Files("Scripts") {
-		if strings.Count(f.Path, "/") != 1 || !strings.EqualFold(path.Ext(f.Path), ".pex") {
-			continue
-		}
-		base := strings.ToLower(strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)))
-		if base == "ski_configbase" || base == "mcm_configbase" {
-			continue
-		}
-		b, err := os.ReadFile(f.Abs)
-		if err != nil {
-			continue
-		}
-		lower := bytes.ToLower(b)
-		switch {
-		case bytes.Contains(lower, helper):
-			s.helpers[f.Mod] = append(s.helpers[f.Mod], base)
-		case bytes.Contains(lower, marker):
-			s.classic = append(s.classic, f)
-		}
-	}
-}
-
 // plugins reads every plugin the game sees for the quests scripts are
 // attached to. The game's own masters hold no MCMs, so they're skipped.
 func (s *scan) plugins() {
@@ -387,6 +360,7 @@ func (s *scan) plugins() {
 				if v, ok := sc.Property("Pages"); ok && v.Type == plugin.PropertyStringArray {
 					a.pages = v.Strings
 				}
+				a.props = sc.Properties
 				key := strings.ToLower(sc.Name)
 				s.quests[key] = append(s.quests[key], a)
 			}
@@ -405,23 +379,6 @@ func (s *scan) quest(script string) (attachment, bool) {
 		}
 	}
 	return best, found
-}
-
-// papyrus lists the menus defined by Papyrus scripts, which aren't read
-// yet, so the catalog says what it's missing, with what their quests say.
-func (s *scan) papyrus() {
-	for _, f := range s.classic {
-		base := strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path))
-		sk := Skipped{Path: f.Path, Mod: f.Mod, Reason: SkipReasonPapyrus, Pages: []string{}}
-		if a, ok := s.quest(base); ok {
-			sk.Name, sk.Plugin, sk.Quest, sk.Active = a.modName, a.plugin, a.quest, a.active
-			sk.NameText = s.tr.Text(a.modName, strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), base)
-			if a.pages != nil {
-				sk.Pages = a.pages
-			}
-		}
-		s.cat.Skipped = append(s.cat.Skipped, sk)
-	}
 }
 
 func (s *scan) skip(f modlist.File, reason SkipReason, detail string) {

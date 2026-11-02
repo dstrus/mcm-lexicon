@@ -111,12 +111,14 @@ menus:
     framework: Framework
 
   # What isn't read yet.
-  papyrus:
-    one: "{count} menu is a Papyrus script, which MCM Lexicon doesn’t read yet, so it isn’t listed."
-    other: "{count} menus are Papyrus scripts, which MCM Lexicon doesn’t read yet, so they aren’t listed."
+  compiled:
+    one: "{count} menu ships only as a compiled script, which MCM Lexicon doesn’t read yet, so it isn’t listed."
+    other: "{count} menus ship only as compiled scripts, which MCM Lexicon doesn’t read yet, so they aren’t listed."
+  notMenus:
+    one: "{count} script is built on SkyUI’s menu script, but no quest runs it or it sets no name and no options, so it isn’t a menu the game shows."
+    other: "{count} scripts are built on SkyUI’s menu script, but no quest runs them or they set no name and no options, so they aren’t menus the game shows."
   showThem: Show them
   hideThem: Hide them
-  noQuest: no quest found
   notActive: not active
   unreadable:
     one: "{count} file couldn’t be read:"
@@ -136,6 +138,9 @@ menus:
   inactive: "Its plugin, {plugin}, isn’t active in this profile, so the game won’t show this menu."
   noPlugin: Its mod has no plugin, so whether the game loads this menu isn’t known.
   pluginGuessed: No quest with this menu’s script was found, so its plugin is the one in its mod named most like it.
+  nameFromScript: Neither the script nor its quest sets a name, so this menu goes by its script’s. A recording may need the name SkyUI shows instead.
+  pagesGuessed: The script builds its page list at runtime, so these pages are the names it checks for. One it builds some other way may be missing.
+  framework: "Built on {script}, whose source was read with it."
   overridden: Also in {mod}, which loses to this copy.
 
 # One menu: its pages as tabs, and its options.
@@ -189,6 +194,7 @@ values:
   "off": "Off"
   empty: (empty)
   noLabel: (no label)
+  runtime: (built at runtime)
   edgeSpace: Ends with a space. MCM Recorder matches it exactly.
   choiceNumber: Choice {n}
   onOrOff: On or off

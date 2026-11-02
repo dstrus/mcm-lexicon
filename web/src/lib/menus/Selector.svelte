@@ -6,7 +6,8 @@
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { edgeSpace } from './values.ts';
 
-	let { text, raw, clip = false }: { text: string; raw: string; clip?: boolean } = $props();
+	let { text, raw, clip = false, certainty = 'exact' }: { text: string; raw: string; clip?: boolean; certainty?: string } = $props();
+	let empty = $derived(certainty === 'unknown' ? m.values.runtime : m.values.noLabel);
 
 	let spaced = $derived(edgeSpace(raw));
 	let showRaw = $derived(raw !== text || spaced);
@@ -15,9 +16,9 @@
 </script>
 
 {#if clip}
-	<span class="text" use:clipped>{text || m.values.noLabel}</span>
+	<span class="text" use:clipped>{text || empty}</span>
 {:else}
-	<span class="text">{text || m.values.noLabel}</span>
+	<span class="text">{text || empty}</span>
 {/if}
 {#if showRaw}
 	<span class="raw" title={spaced ? m.values.edgeSpace : undefined}>{visible}</span>

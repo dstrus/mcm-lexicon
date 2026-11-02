@@ -78,7 +78,7 @@
 					<tr aria-selected={selection.is(r)} onclick={() => selection.select(r)}>
 						<td class="mark">{#if selection.is(r)}<Diamond />{/if}</td>
 						<td class="option">
-							<Selector text={o.text} raw={o.label} />
+							<Selector text={o.text} raw={o.label} certainty={o.certainty} />
 							{#if o.index > 0}<span class="caps word">{t.indexOf({ n: o.index, count: sharing.get(`${o.type}\0${o.label}`) ?? o.index })}</span>{/if}
 							{#if o.certainty !== 'exact'}<span class="caps word">{o.certainty}</span>{/if}
 						</td>

@@ -105,7 +105,7 @@
 					{/if}
 					<tr aria-selected={selection.is(r)} onclick={() => selection.select(r)} ondblclick={() => openMenu(r)}>
 						<td class="mark">{#if selection.is(r)}<Diamond />{/if}</td>
-						<td class="option"><Selector text={r.option.text} raw={r.option.label} /></td>
+						<td class="option"><Selector text={r.option.text} raw={r.option.label} certainty={r.option.certainty} /></td>
 						<td class="page">{pageText(r)}</td>
 						<td class="type caps">{r.option.control === 'stepper' ? m.option.types.stepper : m.option.types[r.option.type]}</td>
 						<td class="allowed">{allowed(r.option)}</td>

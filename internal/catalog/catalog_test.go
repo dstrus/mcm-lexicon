@@ -2,9 +2,9 @@ package catalog
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"net/http/httptest"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -77,7 +77,21 @@ func build(t *testing.T) *modlist.List {
 		"Scripts/Unrelated.pex":      "nothing here",
 	})
 	inst.Overwrite(map[string]string{"MCM/Settings/PhysicalCollisionVR.ini": "[Hands]\nfRadius = 6.5\niMode = 1\n[General]\nbEnabled = 1\n"})
-	inst.Plugins("*PhysicalCollisionVR.esp", "*Collision Patch.esp", "*PrismaUIAddItemMenu.esp", "Inactive.esp", "Classic.esp", "*Broken.esp")
+	// A classic menu with its source: its name comes from the plugin, its
+	// pages and options from the script.
+	inst.Mod("Source Menu", true, map[string]string{
+		"Scripts/Src_MCM.pex":                    "compiled; the source says what it extends",
+		"Source/Scripts/Src_MCM.psc":             "ScriptName Src_MCM extends SKI_ConfigBase\nint t\nEvent OnConfigInit()\n\tPages = new string[1]\n\tPages[0] = \"$SRC_Main\"\nEndEvent\nEvent OnPageReset(string page)\n\tif page == Pages[0]\n\t\tt = AddToggleOption(\"Shiny\", true)\n\t\tAddSliderOption(\"Level \", 3, \"{0}\")\n\tendif\nEndEvent\nEvent OnOptionHighlight(int o)\n\tif o == t\n\t\tSetInfoText(\"Makes it shiny.\")\n\tendif\nEndEvent\n",
+		"Src.esp":                                testcorpus.Plugin(testcorpus.Quest{EditorID: "SrcQuest", Script: "Src_MCM", ModName: "$SRC_Name"}),
+		"Interface/Translations/Src_ENGLISH.txt": utf16LE("$SRC_Name\tSource Menu\r\n$SRC_Main\tMain\r\n"),
+		// A script built on SKI_ConfigBase that no quest runs, and one that
+		// only mentions it, extending something else.
+		"Scripts/Orphan_MCM.pex":        "compiled",
+		"Scripts/Source/Orphan_MCM.psc": "ScriptName Orphan_MCM extends SKI_ConfigBase\n",
+		"Scripts/Helper.pex":            "\xfa\x57\xc0\xde Helper SKI_ConfigBase",
+		"Scripts/Source/Helper.psc":     "ScriptName Helper extends Quest\nSKI_ConfigBase Property Menu Auto\n",
+	})
+	inst.Plugins("*PhysicalCollisionVR.esp", "*Collision Patch.esp", "*PrismaUIAddItemMenu.esp", "Inactive.esp", "Classic.esp", "*Broken.esp", "*Src.esp")
 	src, err := modlist.Check(inst.Dir, "")
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +120,7 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	for _, m := range c.Menus {
 		names = append(names, m.NameText)
 	}
-	if want := "Inactive Thing, Physical Collision VR, Prisma UI AddItem Menu"; strings.Join(names, ", ") != want {
+	if want := "Inactive Thing, Physical Collision VR, Prisma UI AddItem Menu, Source Menu"; strings.Join(names, ", ") != want {
 		t.Errorf("menus = %q, want %q", names, want)
 	}
 	if c.List.Profile != "VR" || c.List.Language != "ENGLISH" || c.List.Version != "test" || c.SchemaVersion != SchemaVersion {
@@ -175,7 +189,7 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	for _, s := range c.Skipped {
 		skipped = append(skipped, string(s.Reason)+" "+s.Path)
 	}
-	if want := "unreadable Broken.esp, unreadable MCM/Config/Broken/config.json, papyrus Scripts/Classic_MCM.pex"; strings.Join(skipped, ", ") != want {
+	if want := "unreadable Broken.esp, unreadable MCM/Config/Broken/config.json, compiled Scripts/Classic_MCM.pex, no-quest Scripts/Orphan_MCM.pex"; strings.Join(skipped, ", ") != want {
 		t.Errorf("skipped = %q, want %q", skipped, want)
 	}
 	// The Papyrus menu's quest says its name and pages, matched to the
@@ -258,10 +272,10 @@ func TestService(t *testing.T) {
 	}
 	svc.UseList(l.Source)
 	c, err := svc.Catalog(r) // waits for the scan
-	if err != nil || len(c.Menus) != 3 {
+	if err != nil || len(c.Menus) != 4 {
 		t.Fatalf("after scanning: %v, %v", c, err)
 	}
-	if st := svc.State(); st.Scanning || st.Menus != 3 || st.ScannedAt.IsZero() {
+	if st := svc.State(); st.Scanning || st.Menus != 4 || st.ScannedAt.IsZero() {
 		t.Errorf("state = %+v", st)
 	}
 	path := filepath.Join(t.TempDir(), "other.json")
@@ -317,11 +331,33 @@ func TestRealSnapshots(t *testing.T) {
 				if s.Name != "" {
 					named++
 				}
-				if s.Reason == SkipReasonPapyrus && s.Plugin == "" {
-					t.Logf("no quest found for %s (%s)", s.Path, s.Mod)
+				if s.Reason == SkipReasonNoQuest {
+					t.Logf("not a menu (no quest runs it): %s (%s)", s.Path, s.Mod)
 				}
 			}
-			t.Logf("%d of %d Papyrus menus named by their quests", named, len(c.Skipped))
+			t.Logf("%d of %d skipped scripts named by their quests", named, len(c.Skipped))
+			// What the source menus hold, and what isn't exact, and why.
+			source, options, inexact := 0, 0, 0
+			for _, m := range c.Menus {
+				if m.Kind != KindSource {
+					continue
+				}
+				source++
+				for _, n := range m.Notes {
+					t.Logf("%s: note %s %s", m.NameText, n.Kind, n.Detail)
+				}
+				for _, p := range m.Pages {
+					options += len(p.Options)
+					for _, o := range p.Options {
+						if o.Certainty != CertaintyExact {
+							inexact++
+							t.Logf("%s / %s: %s %s %q (line %d)", m.NameText, p.Text, o.Certainty, o.Type, o.Text, o.Source.Line)
+						}
+					}
+				}
+			}
+			t.Logf("%d source menus, %d options, %d not exact", source, options, inexact)
+			checkRecordings(t, l, c)
 			for _, m := range c.Menus {
 				for _, n := range m.Notes {
 					if n.Kind == NoteKindPluginGuessed {
@@ -336,15 +372,29 @@ func TestRealSnapshots(t *testing.T) {
 			if !strings.Contains(snap.Name, "mgo") {
 				return
 			}
-			// The display names PLAN.md §2.3 says live only in plugins.
-			names := map[string]string{}
-			for _, s := range c.Skipped {
-				names[strings.ToLower(path.Base(s.Path))] = s.Name
+			// The golden cases of PLAN.md §7 that read from source.
+			golden := []struct{ mod, page, typ, label, choice string }{
+				{"Dirt & Blood", "Settings", "menu", "Dirt on Player", "Deactivated"},
+				{"Dirt & Blood", "Settings", "toggle", "Dirt on NPCs Based on Profession", ""},
+				{"Dirt & Blood", "Settings", "toggle", "Dirt on Bandits", ""},
+				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Cold", ""},
+				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Modesty Male", ""},
+				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Modesty Female", ""},
+				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Injured", ""},
+				{"Experience", "$EXP_General", "toggle", "$EXP_ShowMessages", ""},
 			}
-			for script, want := range map[string]string{"dirty_quest_mcm.pex": "Dirt & Blood"} {
-				if got := names[script]; got != want {
-					t.Errorf("%s: name %q, want %q", script, got, want)
+			for _, g := range golden {
+				o, ok := find(c, g.mod, g.page, OptionType(g.typ), g.label, 0)
+				if !ok || o.Certainty != CertaintyExact {
+					t.Errorf("%s / %s / %s %q: found %v, %+v", g.mod, g.page, g.typ, g.label, ok, o)
+					continue
 				}
+				if g.choice != "" && !hasChoice(o, g.choice) {
+					t.Errorf("%s / %q: no choice %q in %+v", g.mod, g.label, g.choice, o.Choices)
+				}
+			}
+			if o, _ := find(c, "Experience", "$EXP_General", OptionTypeToggle, "$EXP_ShowMessages", 0); o.Text != "Show Messages" {
+				t.Errorf("Experience's toggle reads %q", o.Text)
 			}
 			pc := menu(t, c, "Physical Collision VR")
 			var pages []string
@@ -369,4 +419,96 @@ func TestRealSnapshots(t *testing.T) {
 			}
 		})
 	}
+}
+
+// find is the option a recording step names: by its menu's name, page,
+// type, label, and index, as MCM Recorder matches them.
+func find(c *Catalog, mod, page string, typ OptionType, label string, index int) (Option, bool) {
+	for _, m := range c.Menus {
+		if m.Name != mod {
+			continue
+		}
+		for _, p := range m.Pages {
+			if p.Name != page {
+				continue
+			}
+			for _, o := range p.Options {
+				if o.Type == typ && o.Label == label && (o.Index == index || (index == 0 && o.Index == 1)) {
+					return o, true
+				}
+			}
+		}
+	}
+	return Option{}, false
+}
+
+func hasChoice(o Option, raw string) bool {
+	for _, ch := range o.Choices {
+		if ch.Raw == raw {
+			return true
+		}
+	}
+	return false
+}
+
+// checkRecordings resolves every step of every recording in the list
+// against the catalog: a step for a menu read from source must find an
+// exact option, and a menu choice must be one of its entries.
+func checkRecordings(t *testing.T, l *modlist.List, c *Catalog) {
+	t.Helper()
+	kinds := map[string]Kind{}
+	for _, m := range c.Menus {
+		kinds[m.Name] = m.Kind
+	}
+	types := map[string]OptionType{"toggle": OptionTypeToggle, "slider": OptionTypeSlider, "choose": OptionTypeMenu, "shortcut": OptionTypeKeymap, "color": OptionTypeColor, "text": OptionTypeInput, "click": OptionTypeText}
+	checked, resolved := 0, 0
+	for _, f := range l.Files("McmRecorder") {
+		if strings.Count(f.Path, "/") != 2 || !strings.EqualFold(filepath.Ext(f.Path), ".json") {
+			continue
+		}
+		b, _ := os.ReadFile(f.Abs)
+		var steps []map[string]any
+		if json.Unmarshal(b, &steps) != nil {
+			continue
+		}
+		for _, raw := range steps {
+			st := map[string]any{}
+			for k, v := range raw {
+				st[strings.ToLower(k)] = v
+			}
+			mod, _ := st["mod"].(string)
+			if kinds[mod] != KindSource {
+				continue
+			}
+			page, _ := st["page"].(string)
+			label, _ := st["option"].(string)
+			index := 0
+			if n, ok := st["index"].(float64); ok {
+				index = int(n)
+			}
+			var typ OptionType
+			var choice string
+			for k, ty := range types {
+				if v, ok := st[k]; ok {
+					typ = ty
+					if k == "choose" {
+						choice, _ = v.(string)
+					}
+				}
+			}
+			checked++
+			o, ok := find(c, mod, page, typ, label, index)
+			switch {
+			case !ok:
+				t.Errorf("%s: %s / %q / %s %q (index %d) isn't in the catalog", f.Path, mod, page, typ, label, index)
+			case o.Certainty != CertaintyExact:
+				t.Errorf("%s: %s / %q is %s", f.Path, mod, label, o.Certainty)
+			case choice != "" && len(o.Choices) > 0 && !hasChoice(o, choice):
+				t.Errorf("%s: %s / %q has no choice %q", f.Path, mod, label, choice)
+			default:
+				resolved++
+			}
+		}
+	}
+	t.Logf("%d of %d recorded steps for source menus resolved exactly", resolved, checked)
 }

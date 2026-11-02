@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, scanStarted } from '#lib/api/live.svelte.ts';
-	import type { Summary } from '#lib/api/types/catalog.ts';
+	import type { Skipped, Summary } from '#lib/api/types/catalog.ts';
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import { count } from '#lib/format.ts';
@@ -26,14 +26,16 @@
 	let source = $derived(data.status.source);
 	let reply = $derived(data.menus);
 	let menus = $derived(reply?.menus ?? []);
-	let papyrus = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'papyrus'));
+	let compiled = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'compiled'));
+	let notMenus = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'no-quest' || s.reason === 'empty'));
 	let unreadable = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'unreadable'));
 	let inactive = $derived(menus.filter((s) => !s.active).length);
 
 	let which = $state('all');
 	let query = $state('');
 	let sort = $state<Sort>({ key: 'menu', descending: false });
-	let showSkipped = $state(false);
+	let showCompiled = $state(false);
+	let showNotMenus = $state(false);
 	let error = $state('');
 
 	let shown = $derived.by(() => {
@@ -99,21 +101,27 @@
 {#if error}<p class="notice error" role="alert">{error}</p>{/if}
 {#if scanError}<p class="notice error" role="alert">{t.scanFailed({ error: scanError })}</p>{/if}
 
-{#if papyrus.length || unreadable.length}
+{#snippet scripts(list: Skipped[])}
+	<ul class="files">
+		{#each list as s (s.path)}
+			<li class:inactive={s.plugin && !s.active}>
+				{#if s.nameText}<span class="title">{s.nameText}</span>{/if}
+				<span class="file">{s.path.replace(/^Scripts\//i, '')}</span>
+				<span class="muted">{s.plugin || s.mod}{#if s.plugin && !s.active}{' · '}{t.notActive}{/if}</span>
+			</li>
+		{/each}
+	</ul>
+{/snippet}
+
+{#if compiled.length || notMenus.length || unreadable.length}
 	<div class="skipped">
-		{#if papyrus.length}
-			<p class="muted">{t.papyrus({ count: papyrus.length })} <button type="button" class="textbutton" onclick={() => (showSkipped = !showSkipped)} aria-expanded={showSkipped}>{showSkipped ? t.hideThem : t.showThem}</button></p>
-			{#if showSkipped}
-				<ul class="files">
-					{#each papyrus as s (s.path)}
-						<li class:inactive={s.plugin && !s.active}>
-							{#if s.nameText}<span class="title">{s.nameText}</span>{/if}
-							<span class="file">{s.path.replace(/^Scripts\//i, '')}</span>
-							<span class="muted">{s.plugin || t.noQuest}{#if s.plugin && !s.active}{' · '}{t.notActive}{/if}</span>
-						</li>
-					{/each}
-				</ul>
-			{/if}
+		{#if compiled.length}
+			<p class="muted">{t.compiled({ count: compiled.length })} <button type="button" class="textbutton" onclick={() => (showCompiled = !showCompiled)} aria-expanded={showCompiled}>{showCompiled ? t.hideThem : t.showThem}</button></p>
+			{#if showCompiled}{@render scripts(compiled)}{/if}
+		{/if}
+		{#if notMenus.length}
+			<p class="muted">{t.notMenus({ count: notMenus.length })} <button type="button" class="textbutton" onclick={() => (showNotMenus = !showNotMenus)} aria-expanded={showNotMenus}>{showNotMenus ? t.hideThem : t.showThem}</button></p>
+			{#if showNotMenus}{@render scripts(notMenus)}{/if}
 		{/if}
 		{#if unreadable.length}
 			<p class="notice warn">{t.unreadable({ count: unreadable.length })}</p>
@@ -173,7 +181,7 @@
 				<div class="actions"><a class="button primary" href={menuHref(current.id)}>{m.common.open}</a></div>
 				{#if !current.active}<p class="notice warn">{t.inactive({ plugin: current.plugin })}</p>{/if}
 				{#each current.notes as note, i (i)}
-					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'plugin-guessed'}<p class="notice">{t.pluginGuessed}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{/if}
+					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'plugin-guessed'}<p class="notice">{t.pluginGuessed}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{:else if note.kind === 'name-from-script'}<p class="notice">{t.nameFromScript}</p>{:else if note.kind === 'pages-guessed'}<p class="notice">{t.pagesGuessed}</p>{:else if note.kind === 'framework'}<p class="notice">{t.framework({ script: note.detail })}</p>{/if}
 				{/each}
 			{/if}
 		</aside>
