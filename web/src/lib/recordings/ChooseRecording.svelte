@@ -16,6 +16,7 @@
 	let dialog = $state<HTMLDialogElement>();
 	let at = $state(0);
 	let naming = $state(false);
+	let only = $state(false); // opened for a new recording only: no list to choose from
 	let newName = $state('');
 	let nameField = $state<HTMLInputElement>();
 	let error = $state('');
@@ -24,14 +25,23 @@
 	let settle: ((name: string | null) => void) | null = null;
 
 	// choose opens the dialog; it resolves to the recording chosen, now the
-	// open one, or null when the dialog is closed without a choice.
-	export function choose(): Promise<string | null> {
-		at = 0;
-		naming = false;
+	// open one, or null when the dialog is closed without a choice. With
+	// fresh, it goes straight to naming a new recording.
+	export async function choose(fresh = false): Promise<string | null> {
+		at = names.length;
+		naming = fresh;
+		only = fresh;
 		newName = '';
 		error = '';
 		dialog?.showModal();
-		return new Promise((resolve) => (settle = resolve));
+		const chosen = new Promise<string | null>((resolve) => (settle = resolve));
+		if (fresh) {
+			await tick();
+			nameField?.focus();
+		} else {
+			at = 0;
+		}
+		return chosen;
 	}
 
 	async function pick(name: string) {
@@ -73,10 +83,10 @@
 	}
 </script>
 
-<dialog bind:this={dialog} aria-label={t.choose} onclick={(e) => e.target === dialog && dialog?.close()} onkeydown={keys} onclose={closed}>
-	<h2 class="caps">{t.choose}</h2>
-	<p class="muted">{t.chooseLead}</p>
-	<ul role="listbox" aria-label={t.choose}>
+<dialog bind:this={dialog} aria-label={only ? t.newTitle : t.choose} onclick={(e) => e.target === dialog && dialog?.close()} onkeydown={keys} onclose={closed}>
+	<h2 class="caps">{only ? t.newTitle : t.choose}</h2>
+	<p class="muted">{only ? t.newLead : t.chooseLead}</p>
+	{#if !only}<ul role="listbox" aria-label={t.choose}>
 		{#each rows as name, i (name)}
 			<li role="option" aria-selected={i === at}>
 				<button type="button" onclick={() => pick(name)} onmouseenter={() => (at = i)}>
@@ -85,9 +95,9 @@
 				</button>
 			</li>
 		{/each}
-	</ul>
+	</ul>{/if}
 	{#if naming}
-		<form class="name" onsubmit={(e) => (e.preventDefault(), pick(''))}>
+		<form class="name" class:alone={only} onsubmit={(e) => (e.preventDefault(), pick(''))}>
 			<label>
 				<span class="caps">{t.name}</span>
 				<input bind:this={nameField} bind:value={newName} required autocomplete="off" spellcheck="false" />
@@ -153,6 +163,11 @@
 		margin-top: var(--space-3);
 		padding-top: var(--space-3);
 		border-top: 1px solid var(--rule);
+	}
+	/* With no list above it, the name needs no rule to set it apart. */
+	.name.alone {
+		padding-top: 0;
+		border-top: 0;
 	}
 	.name label {
 		display: grid;

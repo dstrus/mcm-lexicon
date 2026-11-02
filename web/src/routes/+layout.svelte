@@ -8,6 +8,7 @@
 	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import { setEditing, setSource } from '#lib/api/status.ts';
 	import Segmented from '#lib/ui/Segmented.svelte';
 	import { m } from '#lib/copy/messages.ts';
@@ -55,8 +56,16 @@
 	let openError = $state('');
 
 	// Choosing the recording new steps go to; MCM Lexicon remembers it.
-	async function chooseRecording(name: string) {
+	// New recording… asks for the name at once; cancelling it puts the
+	// select back to what it showed.
+	const newValue = '\u0000new';
+	let creator = $state<ChooseRecording>();
+	async function chooseRecording(name: string, select: HTMLSelectElement) {
 		openError = '';
+		if (name === newValue) {
+			if (!(await creator?.choose(true))) select.value = openRecording;
+			return;
+		}
 		try {
 			await setOpen(name);
 			await invalidateAll();
@@ -181,11 +190,12 @@
 				{#if editing}
 					<label class="adding">
 						<span class="caps">{m.shell.recording}</span>
-						<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value)}>
-							<option value="">{m.shell.noRecording}</option>
+						<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
+							{#if !openRecording}<option value="" disabled>{m.shell.chooseRecording}</option>{/if}
 							{#each recordings as r (r.name)}
 								<option value={r.name}>{r.name}</option>
 							{/each}
+							<option value={newValue}>{m.adding.newRecording}</option>
 						</select>
 					</label>
 					<a class="changes caps" class:pending={pending > 0} href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>
@@ -198,6 +208,7 @@
 		</div>
 		<main>{@render children()}</main>
 		<QuickFind menus={data.menus?.menus ?? []} />
+		<ChooseRecording bind:this={creator} />
 		<dialog bind:this={leaveDialog} class="leave" aria-label={m.shell.leaveTitle} onclick={(e) => e.target === leaveDialog && leaveDialog?.close()} onclose={syncMode}>
 			<h2 class="caps">{m.shell.leaveTitle}</h2>
 			<p>{m.shell.leaveSays({ count: pending })}</p>

@@ -23,7 +23,7 @@ common:
 shell:
   name: MCM Lexicon
   recording: Adding to
-  noRecording: None
+  chooseRecording: Choose a recording
   recordingTitle: The recording A adds steps to, from any menu or search result
   mode: Read-only or editing
   session: Editing session
@@ -552,6 +552,8 @@ adding:
   choose: Choose a recording
   chooseLead: New steps go to the recording you choose, until you choose another under Adding to.
   newRecording: New recording…
+  newTitle: New recording
+  newLead: It’s made in the draft and becomes the recording new steps go to.
   name: Name
   nameNote: / and \ become _ in the recording’s file names, as MCM Recorder writes them.
   create: Create
