@@ -7,6 +7,7 @@
 	import { menusDependency } from '#lib/menus/api.ts';
 	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
+	import Diamond from '#lib/ui/Diamond.svelte';
 	import { setEditing, setSource } from '#lib/api/status.ts';
 	import Segmented from '#lib/ui/Segmented.svelte';
 	import { m } from '#lib/copy/messages.ts';
@@ -159,7 +160,16 @@
 					<p class="group caps">{m.nav.recordingsGroup}</p>
 					<ul aria-label={m.nav.recordingsGroup}>
 						{#each recordings as r (r.name)}
-							<li><a class="caps clip" href={recordingHref(r.name)} title={r.name} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>{r.name}</a></li>
+							{@const target = editing && r.name === openRecording}
+							{@const unsaved = editing && (r.drafted || r.deleted)}
+							<li>
+								<a class="caps rec" class:unsaved href={recordingHref(r.name)} title={[r.name, target ? m.nav.addingHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>
+									<span class="marker">{#if target}<Diamond hollow />{/if}</span>
+									<span class="clip">{r.name}</span>
+									{#if target}<span class="visually-hidden">{m.nav.addingHere}</span>{/if}
+									{#if unsaved}<span class="visually-hidden">{m.nav.unsavedHere}</span>{/if}
+								</a>
+							</li>
 						{/each}
 					</ul>
 				{/if}
@@ -298,10 +308,38 @@
 	.sections a:hover {
 		color: var(--ink);
 	}
-	/* A recording's name can outrun the column; its whole name is its title. */
-	.sections a.clip {
+	/* A recording: a slot for the hollow diamond that marks the one A adds
+	   to, then its name, which can outrun the column (its whole name is its
+	   title). One with unsaved changes is in full ink, as CHANGES is. */
+	.sections a.rec {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+	.marker {
+		flex: none;
+		display: inline-flex;
+		width: 9px;
+		color: var(--ink);
+	}
+	.clip {
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.sections a.rec.unsaved {
+		color: var(--ink);
+	}
+	.sections a.rec[aria-current='page'] {
+		color: var(--accent);
+	}
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
 		white-space: nowrap;
 	}
 	.sections a[aria-current='page'] {

@@ -361,7 +361,7 @@ The grid is Hermaeus's: a top bar, a 13rem sections column, main (1.5rem top, 2r
 
 There are no quick toggles, so the bar is one line; under 60rem its right cluster wraps as Hermaeus's does.
 
-**Sections column.** Title-size caps, muted, the current one in the accent at weight 600: MENUS, SEARCH, RECORDINGS, COMPARE. Under them, under the muted group label RECORDINGS, each recording found, by name, the way Hermaeus lists each plugin's settings page: one click to any recording. With no source chosen there is no column, and main is the first-run form at 64rem.
+**Sections column.** Title-size caps, muted, the current one in the accent at weight 600: MENUS, SEARCH, RECORDINGS, COMPARE. Under them, under the muted group label RECORDINGS, each recording found, by name, the way Hermaeus lists each plugin's settings page: one click to any recording. With no source chosen there is no column, and main is the first-run form at 64rem. While editing, the recording A adds to has a hollow diamond before its name, and one with unsaved changes is in full ink, since its name, info, and order are changed only on its own page.
 
 **The editing session** sits at the sections column's foot, pinned above the hint strip, not in the top bar (which held seven things and overflowed at 1280): the Segmented READ-ONLY / EDITING, read-only at every start (§4); while editing, ADDING TO and the select of the **open recording**, the one A adds steps to from any menu or search result (§5.4), remembered with the source (`PUT /api/recordings/open`), with a new recording made from the Recordings page or from A's dialog; and CHANGES with the draft's count, the way to the Changes page. Under 60rem it's one row under the sections row.
 

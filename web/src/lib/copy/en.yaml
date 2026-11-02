@@ -75,6 +75,8 @@ nav:
     other: "{count} recordings with changes not yet saved"
   notBuiltYet: Not built yet
   recordingsGroup: Recordings
+  addingHere: New steps go here
+  unsavedHere: Has unsaved changes
 
 # Choosing what to read: a mod list, or a catalog file.
 source:
