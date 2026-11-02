@@ -63,11 +63,12 @@ type scan struct {
 	tr   *translations.Table
 	ids  map[string]bool
 
-	classic []script                // scripts whose Extends chain reaches SKI_ConfigBase
-	helpers map[string][]string     // MCM Helper's scripts (whose chain reaches MCM_ConfigBase), by mod
-	quests  map[string][]attachment // quests by the lowercase name of a script attached to them
-	sources map[string][]modlist.File
-	parsed  map[string]*parsedSource
+	classic  []script                // scripts whose Extends chain reaches SKI_ConfigBase
+	helpers  map[string][]string     // MCM Helper's scripts (whose chain reaches MCM_ConfigBase), by mod
+	quests   map[string][]attachment // quests by the lowercase name of a script attached to them
+	sources  map[string][]modlist.File
+	compiled map[string]modlist.File
+	forms    map[string]*form
 }
 
 // attachment is a quest in a plugin with a script attached, and what the

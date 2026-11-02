@@ -25,7 +25,7 @@ type machine struct {
 
 	// call handles calls to SKI_ConfigBase's functions; ok=false for any
 	// other function.
-	call func(name string, args []Value, line int) (Value, bool)
+	call func(site *ir.Call, args []Value) (Value, bool)
 }
 
 const maxDepth = 10
@@ -322,7 +322,7 @@ func (m *machine) callExpr(c *ir.Call) Value {
 		return unknown // another object's function, or SKI_ConfigBase's own
 	}
 	if m.call != nil {
-		if v, ok := m.call(c.Method, args, c.Line); ok {
+		if v, ok := m.call(c, args); ok {
 			return v
 		}
 	}

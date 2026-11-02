@@ -156,3 +156,15 @@ func lex(src string) []token {
 func isHex(c rune) bool {
 	return unicode.IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
+
+// Literals is every string literal in a script's source, outside comments,
+// as the compiler stores it (escapes turned into what they stand for).
+func Literals(src string) []string {
+	var out []string
+	for _, t := range lex(src) {
+		if t.kind == tString {
+			out = append(out, t.text)
+		}
+	}
+	return out
+}

@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"bytes"
 	"os"
 	"path"
 	"sort"
@@ -10,53 +9,54 @@ import (
 	"lexicon/internal/modlist"
 	"lexicon/internal/papyrus/ir"
 	"lexicon/internal/papyrus/mcm"
+	"lexicon/internal/papyrus/pex"
 	"lexicon/internal/papyrus/source"
 	"lexicon/internal/plugin"
 )
 
-// script is a compiled script the game runs, and its source when the mod
-// ships it.
+// script is a compiled script the game runs that makes a classic MCM.
 type script struct {
-	name   string // as the compiled file is named
-	pex    modlist.File
-	source *parsedSource
+	name string // as the compiled file is named
+	pex  modlist.File
 }
 
-type parsedSource struct {
-	file   modlist.File
+// form is a script as the analysis reads it: from its source when the mod
+// ships the source the game's compiled script was built from, otherwise
+// from the compiled script itself.
+type form struct {
 	script *ir.Script
+	kind   Kind
+	file   modlist.File // what was read
+	stale  string       // why the shipped source wasn't used, when it's another version
 }
 
-// scripts finds the compiled scripts that make MCMs, by following each
+// scripts finds the compiled scripts that make MCMs by following each
 // one's Extends chain: to SKI_ConfigBase for a classic MCM, to MCM_ConfigBase
-// for MCM Helper's (whose config.json defines the menu). The chain is read
-// from source where a mod ships it; where it doesn't, a compiled script's
-// string table names the script it extends, so a mention of either base
-// stands in until compiled scripts are read.
+// for MCM Helper's (whose config.json defines the menu).
 func (s *scan) scripts() {
 	s.helpers = map[string][]string{}
 	s.sources = map[string][]modlist.File{}
-	s.parsed = map[string]*parsedSource{}
+	s.forms = map[string]*form{}
+	s.compiled = map[string]modlist.File{}
 	for _, f := range s.list.Files("") {
 		if strings.EqualFold(path.Ext(f.Path), ".psc") {
 			k := ir.Key(strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)))
 			s.sources[k] = append(s.sources[k], f)
 		}
 	}
-	compiled := map[string]modlist.File{}
 	for _, f := range s.list.Files("Scripts") {
 		if strings.Count(f.Path, "/") == 1 && strings.EqualFold(path.Ext(f.Path), ".pex") {
-			compiled[ir.Key(strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)))] = f
+			s.compiled[ir.Key(strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)))] = f
 		}
 	}
-	for _, k := range sortedKeys(compiled) {
+	for _, k := range sortedKeys(s.compiled) {
 		if k == "ski_configbase" || k == "mcm_configbase" {
 			continue
 		}
-		f := compiled[k]
-		switch s.base(k, f.Mod, compiled) {
+		f := s.compiled[k]
+		switch s.base(k) {
 		case "ski_configbase":
-			s.classic = append(s.classic, script{name: strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)), pex: f, source: s.source(k, f.Mod)})
+			s.classic = append(s.classic, script{name: strings.TrimSuffix(path.Base(f.Path), path.Ext(f.Path)), pex: f})
 		case "mcm_configbase":
 			s.helpers[f.Mod] = append(s.helpers[f.Mod], k)
 		}
@@ -65,43 +65,68 @@ func (s *scan) scripts() {
 
 // base follows a script's Extends chain and returns the MCM base it
 // reaches, ski_configbase or mcm_configbase, or "" for neither.
-func (s *scan) base(name, mod string, compiled map[string]modlist.File) string {
+func (s *scan) base(name string) string {
 	seen := map[string]bool{}
 	for k := name; k != "" && !seen[k]; {
 		seen[k] = true
 		if k == "ski_configbase" || k == "mcm_configbase" {
 			return k
 		}
-		if src := s.source(k, mod); src != nil {
-			k = ir.Key(src.script.Parent)
-			continue
-		}
-		f, ok := compiled[k]
-		if !ok {
+		f := s.form(k)
+		if f == nil {
 			return ""
 		}
-		b, err := os.ReadFile(f.Abs)
-		if err != nil {
-			return ""
-		}
-		lower := bytes.ToLower(b)
-		switch {
-		case bytes.Contains(lower, []byte("mcm_configbase")):
-			return "mcm_configbase"
-		case bytes.Contains(lower, []byte("ski_configbase")):
-			return "ski_configbase"
-		}
-		return ""
+		k = ir.Key(f.script.Parent)
 	}
 	return ""
 }
 
-// source is a script's parsed source, preferring the copy in the mod
-// whose compiled script the game runs.
-func (s *scan) source(name, mod string) *parsedSource {
+// form is a script's form, read once: the compiled script the game runs,
+// or its source when that's the same version (it reads the same, and
+// carries the source's lines). A script with only a source counts too, as
+// an ancestor a compiled script names.
+func (s *scan) form(name string) *form {
+	if f, ok := s.forms[name]; ok {
+		return f
+	}
+	var out *form
+	c, hasCompiled := s.compiled[name]
+	var compiled *pex.File
+	if hasCompiled {
+		var err error
+		if compiled, err = pex.ReadFile(c.Abs); err != nil {
+			s.skip(c, SkipReasonUnreadable, err.Error())
+			compiled = nil
+		}
+	}
+	src, text := s.source(name, c.Mod)
+	switch {
+	case compiled != nil && src != nil:
+		if reason := compiled.OtherVersion(text); reason == "" {
+			out = &form{script: src.script, kind: KindSource, file: src.file}
+		} else {
+			out = &form{script: compiled.Script(), kind: KindCompiled, file: c, stale: reason}
+		}
+	case compiled != nil:
+		out = &form{script: compiled.Script(), kind: KindCompiled, file: c}
+	case src != nil:
+		out = &form{script: src.script, kind: KindSource, file: src.file}
+	}
+	s.forms[name] = out
+	return out
+}
+
+type parsedSource struct {
+	file   modlist.File
+	script *ir.Script
+}
+
+// source is a script's parsed source and its text, preferring the copy in
+// the mod whose compiled script the game runs.
+func (s *scan) source(name, mod string) (*parsedSource, string) {
 	files := s.sources[name]
 	if len(files) == 0 {
-		return nil
+		return nil, ""
 	}
 	f := files[0]
 	for _, c := range files {
@@ -110,24 +135,19 @@ func (s *scan) source(name, mod string) *parsedSource {
 			break
 		}
 	}
-	key := strings.ToLower(f.Abs)
-	if p, ok := s.parsed[key]; ok {
-		return p
+	b, err := os.ReadFile(f.Abs)
+	if err != nil {
+		return nil, ""
 	}
-	var p *parsedSource
-	if b, err := os.ReadFile(f.Abs); err == nil {
-		r := source.Parse(string(b))
-		if r.Script.Name != "" {
-			p = &parsedSource{file: f, script: r.Script}
-		}
+	r := source.Parse(string(b))
+	if r.Script.Name == "" {
+		return nil, ""
 	}
-	s.parsed[key] = p
-	return p
+	return &parsedSource{file: f, script: r.Script}, string(b)
 }
 
-// papyrus reads the classic MCMs: each script on a quest, from its source,
-// into a menu. One with no source waits for compiled scripts to be read;
-// one on no quest isn't a menu the game shows.
+// papyrus reads the classic MCMs: each script a quest runs, into a menu.
+// One on no quest isn't a menu the game shows.
 func (s *scan) papyrus() {
 	for _, sc := range s.classic {
 		a, attached := s.quest(sc.name)
@@ -139,15 +159,15 @@ func (s *scan) papyrus() {
 				sk.Pages = a.pages
 			}
 		}
+		f := s.form(ir.Key(sc.name))
 		switch {
 		case !attached:
 			sk.Reason = SkipReasonNoQuest
 			s.cat.Skipped = append(s.cat.Skipped, sk)
-		case sc.source == nil:
-			sk.Reason = SkipReasonCompiled
-			s.cat.Skipped = append(s.cat.Skipped, sk)
+		case f == nil:
+			// Unreadable, and already listed as such.
 		default:
-			m := s.sourceMenu(sc, a)
+			m := s.papyrusMenu(sc, a, f)
 			if empty(m) {
 				sk.Reason = SkipReasonEmpty
 				s.cat.Skipped = append(s.cat.Skipped, sk)
@@ -158,15 +178,15 @@ func (s *scan) papyrus() {
 	}
 }
 
-// sourceMenu reads a classic MCM from its source and its ancestors'.
-func (s *scan) sourceMenu(sc script, a attachment) Menu {
-	chain := []*ir.Script{sc.source.script}
-	for parent := sc.source.script.Parent; len(chain) < 8; {
+// papyrusMenu reads a classic MCM from its script and its ancestors'.
+func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
+	chain := []*ir.Script{f.script}
+	for parent := f.script.Parent; len(chain) < 8; {
 		k := ir.Key(parent)
 		if k == "" || k == "ski_configbase" {
 			break
 		}
-		p := s.source(k, sc.pex.Mod)
+		p := s.form(k)
 		if p == nil {
 			break
 		}
@@ -175,11 +195,11 @@ func (s *scan) sourceMenu(sc script, a attachment) Menu {
 	}
 	result := mcm.Extract(chain, properties(a.props))
 	prefer := []string{strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), sc.name}
-	src := SourceRef{Path: sc.source.file.Path, Mod: sc.source.file.Mod}
+	src := SourceRef{Path: f.file.Path, Mod: f.file.Mod}
 	m := Menu{
-		ID:        s.id("source", sc.name),
+		ID:        s.id("papyrus", sc.name),
 		Name:      result.ModName,
-		Kind:      KindSource,
+		Kind:      f.kind,
 		Mod:       sc.pex.Mod,
 		Plugin:    a.plugin,
 		Active:    a.active,
@@ -193,6 +213,9 @@ func (s *scan) sourceMenu(sc script, a attachment) Menu {
 		m.Notes = append(m.Notes, Note{Kind: NoteKindNameFromScript, Detail: sc.name})
 	}
 	m.NameText = s.tr.Text(m.Name, prefer...)
+	if f.stale != "" {
+		m.Notes = append(m.Notes, Note{Kind: NoteKindSourceStale, Detail: f.stale})
+	}
 	if result.PagesGuessed {
 		m.Notes = append(m.Notes, Note{Kind: NoteKindPagesGuessed})
 	}
@@ -216,6 +239,9 @@ func (s *scan) sourceMenu(sc script, a attachment) Menu {
 			if o.Certainty == mcm.Exact {
 				opt.Text = s.tr.Text(o.Label, prefer...)
 			}
+			if o.Repeats {
+				opt.Notes = append(opt.Notes, Note{Kind: NoteKindRepeats})
+			}
 			if o.Range != nil {
 				opt.Slider = &Range{Min: o.Range.Min, Max: o.Range.Max, Step: o.Range.Step, Format: o.Format}
 			}
@@ -225,10 +251,11 @@ func (s *scan) sourceMenu(sc script, a attachment) Menu {
 			if o.Default != nil {
 				opt.Default = &Value{Kind: ValueKindNumber, Number: *o.Default}
 			}
-			if opt.Certainty != CertaintyExact && m.Certainty == CertaintyExact {
-				m.Certainty = opt.Certainty
-			} else if opt.Certainty == CertaintyUnknown {
+			switch {
+			case opt.Certainty == CertaintyUnknown:
 				m.Certainty = CertaintyUnknown
+			case opt.Certainty == CertaintyPattern && m.Certainty == CertaintyExact:
+				m.Certainty = CertaintyPattern
 			}
 			page.Options = append(page.Options, opt)
 		}
@@ -238,8 +265,8 @@ func (s *scan) sourceMenu(sc script, a attachment) Menu {
 	return m
 }
 
-// empty reports whether a menu read from source has neither a name of its
-// own nor an option: an old script left on a quest beside the real menu.
+// empty reports whether a menu has neither a name of its own nor an
+// option: an old script left on a quest beside the real menu.
 func empty(m Menu) bool {
 	for _, p := range m.Pages {
 		if len(p.Options) > 0 {

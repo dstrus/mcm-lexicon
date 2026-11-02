@@ -61,7 +61,7 @@
 	<p class="notice warn">{o.certainty === 'pattern' ? t.pattern : t.unknown}</p>
 {/if}
 {#each o.notes as note, i (i)}
-	{#if note.kind === 'stepper'}<p class="notice">{t.stepper}</p>{/if}
+	{#if note.kind === 'stepper'}<p class="notice">{t.stepper}</p>{:else if note.kind === 'repeats'}<p class="notice">{t.repeats}</p>{/if}
 {/each}
 {#if o.saved && changed(o)}
 	<p class="notice small"><Fill text={t.savedNote.text}>{#snippet value()}<span class="changed">{show(o, o.saved!)}</span>{/snippet}</Fill></p>

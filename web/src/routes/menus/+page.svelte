@@ -26,7 +26,6 @@
 	let source = $derived(data.status.source);
 	let reply = $derived(data.menus);
 	let menus = $derived(reply?.menus ?? []);
-	let compiled = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'compiled'));
 	let notMenus = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'no-quest' || s.reason === 'empty'));
 	let unreadable = $derived((reply?.skipped ?? []).filter((s) => s.reason === 'unreadable'));
 	let inactive = $derived(menus.filter((s) => !s.active).length);
@@ -34,7 +33,6 @@
 	let which = $state('all');
 	let query = $state('');
 	let sort = $state<Sort>({ key: 'menu', descending: false });
-	let showCompiled = $state(false);
 	let showNotMenus = $state(false);
 	let error = $state('');
 
@@ -113,12 +111,8 @@
 	</ul>
 {/snippet}
 
-{#if compiled.length || notMenus.length || unreadable.length}
+{#if notMenus.length || unreadable.length}
 	<div class="skipped">
-		{#if compiled.length}
-			<p class="muted">{t.compiled({ count: compiled.length })} <button type="button" class="textbutton" onclick={() => (showCompiled = !showCompiled)} aria-expanded={showCompiled}>{showCompiled ? t.hideThem : t.showThem}</button></p>
-			{#if showCompiled}{@render scripts(compiled)}{/if}
-		{/if}
 		{#if notMenus.length}
 			<p class="muted">{t.notMenus({ count: notMenus.length })} <button type="button" class="textbutton" onclick={() => (showNotMenus = !showNotMenus)} aria-expanded={showNotMenus}>{showNotMenus ? t.hideThem : t.showThem}</button></p>
 			{#if showNotMenus}{@render scripts(notMenus)}{/if}
@@ -181,7 +175,7 @@
 				<div class="actions"><a class="button primary" href={menuHref(current.id)}>{m.common.open}</a></div>
 				{#if !current.active}<p class="notice warn">{t.inactive({ plugin: current.plugin })}</p>{/if}
 				{#each current.notes as note, i (i)}
-					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'plugin-guessed'}<p class="notice">{t.pluginGuessed}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{:else if note.kind === 'name-from-script'}<p class="notice">{t.nameFromScript}</p>{:else if note.kind === 'pages-guessed'}<p class="notice">{t.pagesGuessed}</p>{:else if note.kind === 'framework'}<p class="notice">{t.framework({ script: note.detail })}</p>{/if}
+					{#if note.kind === 'no-plugin'}<p class="notice">{t.noPlugin}</p>{:else if note.kind === 'plugin-guessed'}<p class="notice">{t.pluginGuessed}</p>{:else if note.kind === 'overridden'}<p class="notice">{t.overridden({ mod: note.detail })}</p>{:else if note.kind === 'name-from-script'}<p class="notice">{t.nameFromScript}</p>{:else if note.kind === 'pages-guessed'}<p class="notice">{t.pagesGuessed}</p>{:else if note.kind === 'framework'}<p class="notice">{t.framework({ script: note.detail })}</p>{:else if note.kind === 'source-stale'}<p class="notice">{t.sourceStale}</p>{/if}
 				{/each}
 			{/if}
 		</aside>

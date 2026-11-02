@@ -253,3 +253,37 @@ func Plugin(quests ...Quest) string {
 	}
 	return string(file)
 }
+
+// Compiled is the bytes of a minimal compiled script (.pex) named name,
+// extending parent, with no functions; strs go into its string table, as
+// the literals of the source it was compiled from would.
+func Compiled(name, parent string, strs ...string) string {
+	var b bytes.Buffer
+	be := func(v any) { binary.Write(&b, binary.BigEndian, v) }
+	ws := func(s string) { be(uint16(len(s))); b.WriteString(s) }
+	table := append([]string{name, parent, ""}, strs...)
+	be(uint32(0xFA57C0DE))
+	b.Write([]byte{3, 2})
+	be(uint16(1))
+	b.Write(make([]byte, 8))
+	ws(name + ".psc")
+	ws("user")
+	ws("machine")
+	be(uint16(len(table)))
+	for _, s := range table {
+		ws(s)
+	}
+	b.WriteByte(0) // no debug info
+	be(uint16(0))  // user flags
+	be(uint16(1))  // objects
+	be(uint16(0))  // its name
+	be(uint32(4 + 2 + 2 + 4 + 2 + 2 + 2 + 2))
+	be(uint16(1)) // parent
+	be(uint16(2)) // documentation
+	be(uint32(0)) // user flags
+	be(uint16(2)) // auto state
+	be(uint16(0)) // variables
+	be(uint16(0)) // properties
+	be(uint16(0)) // states
+	return b.String()
+}

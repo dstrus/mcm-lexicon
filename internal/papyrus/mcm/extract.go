@@ -58,7 +58,8 @@ type Option struct {
 	Choices   []string // a menu's entries, raw
 	Default   *float64 // a slider's default value, or a menu's default choice by position
 	Help      string
-	Line      int // where it's added
+	Line      int  // where it's added
+	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
 }
 
 type Range struct {
@@ -94,6 +95,7 @@ type found struct {
 	Option
 	id   int
 	path []step
+	site *ir.Call // the Add…Option call that made it
 }
 
 // Extract reads the menu a script defines. chain is the script, then the
@@ -103,15 +105,11 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	// Script variables and properties start at their declared values (the
 	// root's first, so a child's declaration wins), then the plugin's.
 	for i := len(chain) - 1; i >= 0; i-- {
-		for _, v := range append(append([]ir.Variable{}, chain[i].Properties...), chain[i].Variables...) {
-			val := Value{k: kNone}
-			if v.Init != nil {
-				val = m.eval(v.Init)
-			}
-			if strings.HasSuffix(v.Type, "]") && v.Init == nil {
-				val = Value{k: kNone}
-			}
-			m.globals[ir.Key(v.Name)] = &val
+		for _, v := range chain[i].Properties {
+			m.globals[ir.Key(v.Name)] = initial(m, v, true)
+		}
+		for _, v := range chain[i].Variables {
+			m.globals[ir.Key(v.Name)] = initial(m, v, false)
 		}
 	}
 	for _, p := range props {
@@ -137,7 +135,8 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	// Idles) gets that update once the events have run.
 	pending := map[string]bool{}
 	var deferred []string
-	m.call = func(name string, args []Value, line int) (Value, bool) {
+	m.call = func(site *ir.Call, args []Value) (Value, bool) {
+		name := site.Method
 		k := strings.ToLower(name)
 		if event, ok := updates[k]; ok {
 			if !pending[event] {
@@ -196,6 +195,36 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	return menu
 }
 
+// initial is a variable's or property's value before any code runs: its
+// declared value, or Papyrus's default for its type (0, 0.0, False, ""), or
+// None for an array or an object. An object property the declaration
+// leaves empty is one the plugin fills with a form, so it's unknown, not
+// None.
+func initial(m *machine, v ir.Variable, property bool) *Value {
+	val := Value{k: kNone}
+	switch {
+	case v.Init != nil:
+		val = m.eval(v.Init)
+	case strings.HasSuffix(v.Type, "]"):
+	default:
+		switch strings.ToLower(v.Type) {
+		case "int":
+			val = integer(0)
+		case "float":
+			val = num(0)
+		case "bool":
+			val = boolean(false)
+		case "string":
+			val = str("")
+		default:
+			if property {
+				val = unknown
+			}
+		}
+	}
+	return &val
+}
+
 // walk runs OnPageReset for one page and then the option events, and
 // returns the page's options.
 func walk(m *machine, page string) []Option {
@@ -203,7 +232,8 @@ func walk(m *machine, page string) []Option {
 	byState := map[string][]int{}
 	next := 0
 	m.globals["currentpage"] = &Value{k: kString, s: page}
-	m.call = func(name string, args []Value, line int) (Value, bool) {
+	m.call = func(site *ir.Call, args []Value) (Value, bool) {
+		name, line := site.Method, site.Line
 		k := strings.ToLower(name)
 		st := strings.HasSuffix(k, "st") && adders[strings.TrimSuffix(k, "st")] != ""
 		typ := adders[strings.TrimSuffix(k, "st")]
@@ -216,7 +246,7 @@ func walk(m *machine, page string) []Option {
 			}
 			return Value{}, false
 		}
-		f := &found{id: next, path: append([]step{}, m.path...)}
+		f := &found{id: next, path: append([]step{}, m.path...), site: site}
 		next++
 		f.Type, f.Line = typ, line
 		if st {
@@ -295,8 +325,9 @@ func walk(m *machine, page string) []Option {
 			}
 		}
 	}
-	dialog := func(fixed []int) func(string, []Value, int) (Value, bool) {
-		return func(name string, args []Value, line int) (Value, bool) {
+	dialog := func(fixed []int) func(*ir.Call, []Value) (Value, bool) {
+		return func(site *ir.Call, args []Value) (Value, bool) {
+			name := site.Method
 			if !isSKIFunction(name) {
 				return Value{}, false
 			}
@@ -373,6 +404,14 @@ func merge(opts []*found) []Option {
 	for _, o := range opts {
 		dup := false
 		for _, k := range kept {
+			// One call adding the same label again (a loop over what the
+			// game holds): one option, which repeats at runtime.
+			if k.site == o.site && k.Type == o.Type && k.Label == o.Label && k.Certainty == o.Certainty {
+				fill(&k.Option, o.Option)
+				k.Repeats = true
+				dup = true
+				break
+			}
 			if k.Type == o.Type && k.Label == o.Label && k.Certainty == Exact && o.Certainty == Exact && exclusive(k.path, o.path) {
 				fill(&k.Option, o.Option)
 				dup = true
@@ -456,10 +495,14 @@ func comparedPages(chain []*ir.Script, m *machine) []string {
 			visit(e.X)
 		}
 	}
+	// Every expression counts, not just conditions: compiled code compares
+	// into a temporary and tests that.
 	var walkStmts func([]ir.Stmt)
 	walkStmts = func(ss []ir.Stmt) {
 		for _, s := range ss {
 			switch s := s.(type) {
+			case *ir.Assign:
+				visit(s.Value)
 			case *ir.If:
 				for _, b := range s.Branches {
 					visit(b.Cond)
@@ -467,6 +510,7 @@ func comparedPages(chain []*ir.Script, m *machine) []string {
 				}
 				walkStmts(s.Else)
 			case *ir.While:
+				visit(s.Cond)
 				walkStmts(s.Body)
 			}
 		}

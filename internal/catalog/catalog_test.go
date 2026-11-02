@@ -52,7 +52,7 @@ func build(t *testing.T) *modlist.List {
 	inst := testcorpus.New(t, "[NoDelete] MGO", "VR")
 	inst.Mod("Physical Collision VR", true, map[string]string{
 		"PhysicalCollisionVR.esp":                                testcorpus.Plugin(),
-		"Scripts/PCVR_MCM.pex":                                   "\xfa\x57\xc0\xde PCVR_MCM MCM_ConfigBase",
+		"Scripts/PCVR_MCM.pex":                                   testcorpus.Compiled("PCVR_MCM", "MCM_ConfigBase"),
 		"Collision Patch.esp":                                    testcorpus.Plugin(testcorpus.Quest{EditorID: "PCVR_MCMQuest", Script: "PCVR_MCM"}),
 		"MCM/Config/PhysicalCollisionVR/config.json":             collision,
 		"MCM/Config/PhysicalCollisionVR/settings.ini":            "[General]\nbEnabled = 1\nbDup1 = 0\n[Hands]\nfRadius = 4.0\niMode = 1\nuUnits = 0\n",
@@ -69,26 +69,26 @@ func build(t *testing.T) *modlist.List {
 	})
 	inst.Mod("Broken", true, map[string]string{"MCM/Config/Broken/config.json": "{ not json"})
 	inst.Mod("Classic", true, map[string]string{
-		"Scripts/Classic_MCM.pex":    "\xfa\x57\xc0\xde Classic_MCM SKI_ConfigBase OnPageReset",
+		"Scripts/Classic_MCM.pex":    testcorpus.Compiled("Classic_MCM", "SKI_ConfigBase"),
 		"Classic.esp":                testcorpus.Plugin(testcorpus.Quest{EditorID: "ClassicMCMQuest", Script: "classic_mcm", ModName: "Classic Menu", Pages: []string{"General", "$CL_More"}}),
 		"Broken.esp":                 "not a plugin",
-		"Scripts/Helper_MCM.pex":     "\xfa\x57\xc0\xde Helper_MCM MCM_ConfigBase SKI_ConfigBase",
-		"Scripts/SKI_ConfigBase.pex": "SKI_ConfigBase",
-		"Scripts/Unrelated.pex":      "nothing here",
+		"Scripts/Helper_MCM.pex":     testcorpus.Compiled("Helper_MCM", "MCM_ConfigBase"),
+		"Scripts/SKI_ConfigBase.pex": testcorpus.Compiled("SKI_ConfigBase", "Quest"),
+		"Scripts/Unrelated.pex":      testcorpus.Compiled("Unrelated", "Quest"),
 	})
 	inst.Overwrite(map[string]string{"MCM/Settings/PhysicalCollisionVR.ini": "[Hands]\nfRadius = 6.5\niMode = 1\n[General]\nbEnabled = 1\n"})
 	// A classic menu with its source: its name comes from the plugin, its
 	// pages and options from the script.
 	inst.Mod("Source Menu", true, map[string]string{
-		"Scripts/Src_MCM.pex":                    "compiled; the source says what it extends",
+		"Scripts/Src_MCM.pex":                    testcorpus.Compiled("Src_MCM", "SKI_ConfigBase", "$SRC_Main", "Shiny", "Level ", "Makes it shiny."),
 		"Source/Scripts/Src_MCM.psc":             "ScriptName Src_MCM extends SKI_ConfigBase\nint t\nEvent OnConfigInit()\n\tPages = new string[1]\n\tPages[0] = \"$SRC_Main\"\nEndEvent\nEvent OnPageReset(string page)\n\tif page == Pages[0]\n\t\tt = AddToggleOption(\"Shiny\", true)\n\t\tAddSliderOption(\"Level \", 3, \"{0}\")\n\tendif\nEndEvent\nEvent OnOptionHighlight(int o)\n\tif o == t\n\t\tSetInfoText(\"Makes it shiny.\")\n\tendif\nEndEvent\n",
 		"Src.esp":                                testcorpus.Plugin(testcorpus.Quest{EditorID: "SrcQuest", Script: "Src_MCM", ModName: "$SRC_Name"}),
 		"Interface/Translations/Src_ENGLISH.txt": utf16LE("$SRC_Name\tSource Menu\r\n$SRC_Main\tMain\r\n"),
 		// A script built on SKI_ConfigBase that no quest runs, and one that
 		// only mentions it, extending something else.
-		"Scripts/Orphan_MCM.pex":        "compiled",
+		"Scripts/Orphan_MCM.pex":        testcorpus.Compiled("Orphan_MCM", "SKI_ConfigBase"),
 		"Scripts/Source/Orphan_MCM.psc": "ScriptName Orphan_MCM extends SKI_ConfigBase\n",
-		"Scripts/Helper.pex":            "\xfa\x57\xc0\xde Helper SKI_ConfigBase",
+		"Scripts/Helper.pex":            testcorpus.Compiled("Helper", "Quest", "SKI_ConfigBase"),
 		"Scripts/Source/Helper.psc":     "ScriptName Helper extends Quest\nSKI_ConfigBase Property Menu Auto\n",
 	})
 	inst.Plugins("*PhysicalCollisionVR.esp", "*Collision Patch.esp", "*PrismaUIAddItemMenu.esp", "Inactive.esp", "Classic.esp", "*Broken.esp", "*Src.esp")
@@ -120,7 +120,7 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	for _, m := range c.Menus {
 		names = append(names, m.NameText)
 	}
-	if want := "Inactive Thing, Physical Collision VR, Prisma UI AddItem Menu, Source Menu"; strings.Join(names, ", ") != want {
+	if want := "Classic Menu, Inactive Thing, Physical Collision VR, Prisma UI AddItem Menu, Source Menu"; strings.Join(names, ", ") != want {
 		t.Errorf("menus = %q, want %q", names, want)
 	}
 	if c.List.Profile != "VR" || c.List.Language != "ENGLISH" || c.List.Version != "test" || c.SchemaVersion != SchemaVersion {
@@ -189,13 +189,16 @@ func TestScanReadsMCMHelperMenus(t *testing.T) {
 	for _, s := range c.Skipped {
 		skipped = append(skipped, string(s.Reason)+" "+s.Path)
 	}
-	if want := "unreadable Broken.esp, unreadable MCM/Config/Broken/config.json, compiled Scripts/Classic_MCM.pex, no-quest Scripts/Orphan_MCM.pex"; strings.Join(skipped, ", ") != want {
+	if want := "unreadable Broken.esp, unreadable MCM/Config/Broken/config.json, no-quest Scripts/Orphan_MCM.pex"; strings.Join(skipped, ", ") != want {
 		t.Errorf("skipped = %q, want %q", skipped, want)
 	}
-	// The Papyrus menu's quest says its name and pages, matched to the
-	// script without regard to case.
-	if cl := c.Skipped[2]; cl.Name != "Classic Menu" || cl.NameText != "Classic Menu" || cl.Plugin != "Classic.esp" || cl.Quest != "ClassicMCMQuest" || cl.Active || strings.Join(cl.Pages, ",") != "General,$CL_More" {
-		t.Errorf("the Papyrus menu = %+v", cl)
+	// A menu with only its compiled script: its name and pages from its
+	// quest, matched to the script without regard to case.
+	if cl := menu(t, c, "Classic Menu"); cl.Kind != KindCompiled || cl.Plugin != "Classic.esp" || cl.Active || len(cl.Pages) != 2 || cl.Pages[1].Name != "$CL_More" || cl.Source.Path != "Scripts/Classic_MCM.pex" {
+		t.Errorf("the compiled menu = %+v", cl)
+	}
+	if sm := menu(t, c, "Source Menu"); sm.Kind != KindSource || sm.Source.Path != "Source/Scripts/Src_MCM.psc" {
+		t.Errorf("a menu whose source matches its compiled script is read from source: %+v", sm)
 	}
 }
 
@@ -272,10 +275,10 @@ func TestService(t *testing.T) {
 	}
 	svc.UseList(l.Source)
 	c, err := svc.Catalog(r) // waits for the scan
-	if err != nil || len(c.Menus) != 4 {
+	if err != nil || len(c.Menus) != 5 {
 		t.Fatalf("after scanning: %v, %v", c, err)
 	}
-	if st := svc.State(); st.Scanning || st.Menus != 4 || st.ScannedAt.IsZero() {
+	if st := svc.State(); st.Scanning || st.Menus != 5 || st.ScannedAt.IsZero() {
 		t.Errorf("state = %+v", st)
 	}
 	path := filepath.Join(t.TempDir(), "other.json")
@@ -337,12 +340,16 @@ func TestRealSnapshots(t *testing.T) {
 			}
 			t.Logf("%d of %d skipped scripts named by their quests", named, len(c.Skipped))
 			// What the source menus hold, and what isn't exact, and why.
-			source, options, inexact := 0, 0, 0
+			source, compiled, options, inexact := 0, 0, 0, 0
 			for _, m := range c.Menus {
-				if m.Kind != KindSource {
+				switch m.Kind {
+				case KindSource:
+					source++
+				case KindCompiled:
+					compiled++
+				default:
 					continue
 				}
-				source++
 				for _, n := range m.Notes {
 					t.Logf("%s: note %s %s", m.NameText, n.Kind, n.Detail)
 				}
@@ -356,7 +363,7 @@ func TestRealSnapshots(t *testing.T) {
 					}
 				}
 			}
-			t.Logf("%d source menus, %d options, %d not exact", source, options, inexact)
+			t.Logf("%d menus read from source and %d from compiled scripts: %d options, %d not exact", source, compiled, options, inexact)
 			checkRecordings(t, l, c)
 			for _, m := range c.Menus {
 				for _, n := range m.Notes {
@@ -382,6 +389,25 @@ func TestRealSnapshots(t *testing.T) {
 				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Modesty Female", ""},
 				{"EVG Conditional Idles", "Toggle - NPCs", "toggle", "Injured", ""},
 				{"Experience", "$EXP_General", "toggle", "$EXP_ShowMessages", ""},
+				// From compiled scripts.
+				{"Be Seated", "", "toggle", "Enable / Disable Sitting Prompts", ""},
+				{"Sofia Follower", "Sofia Settings", "slider", "Sofia Health: ", ""},
+				{"Sofia Follower", "Sofia Settings", "slider", "Sofia Stamina: ", ""},
+				{"Sofia Follower", "Sofia Settings", "slider", "Sofia Magicka: ", ""},
+				{"Sofia Follower", "Sofia Settings", "toggle", "Disable Comments Dialogue", ""},
+			}
+			// Nether's Follower Framework, a large compiled MCM, reads whole.
+			nff := 0
+			for _, m := range c.Menus {
+				if m.Kind == KindCompiled && strings.Contains(m.Mod, "Nether") {
+					for _, p := range m.Pages {
+						nff += len(p.Options)
+					}
+					t.Logf("Nether's Follower Framework: %s, %d pages", m.NameText, len(m.Pages))
+				}
+			}
+			if nff < 100 {
+				t.Errorf("Nether's Follower Framework has %d options", nff)
 			}
 			for _, g := range golden {
 				o, ok := find(c, g.mod, g.page, OptionType(g.typ), g.label, 0)
@@ -477,7 +503,7 @@ func checkRecordings(t *testing.T, l *modlist.List, c *Catalog) {
 				st[strings.ToLower(k)] = v
 			}
 			mod, _ := st["mod"].(string)
-			if kinds[mod] != KindSource {
+			if kinds[mod] != KindSource && kinds[mod] != KindCompiled {
 				continue
 			}
 			page, _ := st["page"].(string)
@@ -510,5 +536,5 @@ func checkRecordings(t *testing.T, l *modlist.List, c *Catalog) {
 			}
 		}
 	}
-	t.Logf("%d of %d recorded steps for source menus resolved exactly", resolved, checked)
+	t.Logf("%d of %d recorded steps for Papyrus menus resolved exactly", resolved, checked)
 }

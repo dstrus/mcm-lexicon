@@ -142,8 +142,10 @@ export const NoteKindOverridden = "overridden"; // another mod's copy of the def
 export const NoteKindPluginGuessed = "plugin-guessed"; // no quest with the menu's script was found; Plugin is the mod's likeliest
 export const NoteKindNameFromScript = "name-from-script"; // neither the script nor its quest sets ModName, so the menu goes by its script's name
 export const NoteKindPagesGuessed = "pages-guessed"; // Pages couldn't be read; the pages are the names OnPageReset compares against
-export const NoteKindFramework = "framework"; // the menu is built on another script (Detail), whose source was read too
-export type NoteKind = typeof NoteKindNoPlugin | typeof NoteKindStepper | typeof NoteKindOverridden | typeof NoteKindPluginGuessed | typeof NoteKindNameFromScript | typeof NoteKindPagesGuessed | typeof NoteKindFramework;
+export const NoteKindFramework = "framework"; // the menu is built on another script (Detail), which was read too
+export const NoteKindSourceStale = "source-stale"; // the shipped source is another version (Detail says how it differs), so the compiled script was read
+export const NoteKindRepeats = "repeats"; // one call adds this option again and again in a loop the game decides
+export type NoteKind = typeof NoteKindNoPlugin | typeof NoteKindStepper | typeof NoteKindOverridden | typeof NoteKindPluginGuessed | typeof NoteKindNameFromScript | typeof NoteKindPagesGuessed | typeof NoteKindFramework | typeof NoteKindSourceStale | typeof NoteKindRepeats;
 export interface Note {
   kind: NoteKind;
   detail: string; // a name or path the note refers to
@@ -151,11 +153,10 @@ export interface Note {
 /**
  * SkipReason says why something wasn't read.
  */
-export const SkipReasonCompiled = "compiled"; // a Papyrus menu with only its compiled script, which MCM Lexicon doesn't read yet
 export const SkipReasonNoQuest = "no-quest"; // a script built on SKI_ConfigBase that no quest runs, so no menu the game shows
 export const SkipReasonEmpty = "empty"; // a script on a quest with no name and no options: SkyUI lists nothing for it
 export const SkipReasonUnreadable = "unreadable"; // the file couldn't be read; Detail says why
-export type SkipReason = typeof SkipReasonCompiled | typeof SkipReasonNoQuest | typeof SkipReasonEmpty | typeof SkipReasonUnreadable;
+export type SkipReason = typeof SkipReasonNoQuest | typeof SkipReasonEmpty | typeof SkipReasonUnreadable;
 export interface Skipped {
   path: string;
   mod: string;

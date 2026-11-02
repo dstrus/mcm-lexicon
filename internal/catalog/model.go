@@ -148,7 +148,9 @@ const (
 	NoteKindPluginGuessed  NoteKind = "plugin-guessed"   // no quest with the menu's script was found; Plugin is the mod's likeliest
 	NoteKindNameFromScript NoteKind = "name-from-script" // neither the script nor its quest sets ModName, so the menu goes by its script's name
 	NoteKindPagesGuessed   NoteKind = "pages-guessed"    // Pages couldn't be read; the pages are the names OnPageReset compares against
-	NoteKindFramework      NoteKind = "framework"        // the menu is built on another script (Detail), whose source was read too
+	NoteKindFramework      NoteKind = "framework"        // the menu is built on another script (Detail), which was read too
+	NoteKindSourceStale    NoteKind = "source-stale"     // the shipped source is another version (Detail says how it differs), so the compiled script was read
+	NoteKindRepeats        NoteKind = "repeats"          // one call adds this option again and again in a loop the game decides
 )
 
 type Note struct {
@@ -160,7 +162,6 @@ type Note struct {
 type SkipReason string
 
 const (
-	SkipReasonCompiled   SkipReason = "compiled"   // a Papyrus menu with only its compiled script, which MCM Lexicon doesn't read yet
 	SkipReasonNoQuest    SkipReason = "no-quest"   // a script built on SKI_ConfigBase that no quest runs, so no menu the game shows
 	SkipReasonEmpty      SkipReason = "empty"      // a script on a quest with no name and no options: SkyUI lists nothing for it
 	SkipReasonUnreadable SkipReason = "unreadable" // the file couldn't be read; Detail says why

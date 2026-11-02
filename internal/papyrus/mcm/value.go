@@ -321,6 +321,15 @@ func cast(v Value, typ string) Value {
 		if t, ok := v.truth(); ok {
 			return boolean(t)
 		}
+		if v.k == kScoped {
+			return v // the compiler casts each test of option == X to Bool
+		}
+	default:
+		// To an object or array type, None stays None (the compiler casts
+		// the None it compares with), and an array stays itself.
+		if v.k == kNone || v.k == kArray {
+			return v
+		}
 	}
 	return unknown
 }
