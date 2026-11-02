@@ -168,7 +168,7 @@
 				<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
 				<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
 				<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
-				{#if editing}<li><a class="caps" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>{m.nav.changes}{#if pending}<span class="count">{pending}</span>{/if}</a></li>{/if}
+				{#if editing}<li><a class="caps" href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>{m.nav.changes}{#if pending}<span class="count">{pending}</span>{/if}</a></li>{/if}
 			</ul>
 			{#if recordings.length}
 				<p class="group caps">{m.nav.recordingsGroup}</p>

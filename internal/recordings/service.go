@@ -128,7 +128,8 @@ type AddRequest struct {
 }
 
 type AddReply struct {
-	Number int `json:"number"` // the step's position in the recording, from 1
+	Number   int  `json:"number"`   // the step's position in the recording, from 1
+	Replaced bool `json:"replaced"` // the option was in the recording already, and its step now has this value
 }
 
 // DeleteReply says where a deleted recording's files went.
@@ -151,6 +152,7 @@ type Service struct {
 	drafts  map[string]*Draft // the draft's recordings, new or changed, by lowercase name
 	deleted map[string]bool   // the recordings the draft deletes, by lowercase name
 	kept    map[string]*Draft // saved where this list doesn't see them (a new mod folder), shown as saved
+	created map[string]bool   // the draft's new recordings, never saved, by lowercase name
 	saved   map[string]Saved  // the last save of each, by lowercase name
 }
 
@@ -165,7 +167,7 @@ func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Serv
 
 // reset forgets the draft. Callers hold s.mu, or have s to themselves.
 func (s *Service) reset() {
-	s.drafts, s.deleted, s.kept, s.saved = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}
+	s.drafts, s.deleted, s.kept, s.saved, s.created = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}, map[string]bool{}
 }
 
 // Editing reports whether changes are allowed. MCM Lexicon starts
@@ -193,7 +195,9 @@ func (s *Service) SetEditing(on, discard bool) error {
 		if !discard {
 			return apperr.New(apperr.Conflict, "The draft has changes to %d recordings. Save them or discard them first", len(s.drafts)+len(s.deleted))
 		}
-		s.drafts, s.deleted = map[string]*Draft{}, map[string]bool{}
+		gone := s.dropDrafts(nil)
+		s.deleted = map[string]bool{}
+		defer s.forgetOpen(gone)
 	}
 	s.editing = on
 	return nil
@@ -335,8 +339,9 @@ func (s *Service) Routes(m *http.ServeMux) {
 		}
 		name := r.PathValue("name")
 		s.mu.Lock()
-		delete(s.drafts, strings.ToLower(name))
+		gone := s.dropDrafts([]string{name})
 		s.mu.Unlock()
+		s.forgetOpen(gone)
 		if e.recording(name) == nil {
 			return Editor{}, nil // a new recording, discarded: nothing's left
 		}
@@ -395,8 +400,10 @@ func (s *Service) Routes(m *http.ServeMux) {
 			return Changes{}, err
 		}
 		s.mu.Lock()
-		s.drafts, s.deleted = map[string]*Draft{}, map[string]bool{}
+		gone := s.dropDrafts(nil)
+		s.deleted = map[string]bool{}
 		s.mu.Unlock()
+		s.forgetOpen(gone)
 		return s.changes(e), nil
 	}))
 }
@@ -509,6 +516,7 @@ func (s *Service) create(e *env, req CreateRequest) (Editor, error) {
 	d := &Draft{Name: name, Title: title, Version: "1.0.0", Author: author, Autorun: req.Autorun, Steps: []Step{}, Target: s.defaultTarget(e)}
 	s.mu.Lock()
 	s.drafts[strings.ToLower(name)] = d
+	s.created[strings.ToLower(name)] = true
 	s.mu.Unlock()
 	return s.editor(e, name)
 }
@@ -838,6 +846,14 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 	if _, err := Plan(&probe); err != nil {
 		return AddReply{}, apperr.New(apperr.Invalid, "That step can't be written: %v", err)
 	}
+	// The option once per recording: adding it again changes its step.
+	if i := Find(d.Steps, step); i >= 0 {
+		d.Steps[i].Value, d.Steps[i].Side = step.Value, step.Side
+		s.mu.Lock()
+		s.drafts[strings.ToLower(d.Name)] = &d
+		s.mu.Unlock()
+		return AddReply{Number: i + 1, Replaced: true}, nil
+	}
 	d.Steps = append(d.Steps, step)
 	s.mu.Lock()
 	s.drafts[strings.ToLower(d.Name)] = &d
@@ -868,6 +884,7 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 	key := strings.ToLower(ed.Draft.Name)
 	s.mu.Lock()
 	delete(s.drafts, key)
+	delete(s.created, key) // on disk now
 	s.saved[key] = done
 	s.mu.Unlock()
 	s.prefs.Update(func(v *prefs.Values) {
@@ -896,6 +913,49 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 		s.mu.Unlock()
 	}
 	return s.editor(e, name)
+}
+
+// Find is the position of the step in steps that sets the same option as
+// step (the same menu, page, selector, index, and kind, compared as MCM
+// Recorder compares them), or -1.
+func Find(steps []Step, step Step) int {
+	for i, s := range steps {
+		if strings.EqualFold(s.Mod, step.Mod) && strings.EqualFold(s.Page, step.Page) && strings.EqualFold(s.Option, step.Option) && s.Index == step.Index && s.Kind == step.Kind {
+			return i
+		}
+	}
+	return -1
+}
+
+// forgetOpen stops new steps going to recordings the draft no longer has:
+// new ones that were discarded.
+func (s *Service) forgetOpen(names []string) {
+	if len(names) == 0 {
+		return
+	}
+	s.prefs.Update(func(v *prefs.Values) {
+		if slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, v.OpenRecording) }) {
+			v.OpenRecording = ""
+		}
+	})
+}
+
+// dropDrafts takes recordings' changes out of the draft (all of them when
+// names is nil), and returns the new ones that leaves with nothing.
+// Callers hold s.mu.
+func (s *Service) dropDrafts(names []string) []string {
+	var gone []string
+	for k, d := range s.drafts {
+		if names != nil && !slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, k) }) {
+			continue
+		}
+		if s.created[k] {
+			gone = append(gone, d.Name)
+			delete(s.created, k)
+		}
+		delete(s.drafts, k)
+	}
+	return gone
 }
 
 // markDeleted puts a recording's deletion in the draft, or takes it out.

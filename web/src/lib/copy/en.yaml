@@ -67,6 +67,10 @@ nav:
   recordings: Recordings
   compare: Compare
   changes: Changes
+  # The count beside Changes is of recordings, not steps.
+  changesTitle:
+    one: "{count} recording with changes not yet saved"
+    other: "{count} recordings with changes not yet saved"
   notBuiltYet: Not built yet
   recordingsGroup: Recordings
 
@@ -510,6 +514,11 @@ adding:
   add: Add
   into: A new step at the end of {recording}.
   added: Added to {recording} as step {n}.
+  changed: Changed step {n} of {recording}.
+  already: It’s step {n} of {recording} already, set to {value}.
+  changeIn: Change in {recording}
+  inPlace: Step {n} of {recording}. A recording holds an option once, so this changes that step.
+  apply: Apply
   openIt: Open it
   choose: Choose a recording
   chooseLead: New steps go to the recording you choose, until you choose another in the top bar.

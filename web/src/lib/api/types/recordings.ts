@@ -192,6 +192,7 @@ export interface AddRequest {
 }
 export interface AddReply {
   number: number /* int */; // the step's position in the recording, from 1
+  replaced: boolean; // the option was in the recording already, and its step now has this value
 }
 /**
  * DeleteReply says where a deleted recording's files went.

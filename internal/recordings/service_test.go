@@ -219,3 +219,37 @@ func TestTargetThatLoses(t *testing.T) {
 		t.Error("a target outside the mods folder was taken")
 	}
 }
+
+// The steps from the report: a new recording made while adding, the same
+// option added twice, then everything discarded.
+func TestAddingAgainChangesTheStepAndDiscardingForgetsTheRecording(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	var ed Editor
+	h.call("POST", "/api/recordings", CreateRequest{Name: "Fresh"}, &ed)
+	h.svc.prefs.Update(func(v *prefs.Values) { v.OpenRecording = "Fresh" })
+	prompts := Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "on"}
+	var added AddReply
+	h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: prompts}, &added)
+	prompts.Value = "off"
+	if code := h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: prompts}, &added); code != 200 || added.Number != 1 || !added.Replaced {
+		t.Fatalf("adding again: %d, %+v", code, added)
+	}
+	h.call("GET", "/api/recordings/Fresh", nil, &ed)
+	if len(ed.Draft.Steps) != 1 || ed.Draft.Steps[0].Value != "off" {
+		t.Errorf("steps = %+v", ed.Draft.Steps)
+	}
+	if code := h.call("DELETE", "/api/changes", nil, nil); code != 200 {
+		t.Fatal(code)
+	}
+	if open := h.svc.prefs.Get().OpenRecording; open != "" {
+		t.Errorf("the discarded recording is still open: %q", open)
+	}
+	// Discarding changes to a saved recording leaves it open.
+	h.svc.prefs.Update(func(v *prefs.Values) { v.OpenRecording = "MGO" })
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: prompts}, nil)
+	h.call("DELETE", "/api/changes", nil, nil)
+	if open := h.svc.prefs.Get().OpenRecording; open != "MGO" {
+		t.Errorf("open = %q", open)
+	}
+}

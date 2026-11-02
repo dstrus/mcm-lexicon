@@ -10,8 +10,9 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { ListReply } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { addStep, create, recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
-	import { stepFor } from '#lib/recordings/steps.ts';
+	import { addStep, create, getRecording, recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
+	import { stepFor, value as valueText } from '#lib/recordings/steps.ts';
+	import type { Step } from '#lib/api/types/recordings.ts';
 	import ValueEditor from '#lib/recordings/ValueEditor.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
@@ -34,7 +35,12 @@
 
 	let status = $derived(page.data.status as Status);
 	let list = $derived(page.data.recordings as ListReply | null);
-	let openName = $derived(status?.openRecording ?? '');
+	// The recording the top bar names, if it's still there: a new one that
+	// was discarded counts as none.
+	let openName = $derived.by(() => {
+		const name = status?.openRecording ?? '';
+		return (list?.recordings ?? []).find((r) => r.name.toLowerCase() === name.toLowerCase())?.name ?? '';
+	});
 	// Adding is a change, so it's there only while editing.
 	let editing = $derived(!!status?.editing);
 	let adding = $derived(editing && param('mode') === 'add' && !!openName);
@@ -46,14 +52,38 @@
 	let error = $state('');
 	let added = $state('');
 	let working = $state(false);
+	// The open recording's steps, to tell whether this option is in it
+	// already: then the pane says so, and the form changes its step rather
+	// than adding the option again. Read again whenever recordings change.
+	let steps = $state<Step[]>([]);
 	$effect(() => {
-		step = stepFor(menu, pageName, option);
+		const name = openName;
+		void list;
+		if (!editing || !name) {
+			steps = [];
+			return;
+		}
+		getRecording(name)
+			.then((ed) => (steps = ed.draft.steps))
+			.catch(() => (steps = []));
+	});
+	const same = (a: Step, b: Step) =>
+		a.mod.toLowerCase() === b.mod.toLowerCase() && a.page.toLowerCase() === b.page.toLowerCase() && a.option.toLowerCase() === b.option.toLowerCase() && a.index === b.index && a.kind === b.kind;
+	let existing = $derived.by(() => {
+		const mine = stepFor(menu, pageName, option);
+		const i = steps.findIndex((s) => same(s, mine));
+		return i < 0 ? null : { n: i + 1, step: steps[i]! };
+	});
+	$effect(() => {
+		step = existing ? { ...stepFor(menu, pageName, option), value: existing.step.value, side: existing.step.side } : stepFor(menu, pageName, option);
 		error = '';
 	});
 	$effect(() => {
 		void option;
 		added = '';
 	});
+
+	let buttonLabel = $derived(!openName ? t.addToAny : existing ? t.changeIn({ recording: openName }) : t.addTo({ recording: openName }));
 
 	function start() {
 		error = '';
@@ -71,7 +101,7 @@
 		error = '';
 		try {
 			const r = await addStep(openName, step);
-			added = t.added({ recording: openName, n: r.number });
+			added = r.replaced ? t.changed({ recording: openName, n: r.number }) : t.added({ recording: openName, n: r.number });
 			await leave('mode');
 			invalidate(recordingsDependency);
 		} catch (err) {
@@ -135,30 +165,31 @@
 			? []
 			: adding
 			? [
-					{ key: 'Enter', label: t.add, command: true, disabled: !!problem || working, run: () => add() },
+					{ key: 'Enter', label: existing ? t.apply : t.add, command: true, disabled: !!problem || working, run: () => add() },
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
-			: [{ key: 'a', shown: 'A', label: openName ? t.addTo({ recording: openName }) : t.addToAny, run: start }]
+			: [{ key: 'a', shown: 'A', label: buttonLabel, run: start }]
 	);
 </script>
 
 {#if adding}
 	<form class="add" onsubmit={add}>
 		<h2 class="caps">{option.text || m.values.noLabel}</h2>
-		<p class="muted">{t.into({ recording: openName })}</p>
+		<p class="muted">{existing ? t.inPlace({ recording: openName, n: existing.n }) : t.into({ recording: openName })}</p>
 		<ValueEditor kind={step.kind} {option} bind:value={step.value} bind:side={step.side} bind:problem />
 		{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 		<div class="footer">
-			<button class="button primary" disabled={!!problem || working}>{t.add}</button>
+			<button class="button primary" disabled={!!problem || working}>{existing ? t.apply : t.add}</button>
 			<button type="button" class="button" onclick={() => leave('mode')}>{m.common.cancel}</button>
 		</div>
 	</form>
 {:else}
 	{@render children()}
 	{#if editing}
-		{#if added}<p class="notice" role="status">{added} <a href={recordingHref(openName)}>{t.openIt}</a></p>{/if}
+		{#if added}<p class="notice" role="status">{added} <a href={recordingHref(openName)}>{t.openIt}</a></p>
+		{:else if existing}<p class="notice">{t.already({ recording: openName, n: existing.n, value: valueText(existing.step, option) })} <a href={recordingHref(openName) + `?item=${existing.n}`}>{t.openIt}</a></p>{/if}
 		<div class="actions">
-			<button type="button" class="button primary" onclick={start}>{openName ? t.addTo({ recording: openName }) : t.addToAny}</button>
+			<button type="button" class="button primary" onclick={start}>{buttonLabel}</button>
 		</div>
 	{/if}
 {/if}
