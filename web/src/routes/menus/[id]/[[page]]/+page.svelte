@@ -13,6 +13,7 @@
 	import Adder from '#lib/recordings/Adder.svelte';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
 	import { addAll, addStep, recordingsDependency } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
@@ -204,10 +205,10 @@
 								{#if !canEdit(o)}
 									<span class="muted" title={m.adding.cantRecord}></span>
 								{:else if flippable(o)}
-									<label class="flip" class:unrecorded={!rec} title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
-										<input type="checkbox" checked={on(o)} disabled={working} onclick={(e) => e.stopPropagation()} onchange={() => flip(o)} aria-label={m.edit.toggleLabel({ option: o.text })} />
+									<span class="flip" title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
+										<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
 										{#if rec}{stepValue(rec.step, o)}{/if}
-									</label>
+									</span>
 								{:else if editingCell === r.i}
 									<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
 								{:else if rec}
@@ -338,16 +339,12 @@
 		margin: 0;
 		font-size: var(--step--1);
 	}
-	/* A toggle's recorded cell is its checkbox; one not recorded yet is
+	/* A toggle's recorded cell is its switch; one not recorded yet is
 	   dimmed, showing what the menu has, so a click records the other. */
 	.flip {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
-		cursor: pointer;
-	}
-	.flip.unrecorded input {
-		opacity: 0.45;
 	}
 	/* Any other value's cell is a button that turns into its editor. */
 	.cell {

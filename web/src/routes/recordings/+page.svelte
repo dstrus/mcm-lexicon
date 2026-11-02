@@ -2,7 +2,7 @@
      catalog, and the selected one in the pane. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import Segmented from '#lib/ui/Segmented.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Summary } from '#lib/api/types/recordings.ts';
@@ -148,7 +148,10 @@
 			<input bind:value={newAuthor} autocomplete="off" spellcheck="false" />
 		</label>
 		<span class="caps label">{t.autorun}</span>
-		<Segmented bind:value={newAutorun} options={[{ value: 'false', label: t.off }, { value: 'true', label: t.on }]} label={t.autorun} />
+		<span class="row">
+			<Switch checked={newAutorun === 'true'} label={t.autorun} onchange={(on) => (newAutorun = on ? 'true' : 'false')} />
+			<span>{newAutorun === 'true' ? t.on : t.off}</span>
+		</span>
 		<p class="muted note">{t.autorunNote}</p>
 		{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 		<div class="footer">
@@ -410,6 +413,11 @@
 		display: grid;
 		gap: var(--space-2);
 		justify-items: start;
+	}
+	.new .row {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 	.new label {
 		display: grid;

@@ -17,6 +17,7 @@
 	import { change, move } from '#lib/recordings/draft.ts';
 	import { changed, failing, fileHeading, kindType, sentence, value, word } from '#lib/recordings/steps.ts';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
@@ -172,10 +173,10 @@
 						<td class="type caps">{m.option.types[kindType[r.step.kind]]}</td>
 						<td class="value" class:changed={changed(r.step, r.check.option)}>
 							{#if r.step.kind === 'toggle' && canEdit}
-								<label class="flip">
-									<input type="checkbox" checked={isOn(r.step)} disabled={working} onchange={() => flip(r.n - 1)} aria-label={e.toggleLabel({ option: optionText(r.step, r.check) })} />
+								<span class="flip">
+									<Switch checked={isOn(r.step)} disabled={working} label={e.toggleLabel({ option: optionText(r.step, r.check) })} onchange={() => flip(r.n - 1)} />
 									{value(r.step, r.check.option)}
-								</label>
+								</span>
 							{:else if editing && selection.is(r)}
 								<InlineValue bind:this={inline} kind={r.step.kind} option={r.check.option} value={r.step.value} apply={setValue} cancel={() => leave('mode')} />
 							{:else if editable(r.step)}

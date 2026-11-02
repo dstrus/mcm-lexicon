@@ -10,7 +10,7 @@
 	import type { Draft } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { change } from '#lib/recordings/draft.ts';
-	import Segmented from '#lib/ui/Segmented.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
 	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { PageProps } from './$types';
 
@@ -94,15 +94,10 @@
 	<div class="field">
 		<span class="caps label">{t.autorun}</span>
 		{#if canEdit}
-			<Segmented
-				value={d.autorun ? 'on' : 'off'}
-				options={[
-					{ value: 'off', label: m.recordings.off },
-					{ value: 'on', label: m.recordings.on }
-				]}
-				label={t.autorun}
-				onchange={(v) => apply((x) => (x.autorun = v === 'on'))}
-			/>
+			<span class="row">
+				<Switch checked={d.autorun} label={t.autorun} disabled={working} onchange={(on) => apply((x) => (x.autorun = on))} />
+				<span>{d.autorun ? m.recordings.on : m.recordings.off}</span>
+			</span>
 		{:else}
 			<p>{d.autorun ? m.recordings.on : m.recordings.off}</p>
 		{/if}
@@ -137,6 +132,11 @@
 	}
 	p {
 		margin: 0;
+	}
+	.row {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 	.note {
 		font-size: var(--step--1);

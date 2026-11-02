@@ -9,6 +9,7 @@
 	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
 	import { hex, number } from '#lib/menus/values.ts';
 	import Segmented from '#lib/ui/Segmented.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
 
 	let {
 		kind,
@@ -75,7 +76,10 @@
 <div class="editor">
 	{#if kind === 'toggle'}
 		<span class="caps label">{t.value}</span>
-		<Segmented bind:value options={[{ value: 'on', label: m.values.on }, { value: 'off', label: m.values.off }]} label={t.value} />
+		<span class="row">
+			<Switch checked={value === 'on'} label={t.value} onchange={(on) => (value = on ? 'on' : 'off')} />
+			<span>{value === 'on' ? m.values.on : m.values.off}</span>
+		</span>
 	{:else if kind === 'slider'}
 		<label>
 			<span class="caps label">{t.value}</span>
@@ -145,6 +149,11 @@
 	label input,
 	label select {
 		width: 100%;
+	}
+	.row {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 	.small {
 		font-size: var(--step--1);

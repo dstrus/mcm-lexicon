@@ -76,8 +76,10 @@ export function handleKey(e: KeyboardEvent) {
 	const command = onMac ? e.metaKey : e.ctrlKey;
 	if (!command && (e.metaKey || e.ctrlKey)) return;
 	if (!command && typing(e.target) && e.key !== 'Escape') return;
-	// Enter on a focused link or button does what that link or button does.
+	// Enter on a focused link or button, and Space on a focused button (a
+	// switch, say), do what that link or button does.
 	if (!command && e.key === 'Enter' && e.target instanceof Element && e.target.closest('a[href], button')) return;
+	if (!command && e.key === ' ' && e.target instanceof Element && e.target.closest('button')) return;
 	// Esc in a text field leaves the field; the next Esc runs the shortcut.
 	// A textarea is different: it's the editor the shortcut cancels.
 	if (e.key === 'Escape' && (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement)) {
