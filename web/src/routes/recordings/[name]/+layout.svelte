@@ -137,7 +137,7 @@
 			{#if target.kind === 'none'}<p class="notice">{d.chooseFolder}</p>{/if}
 			{#if target.kind === 'new-mod' && target.exists}<p class="notice"><Fill text={d.notListed.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>
 			{:else if target.kind === 'new-mod'}<p class="notice"><Fill text={d.newMod.text}>{#snippet mod()}<span class="raw">{target.name}</span>{/snippet}</Fill></p>{/if}
-			{#if target.kind === 'mod' && !target.enabled}<p class="notice warn">{d.unticked({ mod: target.name })}</p>{/if}
+			{#if target.kind === 'mod' && !target.enabled}<p class="notice warn">{d.disabled({ mod: target.name })}</p>{/if}
 			{#if target.losesTo}<p class="notice warn">{d.losesTo({ mod: target.losesTo })}</p>{/if}
 			{#each ed.problems as p, i (i)}<p class="notice error">{p}</p>{/each}
 		{/if}

@@ -32,8 +32,8 @@ export interface Recording {
   steps: Step[]; // every step, in replay order
   /**
    * Unlisted is a recording in a folder MCM Lexicon saved to that the
-   * profile doesn't have ticked (a new mod MO2 hasn't listed, or one left
-   * unticked): it's on disk, but the game won't play it.
+   * profile doesn't enable (a new mod MO2 hasn't listed, or one left
+   * disabled): it's on disk, but the game won't play it.
    */
   unlisted: boolean;
 }
@@ -114,7 +114,7 @@ export interface Summary {
   deleted: boolean; // the draft deletes it
   new: boolean; // it's only a draft, never saved
   deletes: string; // why it can't be deleted; "" when it can
-  unlisted: boolean; // in a folder MCM Lexicon saved to that the profile doesn't tick
+  unlisted: boolean; // in a folder MCM Lexicon saved to that the profile doesn't enable
 }
 export interface ListReply {
   recordings: Summary[];
@@ -145,7 +145,7 @@ export type FileChange = typeof FileChangeSame | typeof FileChangeChanged | type
  * TargetKind is what kind of folder a recording saves to.
  */
 export const TargetKindMod = "mod"; // a mod folder in the list
-export const TargetKindNewMod = "new-mod"; // a mod folder Save creates, which MO2 will list unticked
+export const TargetKindNewMod = "new-mod"; // a mod folder Save creates, which MO2 will list disabled
 export const TargetKindOverwrite = "overwrite"; // MO2's overwrite folder
 export const TargetKindData = "data"; // the game's Data folder, for a list that is one
 export const TargetKindFolder = "folder"; // a folder chosen with a catalog file open
@@ -158,7 +158,7 @@ export interface Target {
   name: string; // the mod's name, or the folder's path
   dir: string; // the folder's path
   kind: TargetKind;
-  enabled: boolean; // the game reads the folder: its mod is ticked in this profile
+  enabled: boolean; // the game reads the folder: its mod is enabled in this profile
   exists: boolean; // the folder is on disk (a new mod folder once Save has made it)
   losesTo: string; // a mod whose copy of the recording wins over this folder's
 }

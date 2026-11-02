@@ -309,7 +309,7 @@ func TestEditingTheInfo(t *testing.T) {
 }
 
 // A recording saved to a new mod folder stays listed, marked, after Save,
-// after a restart, and once MO2 lists the folder unticked.
+// after a restart, and once MO2 lists the folder disabled.
 func TestSavedToANewFolderStaysListed(t *testing.T) {
 	h := newHarness(t)
 	h.svc.SetEditing(true, false)
@@ -341,17 +341,17 @@ func TestSavedToANewFolderStaysListed(t *testing.T) {
 	if r := listed(restarted); r == nil || !r.Unlisted {
 		t.Fatalf("after a restart: %+v", r)
 	}
-	// MO2 lists the folder, unticked; it's still shown, and can be added to.
+	// MO2 lists the folder, disabled; it's still shown, and can be added to.
 	h.inst.Mod(DefaultTarget, false, nil)
 	src, _ := modlist.Check(h.inst.Dir, "")
 	cat := catalog.NewService("test")
 	cat.UseList(src)
-	unticked := NewService(cat, h.svc.prefs, nil)
-	unticked.SetEditing(true, false)
+	disabled := NewService(cat, h.svc.prefs, nil)
+	disabled.SetEditing(true, false)
 	h.mux = http.NewServeMux()
-	unticked.Routes(h.mux)
-	if r := listed(unticked); r == nil || !r.Unlisted {
-		t.Fatalf("listed unticked: %+v", r)
+	disabled.Routes(h.mux)
+	if r := listed(disabled); r == nil || !r.Unlisted {
+		t.Fatalf("listed disabled: %+v", r)
 	}
 	var added AddReply
 	if code := h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Height", Kind: KindSlider, Value: "2"}}, &added); code != 200 || added.Number != 2 {

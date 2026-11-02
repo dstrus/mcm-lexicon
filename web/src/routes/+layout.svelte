@@ -171,14 +171,14 @@
 						{#each recordings as r (r.name)}
 							{@const target = editing && r.name === openRecording}
 							{@const unsaved = editing && (r.drafted || r.deleted)}
-							{@const unticked = r.unlisted}
+							{@const disabled = r.unlisted}
 							<li>
-								<a class="caps rec" class:unsaved class:unticked href={recordingHref(r.name)} title={[r.name, unticked ? m.nav.untickedHere : '', target ? m.nav.addingHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>
+								<a class="caps rec" class:unsaved class:disabled href={recordingHref(r.name)} title={[r.name, disabled ? m.nav.disabledHere : '', target ? m.nav.addingHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>
 									<span class="marker">{#if target}<Diamond hollow />{/if}</span>
 									<span class="clip">{r.name}</span>
 									{#if target}<span class="visually-hidden">{m.nav.addingHere}</span>{/if}
 									{#if unsaved}<span class="visually-hidden">{m.nav.unsavedHere}</span>{/if}
-									{#if unticked}<span class="visually-hidden">{m.nav.untickedHere}</span>{/if}
+									{#if disabled}<span class="visually-hidden">{m.nav.disabledHere}</span>{/if}
 								</a>
 							</li>
 						{/each}
@@ -195,7 +195,7 @@
 						<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
 							{#if !openRecording}<option value="" disabled>{m.shell.chooseRecording}</option>{/if}
 							{#each recordings as r (r.name)}
-								<option value={r.name}>{r.unlisted ? m.shell.untickedOption({ name: r.name }) : r.name}</option>
+								<option value={r.name}>{r.unlisted ? m.shell.disabledOption({ name: r.name }) : r.name}</option>
 							{/each}
 							<option value={newValue}>{m.adding.newRecording}</option>
 						</select>
@@ -344,9 +344,9 @@
 	.sections a.rec.unsaved {
 		color: var(--ink);
 	}
-	/* In a mod the profile doesn't tick, so the game won't play it: amber, as
+	/* In a mod the profile has disabled, so the game won't play it: amber, as
 	   a step that won't replay is, over unsaved's ink. */
-	.sections a.rec.unticked {
+	.sections a.rec.disabled {
 		color: var(--warn);
 	}
 	.sections a.rec[aria-current='page'] {

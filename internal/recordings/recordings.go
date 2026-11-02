@@ -38,8 +38,8 @@ type Recording struct {
 	Problems []Problem `json:"problems"`
 	Steps    []Step    `json:"steps"` // every step, in replay order
 	// Unlisted is a recording in a folder MCM Lexicon saved to that the
-	// profile doesn't have ticked (a new mod MO2 hasn't listed, or one left
-	// unticked): it's on disk, but the game won't play it.
+	// profile doesn't enable (a new mod MO2 hasn't listed, or one left
+	// disabled): it's on disk, but the game won't play it.
 	Unlisted bool     `json:"unlisted"`
 	byFile   [][]Step // the steps of each file
 }
@@ -105,7 +105,7 @@ func Read(l *modlist.List) []*Recording {
 }
 
 // ReadFolder reads the recordings in one mod folder's McmRecorder, as if
-// it were the only mod: for a folder the list doesn't read (unticked, or
+// it were the only mod: for a folder the list doesn't read (disabled, or
 // not listed yet).
 func ReadFolder(dir, mod string) []*Recording {
 	root, rel, ok := modlist.Resolve(dir, "McmRecorder")

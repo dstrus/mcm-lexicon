@@ -44,7 +44,7 @@ type Summary struct {
 	Deleted  bool      `json:"deleted"`  // the draft deletes it
 	New      bool      `json:"new"`      // it's only a draft, never saved
 	Deletes  string    `json:"deletes"`  // why it can't be deleted; "" when it can
-	Unlisted bool      `json:"unlisted"` // in a folder MCM Lexicon saved to that the profile doesn't tick
+	Unlisted bool      `json:"unlisted"` // in a folder MCM Lexicon saved to that the profile doesn't enable
 }
 
 type ListReply struct {
@@ -79,7 +79,7 @@ type TargetKind string
 
 const (
 	TargetKindMod       TargetKind = "mod"       // a mod folder in the list
-	TargetKindNewMod    TargetKind = "new-mod"   // a mod folder Save creates, which MO2 will list unticked
+	TargetKindNewMod    TargetKind = "new-mod"   // a mod folder Save creates, which MO2 will list disabled
 	TargetKindOverwrite TargetKind = "overwrite" // MO2's overwrite folder
 	TargetKindData      TargetKind = "data"      // the game's Data folder, for a list that is one
 	TargetKindFolder    TargetKind = "folder"    // a folder chosen with a catalog file open
@@ -91,7 +91,7 @@ type Target struct {
 	Name    string     `json:"name"` // the mod's name, or the folder's path
 	Dir     string     `json:"dir"`  // the folder's path
 	Kind    TargetKind `json:"kind"`
-	Enabled bool       `json:"enabled"` // the game reads the folder: its mod is ticked in this profile
+	Enabled bool       `json:"enabled"` // the game reads the folder: its mod is enabled in this profile
 	Exists  bool       `json:"exists"`  // the folder is on disk (a new mod folder once Save has made it)
 	LosesTo string     `json:"losesTo"` // a mod whose copy of the recording wins over this folder's
 }
@@ -269,9 +269,9 @@ func (s *Service) env(r *http.Request) (*env, error) {
 }
 
 // read reads the recordings: those the list's game sees, then those in the
-// folders MCM Lexicon saved to that the profile doesn't tick, marked as
+// folders MCM Lexicon saved to that the profile doesn't enable, marked as
 // such (a recording saved to a new mod folder stays in view until MO2
-// lists it and it's ticked).
+// lists it and it's enabled).
 func (s *Service) read(e *env) {
 	if e.list == nil {
 		return
@@ -998,7 +998,7 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 		s.read(e)
 	}
 	if e.list == nil || e.recording(name) == nil {
-		// Saved where this list doesn't see it (a new mod folder, unticked,
+		// Saved where this list doesn't see it (a new mod folder, disabled,
 		// or a folder with a catalog file open): keep showing the draft.
 		d := ed.Draft
 		s.mu.Lock()

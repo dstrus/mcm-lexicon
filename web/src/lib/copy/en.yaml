@@ -24,7 +24,7 @@ shell:
   name: MCM Lexicon
   recording: Adding to
   chooseRecording: Choose a recording
-  untickedOption: "{name} (mod not ticked)"
+  disabledOption: "{name} (mod disabled)"
   recordingTitle: The recording A adds steps to, from any menu or search result
   mode: Read-only or editing
   session: Editing session
@@ -78,7 +78,7 @@ nav:
   recordingsGroup: Recordings
   addingHere: New steps go here
   unsavedHere: Has unsaved changes
-  untickedHere: Its mod isn’t ticked, so the game won’t play it
+  disabledHere: Its mod is disabled, so the game won’t play it
 
 # Choosing what to read: a mod list, or a catalog file.
 source:
@@ -372,8 +372,8 @@ recordings:
   delete: Delete
   restore: Restore
   deletedInDraft: Deleted in the draft
-  unlistedShort: Its mod isn’t ticked
-  unlisted: It’s saved in {mod}, which this profile doesn’t tick, so the game won’t play it. Tick the mod in MO2, then rescan here.
+  unlistedShort: Its mod is disabled
+  unlisted: It’s saved in {mod}, which is disabled in this profile, so the game won’t play it. Enable the mod in MO2, then rescan here.
   deletedSays: The draft deletes it. Save removes its files from {mod}, after backing them up beside the list.
   deleteNew: It isn’t saved anywhere yet; discard it from its own page.
   deleteNotOurs: It’s in {mod}, where MCM Lexicon didn’t save it, so it isn’t deleted here. Delete it in its mod if you mean to.
@@ -473,9 +473,9 @@ draft:
   use: Use
   running: Skyrim is running, so Save waits until you close it.
   chooseFolder: Choose the folder Save writes to. It writes the recording into a McmRecorder folder there.
-  newMod: There’s no mod folder named {mod} yet. Save makes it, and MO2 then lists it as a new mod, unticked; tick it so the game reads the recording.
-  notListed: The mod folder {mod} is there, but this profile doesn’t list it yet. MO2 adds it as a new mod, unticked; tick it so the game reads the recording, then rescan here.
-  unticked: "{mod} is unticked in this profile, so the game won’t read the recording until you tick it in MO2."
+  newMod: There’s no mod folder named {mod} yet. Save makes it, and MO2 then lists it as a new mod, disabled; enable it so the game reads the recording.
+  notListed: The mod folder {mod} is there, but this profile doesn’t list it yet. MO2 adds it as a new mod, disabled; enable it so the game reads the recording, then rescan here.
+  disabled: "{mod} is disabled in this profile, so the game won’t read the recording until you enable it in MO2."
   losesTo: "{mod} also has this recording, and its copy wins, so the game replays that one instead."
 
 # Editing a recording's steps.
