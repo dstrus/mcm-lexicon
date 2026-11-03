@@ -40,7 +40,8 @@ func NameOf(file string) (base, language string, ok bool) {
 
 // Add reads one translation file's contents under its base name. A later
 // file with the same base name replaces the earlier one, as the game's
-// load order would.
+// load order would. A \n in a value is a line break, as it is in a
+// Papyrus string; authors write it for the info text's lines.
 func (t *Table) Add(base string, data []byte) {
 	key := strings.ToLower(base)
 	if _, seen := t.files[key]; !seen {
@@ -53,7 +54,7 @@ func (t *Table) Add(base string, data []byte) {
 		if !ok || !strings.HasPrefix(k, "$") {
 			continue
 		}
-		entries[strings.ToLower(k)] = v
+		entries[strings.ToLower(k)] = strings.ReplaceAll(v, `\n`, "\n")
 	}
 	t.files[key] = entries
 }

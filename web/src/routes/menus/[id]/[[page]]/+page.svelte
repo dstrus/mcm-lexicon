@@ -524,9 +524,11 @@
 	.grid .opt {
 		scroll-margin-bottom: var(--covered, 0px);
 	}
+	/* Help keeps the lines its author broke it into. */
 	.help {
 		margin: 0;
 		max-width: 70ch;
+		white-space: pre-line;
 	}
 	.details {
 		margin: var(--space-2) 0 0;

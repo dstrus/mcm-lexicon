@@ -44,6 +44,7 @@ func TestText(t *testing.T) {
 	tr := New()
 	tr.Add("Experience", utf16LE("$EXP_ShowMessages\tShow Messages\r\n$EXP_General\tGeneral\r\nnot a key\tignored\r\n$Shared\tFrom Experience\r\n"))
 	tr.Add("skyui_se", utf16LE("$Group {}\tGroup {}\n$SKI_INFO1{}\tDefault: {}\n$Medium\tMedium\n$Shared\tFrom SkyUI\n"))
+	tr.Add("3BBB", utf16LE("$PGENDERTOGGLEINFO\tIf the player is male\\nPrevents from becoming a physics toggle\r\n"))
 	for label, want := range map[string]string{
 		"$EXP_ShowMessages":   "Show Messages",
 		"$exp_showmessages":   "Show Messages", // keys aren't case-sensitive
@@ -51,7 +52,8 @@ func TestText(t *testing.T) {
 		"$Missing":            "$Missing",
 		"$Group {3}":          "Group 3",
 		"$SKI_INFO1{$Medium}": "Default: Medium",
-		"$Shared":             "From Experience", // the first file read, with no preference
+		"$Shared":             "From Experience",                                                // the first file read, with no preference
+		"$PGENDERTOGGLEINFO":  "If the player is male\nPrevents from becoming a physics toggle", // \n written out is a line break
 	} {
 		if got := tr.Text(label); got != want {
 			t.Errorf("Text(%q) = %q, want %q", label, got, want)
