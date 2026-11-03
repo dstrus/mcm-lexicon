@@ -186,6 +186,13 @@ menu:
   up: Menus
   recorded: Recorded
   recordAll: Record all settings on this page
+  # Takes this menu's unsaved steps out of the draft, on every page.
+  discardHere:
+    one: Discard {count} unsaved change to this menu
+    other: Discard {count} unsaved changes to this menu
+  discardedHere:
+    one: Discarded {count} change to this menu.
+    other: Discarded {count} changes to this menu.
   # Record all's outcome, as up to three sentences.
   recordedAdded:
     one: Recorded {count} setting in {recording}.

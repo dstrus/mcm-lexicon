@@ -14,9 +14,10 @@
 	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
-	import { addAll, addStep, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
+	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
-	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
+	import type { Step } from '#lib/api/types/recordings.ts';
+	import { known, recordable, sameOption, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -153,6 +154,40 @@
 	// and whose label can be matched exactly; ones recorded already keep
 	// their values.
 	let recordableNow = $derived(options.filter((o) => recordable(o) && o.type !== 'text' && !!known(o)));
+	// The draft's unsaved steps for this menu, on every page: what Discard
+	// takes back.
+	const ofMenu = (s: Step) => s.mod.toLowerCase() === menu.name.toLowerCase();
+	let unsavedHere = $derived(open.editing ? open.steps.filter((s) => ofMenu(s) && open.dirty(s)).length : 0);
+
+	// discardMenu takes this menu's unsaved steps out of the draft: a step
+	// the saved recording has goes back to its saved value, and one it
+	// hasn't is removed. The rest of the draft is left as it is.
+	async function discardMenu() {
+		if (working || !open.name) return;
+		working = true;
+		error = '';
+		note = '';
+		try {
+			const ed = await getRecording(open.name);
+			const saved = ed.recording?.steps ?? [];
+			const steps: Step[] = [];
+			let n = 0;
+			for (const s of ed.draft.steps) {
+				const was = ofMenu(s) ? saved.find((w) => sameOption(w, s)) : undefined;
+				if (!ofMenu(s) || (was && was.value === s.value && was.side === s.side)) steps.push(s);
+				else if (was) (steps.push(was), n++);
+				else n++;
+			}
+			await putDraft(open.name, { ...ed.draft, steps });
+			note = t.discardedHere({ count: n });
+			await invalidate(recordingsDependency);
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			working = false;
+		}
+	}
+
 	async function recordAll() {
 		if (working) return;
 		if (!open.name && !(await choose())) return;
@@ -296,6 +331,7 @@
 		{#if open.editing && options.length}
 			<div class="tools">
 				<button type="button" class="button" disabled={working || !recordableNow.length} onclick={recordAll}>{t.recordAll}</button>
+				{#if unsavedHere}<button type="button" class="textbutton" disabled={working} onclick={discardMenu}>{t.discardHere({ count: unsavedHere })}</button>{/if}
 				{#if note}<p class="muted" role="status">{note}</p>{/if}
 			</div>
 		{/if}
