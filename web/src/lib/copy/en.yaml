@@ -593,8 +593,8 @@ adding:
   clickRecorded: "{recording} clicks this option"
   # A text option has no value to set, so a step on it is only a click;
   # the info area says so, since nothing in the row looks different.
-  clickNote: This option has no value to set. A step on it selects it in the menu, the way a button is pressed, which is what some text options are for, such as a reset or a save. Recording it changes nothing you can see here.
-  clickNoteRecorded: "{recording} selects this option when it plays, the way a button is pressed. It has no value to set, so nothing here looks different: the step is the click."
+  clickNote: This option has no value to set. Adding it to an MCM recording will record a click or button press. When played back, the mod will apply that click.
+  clickNoteRecorded: "{recording} plays this back as a click or button press. It has no value to set, aside from the fact that it was clicked."
 
   openIt: Open it
   choose: Choose a recording
