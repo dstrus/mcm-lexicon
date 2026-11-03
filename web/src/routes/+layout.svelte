@@ -227,7 +227,6 @@
 								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} title={s.name !== s.nameText ? s.name : undefined} aria-current={currentMenu === s.id ? 'page' : undefined}>
 									<span class="marker">{#if currentMenu === s.id}<Diamond />{/if}</span>
 									<span class="clip">{s.nameText}</span>
-									{#if s.certainty !== 'exact'}<span class="word">{s.certainty}</span>{/if}
 								</a>
 							</li>
 						{/each}
@@ -420,13 +419,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-	/* Certainty, when it isn't exact: a word after the name, never a color. */
-	.word {
-		flex: none;
-		font-size: var(--step--1);
-		font-weight: 400;
-		color: var(--muted);
 	}
 	.menu.inactive {
 		opacity: 0.55;
