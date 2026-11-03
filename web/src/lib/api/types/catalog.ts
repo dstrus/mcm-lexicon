@@ -134,6 +134,15 @@ export interface Page {
    * positions on the left and odd on the right.
    */
   placed: boolean;
+  /**
+   * SameAs, on the default page, is the named page it draws exactly, by
+   * the same lines of script (a script that answers "" as it answers its
+   * first page): the screen the menu opens on, which the game doesn't
+   * list. Landing is true on that named page. A step on either finds
+   * the same option.
+   */
+  sameAs?: string;
+  landing?: boolean;
 }
 /**
  * Fixture is a header or an empty slot on a page.
@@ -311,6 +320,11 @@ export interface Result {
   pageText: string;
   position: number /* int */; // its position on the page
   option: Option;
+  /**
+   * Landing is its page's: the menu opens on a copy of it, so a step on
+   * the default page finds this option too.
+   */
+  landing?: boolean;
 }
 
 //////////

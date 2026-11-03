@@ -72,6 +72,13 @@ type Page struct {
 	// page can be drawn as SkyUI draws it: 64 rows of two columns, even
 	// positions on the left and odd on the right.
 	Placed bool `json:"placed"`
+	// SameAs, on the default page, is the named page it draws exactly, by
+	// the same lines of script (a script that answers "" as it answers its
+	// first page): the screen the menu opens on, which the game doesn't
+	// list. Landing is true on that named page. A step on either finds
+	// the same option.
+	SameAs  string `json:"sameAs,omitempty"`
+	Landing bool   `json:"landing,omitempty"`
 }
 
 // Fixture is a header or an empty slot on a page.

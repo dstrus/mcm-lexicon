@@ -281,7 +281,45 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 		numberDuplicates(page.Options)
 		m.Pages = append(m.Pages, page)
 	}
+	markLanding(&m)
 	return m
+}
+
+// markLanding finds the named page a menu's default page draws exactly:
+// every option of the same type and label, at the same position, added by
+// the same line of the same script, and the same headers and gaps. Labels
+// alone aren't enough: two pages of a left and a right side can share them.
+func markLanding(m *Menu) {
+	if len(m.Pages) < 2 || m.Pages[0].Name != "" || len(m.Pages[0].Options) == 0 {
+		return
+	}
+	landing := &m.Pages[0]
+	for i := 1; i < len(m.Pages); i++ {
+		if p := &m.Pages[i]; samePage(*landing, *p) {
+			landing.SameAs, p.Landing = p.Name, true
+			return
+		}
+	}
+}
+
+func samePage(a, b Page) bool {
+	if len(a.Options) != len(b.Options) || len(a.Fixtures) != len(b.Fixtures) {
+		return false
+	}
+	for i, o := range a.Options {
+		p := b.Options[i]
+		if o.Type != p.Type || o.Label != p.Label || o.Index != p.Index || o.State != p.State || o.Position != p.Position ||
+			o.Source.Path != p.Source.Path || o.Source.Line != p.Source.Line || o.Source.Line == 0 {
+			return false
+		}
+	}
+	for i, f := range a.Fixtures {
+		g := b.Fixtures[i]
+		if f.Kind != g.Kind || f.Label != g.Label || f.Position != g.Position {
+			return false
+		}
+	}
+	return true
 }
 
 // empty reports whether a menu has neither a name of its own nor an

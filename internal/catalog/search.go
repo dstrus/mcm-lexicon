@@ -47,6 +47,9 @@ type Result struct {
 	PageText string `json:"pageText"`
 	Position int    `json:"position"` // its position on the page
 	Option   Option `json:"option"`
+	// Landing is its page's: the menu opens on a copy of it, so a step on
+	// the default page finds this option too.
+	Landing bool `json:"landing,omitempty"`
 }
 
 // Search finds options whose label, text, page, menu, or mod holds every
@@ -62,6 +65,9 @@ func Search(c *Catalog, query string, limit int) ([]Result, int) {
 	for _, m := range c.Menus {
 		menu := strings.ToLower(m.Name + "\x00" + m.NameText + "\x00" + m.Mod)
 		for pi, p := range m.Pages {
+			if p.SameAs != "" {
+				continue // found on the page it draws
+			}
 			page := strings.ToLower(p.Name + "\x00" + p.Text)
 			for oi, o := range p.Options {
 				hay := menu + "\x00" + page + "\x00" + strings.ToLower(o.Label+"\x00"+o.Text)
@@ -70,7 +76,7 @@ func Search(c *Catalog, query string, limit int) ([]Result, int) {
 				}
 				total++
 				if len(results) < limit {
-					results = append(results, Result{MenuID: m.ID, MenuName: m.Name, MenuText: m.NameText, Mod: m.Mod, Page: pi, PageName: p.Name, PageText: p.Text, Position: oi, Option: o})
+					results = append(results, Result{MenuID: m.ID, MenuName: m.Name, MenuText: m.NameText, Mod: m.Mod, Page: pi, PageName: p.Name, PageText: p.Text, Position: oi, Option: o, Landing: p.Landing})
 				}
 			}
 		}

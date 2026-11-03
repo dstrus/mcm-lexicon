@@ -127,7 +127,7 @@
 				{#key key(r)}
 					<div class="enter">
 						<OptionPane option={r.option} page={pageText(r)} menu={{ text: r.menuText, href: menuHref(r.menuId, r.page, r.position) }}>
-							{#snippet action()}<Adder option={r.option} menu={r.menuName} pageName={r.pageName} {open} {choose} />{/snippet}
+							{#snippet action()}<Adder option={r.option} menu={r.menuName} pageName={r.pageName} landing={r.landing} {open} {choose} />{/snippet}
 						</OptionPane>
 						<p class="open"><a class="textbutton" href={menuHref(r.menuId, r.page, r.position)}>{t.openMenu}</a></p>
 					</div>

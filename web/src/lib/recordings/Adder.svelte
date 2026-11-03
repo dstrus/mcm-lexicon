@@ -19,19 +19,23 @@
 		menu,
 		pageName,
 		open,
-		choose
+		choose,
+		landing = false
 	}: {
 		option: Option;
 		menu: string; // the menu's raw name, as a recording calls it
 		pageName: string; // raw; "" for a menu's default page
 		open: OpenRecording;
 		choose: () => Promise<string | null>; // asks which recording, when none is chosen
+		landing?: boolean; // the menu opens on a copy of its page, so a step on the default page is this option too
 	} = $props();
 
 	const t = m.adding;
 
-	let base = $derived(stepFor(menu, pageName, option));
-	let existing = $derived(open.find(base));
+	let named = $derived(stepFor(menu, pageName, option));
+	let existing = $derived(open.find(named, landing));
+	// A change to a recorded step stays on the page it's on.
+	let base = $derived(existing ? { ...named, page: existing.step.page } : named);
 	let can = $derived(recordable(option));
 
 	// The value being edited: the step's when recorded, the option's own when

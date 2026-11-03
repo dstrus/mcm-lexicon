@@ -553,3 +553,27 @@ func TestValueIndex(t *testing.T) {
 		t.Errorf("value indexes = %d, %d, %d", opts[0].ValueIndex, opts[1].ValueIndex, opts[2].ValueIndex)
 	}
 }
+
+// A default page that draws a named page by the same lines is marked as
+// its twin; one that only shares labels isn't.
+func TestMarkLanding(t *testing.T) {
+	opt := func(label string, pos, line int) Option {
+		return Option{Type: OptionTypeToggle, Label: label, Position: pos, Source: SourceRef{Path: "Scripts/a.psc", Line: line}}
+	}
+	main := []Option{opt("Enabled", 0, 10), opt("Prompts", 2, 11)}
+	m := Menu{Pages: []Page{{Name: "", Options: main}, {Name: "Other", Options: []Option{opt("Height", 0, 30)}}, {Name: "Main", Options: append([]Option{}, main...)}}}
+	markLanding(&m)
+	if m.Pages[0].SameAs != "Main" || !m.Pages[2].Landing || m.Pages[1].Landing {
+		t.Errorf("twin: %q, %v, %v", m.Pages[0].SameAs, m.Pages[2].Landing, m.Pages[1].Landing)
+	}
+	if r, _ := Search(&Catalog{Menus: []Menu{m}}, "enabled", 10); len(r) != 1 || r[0].PageName != "Main" || !r[0].Landing {
+		t.Errorf("search: %+v", r)
+	}
+
+	// The same labels from other lines: the left side and the right.
+	left := Menu{Pages: []Page{{Name: "", Options: main}, {Name: "Right", Options: []Option{opt("Enabled", 0, 40), opt("Prompts", 2, 41)}}}}
+	markLanding(&left)
+	if left.Pages[0].SameAs != "" || left.Pages[1].Landing {
+		t.Errorf("same labels, other lines: %q, %v", left.Pages[0].SameAs, left.Pages[1].Landing)
+	}
+}

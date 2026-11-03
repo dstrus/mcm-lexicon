@@ -52,9 +52,11 @@ export class OpenRecording {
 	}
 
 	// find is the recording's step for the same option as step, with its
-	// number (from 1), or null.
-	find(step: Step): { n: number; step: Step } | null {
-		const i = this.steps.findIndex((s) => sameOption(s, step));
+	// number (from 1), or null. On a landing page, the page the menu opens
+	// on a copy of, a step on the default page is the same option.
+	find(step: Step, landing = false): { n: number; step: Step } | null {
+		let i = this.steps.findIndex((s) => sameOption(s, step));
+		if (i < 0 && landing) i = this.steps.findIndex((s) => sameOption(s, { ...step, page: '' }));
 		return i < 0 ? null : { n: i + 1, step: this.steps[i]! };
 	}
 }

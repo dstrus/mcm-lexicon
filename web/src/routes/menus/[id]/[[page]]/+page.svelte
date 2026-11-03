@@ -94,8 +94,15 @@
 	let chooser = $state<ChooseRecording>();
 	const choose = () => chooser?.choose() ?? Promise.resolve(null);
 	let recording = $derived(open.editing && !!open.name);
-	const base = (o: Option) => stepFor(menu.name, page?.name ?? '', o);
-	const recorded = (o: Option) => open.find(base(o));
+	// An option's step as this page makes it, and as the recording has it:
+	// on a landing page, a step on the default page is the same option, and
+	// a change to it stays on the page it's on.
+	const named = (o: Option) => stepFor(menu.name, page?.name ?? '', o);
+	const recorded = (o: Option) => open.find(named(o), page?.landing);
+	const base = (o: Option) => {
+		const r = recorded(o);
+		return r ? { ...named(o), page: r.step.page } : named(o);
+	};
 	// What a value shows and starts from: the recorded value, else the
 	// option's own.
 	const valueNow = (o: Option) => recorded(o)?.step ?? base(o);
@@ -310,6 +317,7 @@
 		<nav class="pages" aria-label={t.pages}>
 			<ul>
 				{#each menu.pages as p, i (i)}
+					{#if !p.sameAs}
 					<li>
 						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined}>
 							<span class="marker">{#if i === data.at}<Diamond />{/if}</span>
@@ -317,6 +325,7 @@
 							<span class="count">{p.options.length}</span>
 						</a>
 					</li>
+					{/if}
 				{/each}
 			</ul>
 		</nav>
