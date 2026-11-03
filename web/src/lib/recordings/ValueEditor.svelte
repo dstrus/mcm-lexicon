@@ -97,7 +97,7 @@
 			<span class="caps label">{t.entry}</span>
 			{#if choices.length}
 				<select bind:value>
-					{#if !value}<option value="" disabled>{t.chooseEntry}</option>{/if}
+					<option value="" disabled>{t.chooseEntry}</option>
 					{#each choices as c, i (i)}
 						<option value={c.raw}>{c.text}{c.raw !== c.text ? ` (${c.raw})` : ''}{option?.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
 					{/each}

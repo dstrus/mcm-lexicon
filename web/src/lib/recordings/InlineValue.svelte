@@ -22,8 +22,8 @@
 		kind: Kind;
 		option: Option | null | undefined;
 		value: string;
-		// The option isn't recorded yet: a menu opens on no entry, so choosing
-		// any one, the one it has included, records it.
+		// The option isn't recorded yet: Enter records the entry the menu
+		// shows, since choosing the one already selected changes nothing.
 		fresh?: boolean;
 		apply: (value: string) => void;
 		cancel: () => void;
@@ -50,8 +50,15 @@
 		return '';
 	});
 
-	// done applies what's typed, if the value is one the step can hold.
+	// done applies what's typed, if the value is one the step can hold; a
+	// menu's, the entry its select shows.
 	export function done() {
+		if (kind === 'choose' && field instanceof HTMLSelectElement) {
+			if (field.value === '') return;
+			if (field.value === value && !fresh) cancel();
+			else apply(field.value);
+			return;
+		}
 		if (problem) return;
 		if (draft === value) cancel();
 		else apply(draft);
@@ -123,11 +130,13 @@
 			/>
 		</span>
 	{:else if kind === 'choose' && choices.length}
-		{@const pick = fresh || !value}
+		<!-- The entry the option has, selected; Enter records it, and choosing
+		     another records that. The placeholder heads the list, chosen
+		     only when no entry is known. -->
 		<select bind:this={field} aria-label={t.entry} onchange={(e) => apply(e.currentTarget.value)} onkeydown={keys} onblur={cancel}>
-			{#if pick}<option value="" disabled selected>{t.chooseEntry}</option>{/if}
+			<option value="" disabled selected={!value}>{t.chooseEntry}</option>
 			{#each choices as c, i (i)}
-				<option value={c.raw} selected={!pick && c.raw.toLowerCase() === value.toLowerCase()}>{c.text}{option?.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
+				<option value={c.raw} selected={!!value && c.raw.toLowerCase() === value.toLowerCase()}>{c.text}{option?.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
 			{/each}
 			{#if value && !choices.some((c) => c.raw.toLowerCase() === value.toLowerCase())}<option value={value} selected>{t.notInMenu({ entry: value })}</option>{/if}
 		</select>
