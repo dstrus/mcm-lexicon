@@ -74,6 +74,8 @@ nav:
   changes: Changes
   save: Save
   review: Review
+  undo: Undo
+  redo: Redo
   savedNote:
     one: Saved {count} recording.
     other: Saved {count} recordings.

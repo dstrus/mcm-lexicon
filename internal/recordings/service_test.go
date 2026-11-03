@@ -504,3 +504,63 @@ func TestSetClicks(t *testing.T) {
 		t.Errorf("a thousand clicks: %d", code)
 	}
 }
+
+// Undo steps back through the draft's changes, one at a time, and redo
+// forward again; a new change drops what was undone, and Save starts the
+// history afresh.
+func TestUndoRedo(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	toggle := func(v string) {
+		h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: v}}, &AddReply{})
+	}
+	value := func() string {
+		var ed Editor
+		h.call("GET", "/api/recordings/MGO", nil, &ed)
+		return ed.Draft.Steps[0].Value
+	}
+	history := func() (int, int) { return h.svc.History() }
+	if u, r := history(); u != 0 || r != 0 {
+		t.Fatalf("at the start: %d, %d", u, r)
+	}
+	toggle("on")
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Height", Kind: KindSlider, Value: "4"}}, &AddReply{})
+	if u, _ := history(); u != 2 || value() != "on" {
+		t.Fatalf("after two changes: undo %d, %s", u, value())
+	}
+	var ch Changes
+	if code := h.call("POST", "/api/changes/undo", nil, &ch); code != 200 {
+		t.Fatalf("undo: %d", code)
+	}
+	var ed Editor
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if len(ed.Draft.Steps) != 1 || ed.Draft.Steps[0].Value != "on" {
+		t.Fatalf("after one undo: %+v", ed.Draft.Steps)
+	}
+	h.call("POST", "/api/changes/undo", nil, &ch)
+	if h.svc.Pending() != 0 || value() != "off" {
+		t.Fatalf("after two undos: pending %d, %s", h.svc.Pending(), value())
+	}
+	if code := h.call("POST", "/api/changes/undo", nil, &ch); code != 409 {
+		t.Errorf("nothing to undo: %d", code)
+	}
+	h.call("POST", "/api/changes/redo", nil, &ch)
+	if u, r := history(); u != 1 || r != 1 || value() != "on" {
+		t.Fatalf("after a redo: %d, %d, %s", u, r, value())
+	}
+	// Toggled back to what's on disk: one change, which undo takes back.
+	toggle("off")
+	if u, r := history(); u != 2 || r != 0 || h.svc.Pending() != 0 {
+		t.Fatalf("back to disk: %d, %d, pending %d", u, r, h.svc.Pending())
+	}
+	h.call("POST", "/api/changes/undo", nil, &ch)
+	if value() != "on" {
+		t.Fatalf("undoing the return: %s", value())
+	}
+	if code := h.call("POST", "/api/changes/save", nil, &SaveReply{}); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+	if u, r := history(); u != 0 || r != 0 {
+		t.Errorf("after saving: %d, %d", u, r)
+	}
+}

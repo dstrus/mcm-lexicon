@@ -11,6 +11,8 @@ export interface Shortcut {
 	hidden?: boolean; // works, but isn't shown in the hint bar
 	disabled?: boolean;
 	command?: boolean; // pressed with Ctrl (⌘ on a Mac), and works while typing
+	shift?: boolean; // a command shortcut pressed with Shift as well
+	notTyping?: boolean; // a command shortcut a text field keeps for itself (⌘Z undoes typing there)
 }
 
 // onMac is whether the command key is ⌘ rather than Ctrl.
@@ -42,7 +44,7 @@ function changed() {
 export function active(): Shortcut[] {
 	void changes;
 	const byKey = new Map<string, Shortcut>();
-	for (const shortcuts of registered.values()) for (const s of shortcuts()) byKey.set(`${s.command ? 'cmd+' : ''}${s.key.toLowerCase()}`, s);
+	for (const shortcuts of registered.values()) for (const s of shortcuts()) byKey.set(`${s.command ? 'cmd+' : ''}${s.shift ? 'shift+' : ''}${s.key.toLowerCase()}`, s);
 	return [...byKey.values()];
 }
 
@@ -86,8 +88,8 @@ export function handleKey(e: KeyboardEvent) {
 		e.target.blur();
 		return;
 	}
-	const s = active().find((x) => x.key.toLowerCase() === e.key.toLowerCase() && !!x.command === command);
-	if (!s || s.disabled) return;
+	const s = active().find((x) => x.key.toLowerCase() === e.key.toLowerCase() && !!x.command === command && (!command || !!x.shift === e.shiftKey));
+	if (!s || s.disabled || (s.notTyping && typing(e.target))) return;
 	e.preventDefault();
 	s.run();
 }

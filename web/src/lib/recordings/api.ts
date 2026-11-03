@@ -73,6 +73,15 @@ export function saveAll(): Promise<SaveReply> {
 }
 
 // discardAll drops the whole draft.
+// undo takes back the draft's last change; redo puts back the last undone.
+export function undo(): Promise<Changes> {
+	return request<Changes>('POST', '/api/changes/undo');
+}
+
+export function redo(): Promise<Changes> {
+	return request<Changes>('POST', '/api/changes/redo');
+}
+
 export function discardAll(): Promise<Changes> {
 	return request<Changes>('DELETE', '/api/changes');
 }

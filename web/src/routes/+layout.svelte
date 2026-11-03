@@ -5,7 +5,7 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, watchStatus } from '#lib/api/live.svelte.ts';
 	import { menuHref, menusDependency } from '#lib/menus/api.ts';
-	import { recordingHref, recordingsDependency, saveAll, setOpen } from '#lib/recordings/api.ts';
+	import { recordingHref, recordingsDependency, redo, saveAll, setOpen, undo } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
@@ -153,6 +153,34 @@
 		}
 	}
 	useShortcuts(() => (editing && pending > 0 ? [{ key: 'Enter', label: m.nav.save, command: true, disabled: saving, run: saveNow }] : []));
+
+	// Undo and redo step through the draft's changes, from any screen, while
+	// editing; a text field keeps ⌘Z for its own typing. Save starts the
+	// history afresh, since a write can't be undone.
+	let stepping = $state(false);
+	async function stepHistory(back: boolean) {
+		if (stepping) return;
+		stepping = true;
+		saveError = '';
+		try {
+			await (back ? undo() : redo());
+		} catch (e) {
+			saveError = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			await invalidateAll();
+			stepping = false;
+		}
+	}
+	let undoable = $derived(data.status.undo ?? 0);
+	let redoable = $derived(data.status.redo ?? 0);
+	useShortcuts(() =>
+		editing
+			? [
+					...(undoable ? [{ key: 'z', shown: 'Z', label: m.nav.undo, command: true, notTyping: true, disabled: stepping, run: () => stepHistory(true) }] : []),
+					...(redoable ? [{ key: 'z', shown: 'Z', label: m.nav.redo, command: true, shift: true, notTyping: true, disabled: stepping, run: () => stepHistory(false) }] : [])
+				]
+			: []
+	);
 
 	// When the catalog was scanned: the time today, the date before that.
 	function scannedLabel(iso: string): string {

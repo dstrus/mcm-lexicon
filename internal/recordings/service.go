@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -181,7 +182,23 @@ type Service struct {
 	kept    map[string]*Draft // saved where this list doesn't see them (a new mod folder), shown as saved
 	created map[string]bool   // the draft's new recordings, never saved, by lowercase name
 	saved   map[string]Saved  // the last save of each, by lowercase name
+
+	// The draft's history, for undo and redo: the state it was in before
+	// each change, and the changes undone. Kept in memory only; a Save,
+	// which writes, starts it afresh.
+	last       snapshot
+	undo, redo []snapshot
 }
+
+// snapshot is the draft at one moment: what undo puts back.
+type snapshot struct {
+	drafts  map[string]Draft
+	deleted map[string]bool
+	created map[string]bool
+}
+
+// historyLimit is the most changes undo goes back through.
+const historyLimit = 200
 
 func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Service {
 	if running == nil {
@@ -196,6 +213,103 @@ func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Serv
 // reset forgets the draft. Callers hold s.mu, or have s to themselves.
 func (s *Service) reset() {
 	s.drafts, s.deleted, s.kept, s.saved, s.created = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}, map[string]bool{}
+	s.forget()
+}
+
+// snap is the draft now, copied.
+func (s *Service) snap() snapshot {
+	out := snapshot{drafts: map[string]Draft{}, deleted: maps.Clone(s.deleted), created: maps.Clone(s.created)}
+	for k, d := range s.drafts {
+		c := *d
+		c.Steps = slices.Clone(d.Steps)
+		out.drafts[k] = c
+	}
+	return out
+}
+
+// put makes the draft what n holds.
+func (s *Service) put(n snapshot) {
+	s.drafts = map[string]*Draft{}
+	for k, d := range n.drafts {
+		c := d
+		c.Steps = slices.Clone(d.Steps)
+		s.drafts[k] = &c
+	}
+	s.deleted, s.created = maps.Clone(n.deleted), maps.Clone(n.created)
+	if s.deleted == nil {
+		s.deleted = map[string]bool{}
+	}
+	if s.created == nil {
+		s.created = map[string]bool{}
+	}
+}
+
+func (a snapshot) same(b snapshot) bool {
+	x, _ := json.Marshal([]any{a.drafts, a.deleted, a.created})
+	y, _ := json.Marshal([]any{b.drafts, b.deleted, b.created})
+	return string(x) == string(y)
+}
+
+// remember puts the state before a change on the undo history, when the
+// change changed anything, and drops what was undone. Callers hold s.mu.
+func (s *Service) remember() {
+	now := s.snap()
+	if now.same(s.last) {
+		return
+	}
+	s.undo = append(s.undo, s.last)
+	if len(s.undo) > historyLimit {
+		s.undo = s.undo[len(s.undo)-historyLimit:]
+	}
+	s.redo = nil
+	s.last = now
+}
+
+// amend folds a further change into the last one, as one change for undo:
+// what undo puts back is still the state before both. A change that ends
+// where it began leaves no history. Callers hold s.mu.
+func (s *Service) amend() {
+	s.last = s.snap()
+	if n := len(s.undo); n > 0 && s.undo[n-1].same(s.last) {
+		s.undo = s.undo[:n-1]
+	}
+	s.write()
+}
+
+// forget starts the history afresh from the draft as it is: after a
+// write, which can't be undone, or for another list. Callers hold s.mu.
+func (s *Service) forget() {
+	s.undo, s.redo, s.last = nil, nil, s.snap()
+}
+
+// History is how many changes undo and redo can step through.
+func (s *Service) History() (undo, redo int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.undo), len(s.redo)
+}
+
+// step undoes the last change (back) or redoes the last undone one.
+func (s *Service) step(back bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	from, to := &s.undo, &s.redo
+	if !back {
+		from, to = to, from
+	}
+	if len(*from) == 0 {
+		if back {
+			return apperr.New(apperr.Conflict, "There's nothing to undo")
+		}
+		return apperr.New(apperr.Conflict, "There's nothing to redo")
+	}
+	n := (*from)[len(*from)-1]
+	*from = (*from)[:len(*from)-1]
+	*to = append(*to, s.snap())
+	s.put(n)
+	s.last = n
+	s.write()
+	return nil
 }
 
 // held is the draft as its file keeps it: what it changes, and the list
@@ -207,10 +321,17 @@ type held struct {
 	Created map[string]bool   `json:"created,omitempty"`
 }
 
-// persist writes the draft to its file, or removes the file when the draft
+// persist records a change to the draft: on the undo history, and in its
+// file. Callers hold s.mu.
+func (s *Service) persist() {
+	s.remember()
+	s.write()
+}
+
+// write writes the draft to its file, or removes the file when the draft
 // is empty. Failing to write is logged, not returned: the draft is still
 // held until the program stops. Callers hold s.mu.
-func (s *Service) persist() {
+func (s *Service) write() {
 	if s.file == "" {
 		return
 	}
@@ -269,6 +390,7 @@ func (s *Service) restore() {
 		}
 	}
 	s.editing = true
+	s.forget()
 	if n := len(s.drafts) + len(s.deleted); n == 1 {
 		log.Print("Restored the draft from last time: changes to 1 recording, not yet saved")
 	} else {
@@ -304,6 +426,7 @@ func (s *Service) SetEditing(on, discard bool) error {
 		gone := s.dropDrafts(nil)
 		s.deleted = map[string]bool{}
 		s.persist()
+		s.forget() // leaving editing: nothing to undo while read-only
 		defer s.forgetOpen(gone)
 	}
 	s.editing = on
@@ -527,6 +650,22 @@ func (s *Service) Routes(m *http.ServeMux) {
 		}
 		return s.saveAll(e)
 	}))
+	// Undo and redo step through the draft's history of changes.
+	for path, back := range map[string]bool{"POST /api/changes/undo": true, "POST /api/changes/redo": false} {
+		m.Handle(path, httpapi.JSON(func(r *http.Request, _ httpapi.None) (Changes, error) {
+			if err := s.mustEdit(); err != nil {
+				return Changes{}, err
+			}
+			e, err := s.env(r)
+			if err != nil {
+				return Changes{}, err
+			}
+			if err := s.step(back); err != nil {
+				return Changes{}, err
+			}
+			return s.changes(e), nil
+		}))
+	}
 	m.Handle("DELETE /api/changes", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Changes, error) {
 		e, err := s.env(r)
 		if err != nil {
@@ -1013,10 +1152,11 @@ func (s *Service) replaceDraft(e *env, name string, d Draft) (Editor, error) {
 	s.mu.Unlock()
 	ed, err := s.editor(e, name)
 	if err == nil && !ed.Changed && ed.Recording != nil {
-		// Back to what's on disk: nothing left to save.
+		// Back to what's on disk: nothing left to save. Part of the same
+		// change, as undo sees it.
 		s.mu.Lock()
 		delete(s.drafts, key)
-		s.persist()
+		s.amend()
 		s.mu.Unlock()
 		return s.editor(e, name)
 	}
@@ -1169,6 +1309,7 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 		s.drafts[strings.ToLower(d.Name)] = &d
 		s.persist()
 		s.mu.Unlock()
+		s.settle(e, name)
 		return AddReply{Number: i + 1, Replaced: true}, nil
 	}
 	d.Steps = append(d.Steps, step)
@@ -1177,6 +1318,19 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 	s.persist()
 	s.mu.Unlock()
 	return AddReply{Number: len(d.Steps)}, nil
+}
+
+// settle drops a recording's draft when it's back to what's on disk, as
+// part of the change that brought it there.
+func (s *Service) settle(e *env, name string) {
+	ed, err := s.editor(e, name)
+	if err != nil || ed.Changed || ed.Recording == nil {
+		return
+	}
+	s.mu.Lock()
+	delete(s.drafts, strings.ToLower(ed.Draft.Name))
+	s.amend()
+	s.mu.Unlock()
 }
 
 func (s *Service) save(e *env, name string) (Editor, error) {
@@ -1205,6 +1359,7 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 	delete(s.created, key) // on disk now
 	s.saved[key] = done
 	s.persist()
+	s.forget() // a write can't be undone
 	s.mu.Unlock()
 	s.prefs.Update(func(v *prefs.Values) {
 		if ed.Recording == nil {
@@ -1324,6 +1479,7 @@ func (s *Service) deleteNow(e *env, name string) (DeleteReply, error) {
 	delete(s.deleted, strings.ToLower(rec.Name))
 	delete(s.saved, strings.ToLower(rec.Name))
 	s.persist()
+	s.forget() // a write can't be undone
 	s.mu.Unlock()
 	e.list.Refresh("McmRecorder")
 	s.read(e)
@@ -1416,6 +1572,7 @@ func (s *Service) saveAll(e *env) (SaveReply, error) {
 				s.mu.Lock()
 				delete(s.drafts, strings.ToLower(name))
 				s.persist()
+				s.forget() // a write can't be undone
 				s.mu.Unlock()
 				continue
 			}

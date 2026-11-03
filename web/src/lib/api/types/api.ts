@@ -37,6 +37,11 @@ export interface Status {
    */
   editing: boolean;
   changes: number /* int */; // how many recordings the draft changes
+  /**
+   * Undo and Redo are how many changes to the draft each can step through.
+   */
+  undo: number /* int */;
+  redo: number /* int */;
 }
 /**
  * EditingRequest turns editing on or off. Off with changes in the draft

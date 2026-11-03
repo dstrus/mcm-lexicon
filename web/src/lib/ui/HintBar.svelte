@@ -8,9 +8,9 @@
 
 {#if hints.length}
 	<nav class="hints" aria-label={m.ui.shortcuts}>
-		{#each hints as h (`${h.command ? 'cmd+' : ''}${h.key}`)}
+		{#each hints as h (`${h.command ? 'cmd+' : ''}${h.shift ? 'shift+' : ''}${h.key}`)}
 			<button type="button" class="hint caps" onclick={h.run} disabled={h.disabled}>
-				<kbd>{h.command ? (onMac ? '⌘ ' : 'Ctrl ') : ''}{h.shown ?? h.key}</kbd>{h.label}
+				<kbd>{h.shift ? (onMac ? '⇧' : 'Shift ') : ''}{h.command ? (onMac ? '⌘ ' : 'Ctrl ') : ''}{h.shown ?? h.key}</kbd>{h.label}
 			</button>
 		{/each}
 	</nav>

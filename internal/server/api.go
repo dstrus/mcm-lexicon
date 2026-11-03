@@ -32,6 +32,9 @@ type Status struct {
 	// MCM Lexicon starts read-only.
 	Editing bool `json:"editing"`
 	Changes int  `json:"changes"` // how many recordings the draft changes
+	// Undo and Redo are how many changes to the draft each can step through.
+	Undo int `json:"undo"`
+	Redo int `json:"redo"`
 }
 
 // EditingRequest turns editing on or off. Off with changes in the draft
@@ -59,7 +62,7 @@ type ThemeRequest struct {
 
 func (s *Server) status() Status {
 	source, file := s.Source()
-	return Status{
+	st := Status{
 		Source:        source,
 		CatalogFile:   file,
 		Scan:          s.catalog.State(),
@@ -70,4 +73,6 @@ func (s *Server) status() Status {
 		Editing:       s.recordings.Editing(),
 		Changes:       s.recordings.Pending(),
 	}
+	st.Undo, st.Redo = s.recordings.History()
+	return st
 }
