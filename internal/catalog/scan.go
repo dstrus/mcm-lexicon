@@ -215,6 +215,18 @@ func (s *scan) helperOption(c mcmhelper.Control, defaults, saved mcmhelper.INI, 
 		o.Notes = append(o.Notes, Note{Kind: NoteKindStepper})
 	case "text":
 		o.Type = OptionTypeText
+		// A fixed value is the config's; one read from a setting shows
+		// whatever the setting holds, which changes.
+		o.ValueCertainty = CertaintyExact
+		if v, ok := c.Value.(string); ok && c.SourceType == "" {
+			o.Value = v
+			o.ValueText = s.tr.Text(v, prefer...)
+		} else if c.SourceType != "" {
+			o.ValueChanges = true
+			if v, ok := c.Default.(string); ok {
+				o.Value, o.ValueText = v, s.tr.Text(v, prefer...)
+			}
+		}
 	default:
 		return Option{}, false
 	}
@@ -294,6 +306,21 @@ func numberDuplicates(opts []Option) {
 		if count[k] > 1 {
 			seen[k]++
 			opts[i].Index = seen[k]
+		}
+	}
+	// A right-side click counts the text options showing its value.
+	values := map[string]int{}
+	for _, o := range opts {
+		if o.Type == OptionTypeText && o.Value != "" {
+			values[strings.ToLower(o.Value)]++
+		}
+	}
+	shown := map[string]int{}
+	for i := range opts {
+		k := strings.ToLower(opts[i].Value)
+		if opts[i].Type == OptionTypeText && opts[i].Value != "" && values[k] > 1 {
+			shown[k]++
+			opts[i].ValueIndex = shown[k]
 		}
 	}
 }

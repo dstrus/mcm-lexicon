@@ -69,7 +69,10 @@ export function allowed(o: Option): string {
 		case 'input':
 			return t.text;
 	}
-	return o.control === 'stepper' ? t.clickToCycle : t.click;
+	if (o.control === 'stepper') return t.clickToCycle;
+	// A text option showing a value: a right-side click finds it by that.
+	if (o.value && o.valueCertainty === 'exact') return t.clickShowing({ value: o.valueText || o.value });
+	return t.click;
 }
 
 function choicesInBrief(o: Option): string {

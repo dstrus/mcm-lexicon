@@ -241,6 +241,12 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 			if o.Certainty == mcm.Exact {
 				opt.Text = s.tr.Text(o.Label, prefer...)
 			}
+			if o.Type == "text" {
+				opt.Value, opt.ValueText, opt.ValueCertainty, opt.ValueChanges = o.Value, o.ValueText, Certainty(o.ValueCertainty), o.ValueChanges
+				if o.ValueCertainty == mcm.Exact {
+					opt.ValueText = s.tr.Text(o.Value, prefer...)
+				}
+			}
 			if o.Repeats {
 				opt.Notes = append(opt.Notes, Note{Kind: NoteKindRepeats})
 			}

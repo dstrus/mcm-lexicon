@@ -540,3 +540,16 @@ func checkRecordings(t *testing.T, l *modlist.List, c *Catalog) {
 	}
 	t.Logf("%d of %d recorded steps for Papyrus menus resolved exactly", resolved, checked)
 }
+
+// Right-side clicks count the text options showing the same value.
+func TestValueIndex(t *testing.T) {
+	opts := []Option{
+		{Type: OptionTypeText, Value: "Run"},
+		{Type: OptionTypeText, Label: "Other", Value: "run"},
+		{Type: OptionTypeText, Value: "Stop"},
+	}
+	numberDuplicates(opts)
+	if opts[0].ValueIndex != 1 || opts[1].ValueIndex != 2 || opts[2].ValueIndex != 0 {
+		t.Errorf("value indexes = %d, %d, %d", opts[0].ValueIndex, opts[1].ValueIndex, opts[2].ValueIndex)
+	}
+}

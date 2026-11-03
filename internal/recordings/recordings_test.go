@@ -1,6 +1,7 @@
 package recordings
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -188,5 +189,46 @@ func TestRealSnapshots(t *testing.T) {
 			}
 			t.Logf("%d recordings, %d steps: %d matched, %d for mods not in the list", len(recs), total, counts.Matched, counts.ModMissing)
 		})
+	}
+}
+
+// A right-side click matches a text option by its value.
+func TestRightSideClicks(t *testing.T) {
+	fixed := func(label, value string) catalog.Option {
+		return catalog.Option{Type: catalog.OptionTypeText, Label: label, Value: value, ValueCertainty: catalog.CertaintyExact}
+	}
+	c := &catalog.Catalog{Menus: []catalog.Menu{
+		{ID: "fixed", Name: "Fixed", Active: true, Certainty: catalog.CertaintyExact, Pages: []catalog.Page{{Name: "P", Options: []catalog.Option{
+			fixed("", "Reset everything"), fixed("", "Run"), fixed("Other", "Run"),
+		}}}},
+		{ID: "moving", Name: "Moving", Active: true, Certainty: catalog.CertaintyExact, Pages: []catalog.Page{{Name: "P", Options: []catalog.Option{
+			{Type: catalog.OptionTypeText, Label: "Status", Value: "Enabled", ValueCertainty: catalog.CertaintyExact, ValueChanges: true},
+		}}}},
+	}}
+	click := func(mod, value string, index int) Step {
+		return Step{Mod: mod, Page: "P", Option: value, Kind: KindClick, Value: value, Side: "right", Index: index, Wildcard: strings.HasPrefix(value, "*")}
+	}
+	steps := []Step{
+		click("Fixed", "reset everything", 0), // matched, as Papyrus compares
+		click("Fixed", "Run", 2),              // the second option showing Run
+		click("Fixed", "*Reset*", 0),          // a wildcard
+		click("Fixed", "Nothing", 0),          // not shown anywhere: won't replay
+		click("Fixed", "Run", 3),              // only two show it
+		click("Moving", "Enabled", 0),         // a value it shows at times
+		click("Moving", "Disabled", 0),        // perhaps the other one: can't tell
+	}
+	got := Validate(&Recording{Steps: steps}, c)
+	want := []string{"matched", "matched 2", "matched", "not-found value", "not-found index", "matched", "unchecked value"}
+	for i, ch := range got {
+		s := string(ch.Status)
+		if ch.Why != "" {
+			s += " " + string(ch.Why)
+		}
+		if ch.Status == StatusMatched && ch.Position > 0 {
+			s += fmt.Sprintf(" %d", ch.Position)
+		}
+		if s != want[i] {
+			t.Errorf("step %d: %s, want %s", i+1, s, want[i])
+		}
 	}
 }

@@ -28,6 +28,7 @@ const (
 	WhyInactive Why = "inactive" // the menu's plugin isn't active
 	WhyRange    Why = "range"    // a slider value outside its range
 	WhyChoice   Why = "choice"   // a menu entry the menu doesn't have
+	WhyValue    Why = "value"    // a right-side click: no text option on the page shows this value
 )
 
 // Check is a step's check.
@@ -102,12 +103,7 @@ func check(s Step, c *catalog.Catalog) Check {
 		}
 	}
 	typ := optionType[s.Kind]
-	// A click on the right side matches an option by its value's text,
-	// which only the game knows.
-	if s.Kind == KindClick && strings.EqualFold(s.Side, "right") {
-		ch.Status, ch.Why = StatusUnchecked, WhyOption
-		return ch
-	}
+	right := s.Kind == KindClick && strings.EqualFold(s.Side, "right")
 	if page < 0 {
 		ch.Status, ch.Why = StatusNotFound, WhyPage
 		if uncertain {
@@ -118,6 +114,9 @@ func check(s Step, c *catalog.Catalog) Check {
 	}
 	p := m.Pages[page]
 	ch.Page, ch.PageText = page, p.Text
+	if right {
+		return checkRight(ch, s, p, uncertain)
+	}
 	seen := 0
 	for i := range p.Options {
 		o := &p.Options[i]
@@ -140,6 +139,44 @@ func check(s Step, c *catalog.Catalog) Check {
 		ch.Status = StatusUnchecked
 	}
 	ch.Suggestion = suggest(m, page, typ, s.Option)
+	return ch
+}
+
+// checkRight checks a click on an option's right side, which MCM Recorder
+// matches by the value shown there rather than the label: a text option on
+// the page whose value matches (exact, or containing a *part*), the
+// index-th when the step gives one. A value the menu shows at some point
+// matches, even one it changes; a miss proves the step won't replay only
+// when every text option's value on the page is known and fixed.
+func checkRight(ch Check, s Step, p catalog.Page, uncertain bool) Check {
+	seen := 0
+	doubt := uncertain
+	for i := range p.Options {
+		o := &p.Options[i]
+		if o.Type != catalog.OptionTypeText {
+			continue
+		}
+		if o.ValueCertainty != catalog.CertaintyExact || o.ValueChanges {
+			doubt = true
+		}
+		if o.ValueCertainty != catalog.CertaintyExact || !matches(s, o.Value) {
+			continue
+		}
+		seen++
+		if s.Index > 0 && seen != s.Index {
+			continue
+		}
+		ch.Position, ch.Option = i, o
+		ch.Status = StatusMatched
+		return ch
+	}
+	ch.Status, ch.Why = StatusNotFound, WhyValue
+	if seen > 0 {
+		ch.Why = WhyIndex
+	}
+	if doubt {
+		ch.Status = StatusUnchecked
+	}
 	return ch
 }
 

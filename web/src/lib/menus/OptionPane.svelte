@@ -31,6 +31,14 @@
 		<dt class="caps">{t.index}</dt>
 		<dd>{t.indexOf({ n: o.index })}</dd>
 	{/if}
+	{#if o.type === 'text' && (o.value || o.valueText)}
+		<dt class="caps">{t.value}</dt>
+		<dd>
+			{o.valueText || o.value}
+			{#if o.valueCertainty !== 'exact'}<span class="caps word">{o.valueCertainty}</span>{/if}
+			{#if o.value && o.value !== o.valueText}<span class="raw small">{o.value}</span>{/if}
+		</dd>
+	{/if}
 	{#if o.slider}
 		<dt class="caps">{t.range}</dt>
 		<dd>{allowed(o)}{#if o.slider.format.replace(/\{\d\}/, '').trim()}<span class="muted small">{t.shownAs({ example: number(o.slider.max, o.slider.format) })}</span>{/if}</dd>
@@ -63,6 +71,9 @@
 
 {#if o.certainty !== 'exact'}
 	<p class="notice warn">{o.certainty === 'pattern' ? t.pattern : t.unknown}</p>
+{/if}
+{#if o.type === 'text' && o.valueChanges}
+	<p class="notice">{t.valueChanges}</p>
 {/if}
 {#each o.notes as note, i (i)}
 	{#if note.kind === 'stepper'}<p class="notice">{t.stepper}</p>{:else if note.kind === 'repeats'}<p class="notice">{t.repeats}</p>{/if}
@@ -102,6 +113,12 @@
 		margin: 0;
 		overflow-wrap: anywhere;
 		min-width: 0;
+	}
+	/* Certainty, when it isn't exact: a word after the value, never a color. */
+	.word {
+		margin-left: var(--space-2);
+		font-size: var(--step--1);
+		color: var(--muted);
 	}
 	.raw {
 		font-family: var(--font-mono);

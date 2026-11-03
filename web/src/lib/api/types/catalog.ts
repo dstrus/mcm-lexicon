@@ -151,6 +151,20 @@ export interface Option {
   help: string; // the info text the menu shows, raw
   helpText: string; // translated
   certainty: Certainty;
+  /**
+   * A text option's value, shown on its right, which a click on that side
+   * matches: raw (exact, or a *pattern*), translated, and how certain.
+   * ValueChanges is true when the menu shows other values at times.
+   */
+  value: string;
+  valueText: string;
+  valueCertainty: Certainty;
+  valueChanges: boolean;
+  /**
+   * ValueIndex is Index for a right-side click: 1-based among the page's
+   * text options showing the same value; 0 when it's the only one.
+   */
+  valueIndex: number /* int */;
   notes: Note[];
   source: SourceRef;
 }

@@ -96,8 +96,18 @@ type Option struct {
 	Help      string     `json:"help"`     // the info text the menu shows, raw
 	HelpText  string     `json:"helpText"` // translated
 	Certainty Certainty  `json:"certainty"`
-	Notes     []Note     `json:"notes"`
-	Source    SourceRef  `json:"source"`
+	// A text option's value, shown on its right, which a click on that side
+	// matches: raw (exact, or a *pattern*), translated, and how certain.
+	// ValueChanges is true when the menu shows other values at times.
+	Value          string    `json:"value"`
+	ValueText      string    `json:"valueText"`
+	ValueCertainty Certainty `json:"valueCertainty"`
+	ValueChanges   bool      `json:"valueChanges"`
+	// ValueIndex is Index for a right-side click: 1-based among the page's
+	// text options showing the same value; 0 when it's the only one.
+	ValueIndex int       `json:"valueIndex"`
+	Notes      []Note    `json:"notes"`
+	Source     SourceRef `json:"source"`
 }
 
 type Range struct {

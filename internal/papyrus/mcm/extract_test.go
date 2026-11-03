@@ -449,3 +449,34 @@ func TestJoin(t *testing.T) {
 		}
 	}
 }
+
+// A text option's value, which a right-side click matches: fixed, changed
+// by SetTextOptionValue, or built at runtime.
+const textValues = `Scriptname Values_MCM extends SKI_ConfigBase
+int statusOID
+Event OnPageReset(string page)
+	AddTextOption("", "Reset everything")
+	statusOID = AddTextOption("Status", "Enabled")
+	AddTextOption("Level", "Level " + Game.GetPlayer().GetLevel())
+EndEvent
+Event OnOptionSelect(int option)
+	if option == statusOID
+		SetTextOptionValue(statusOID, "Disabled")
+	endif
+EndEvent
+`
+
+func TestTextOptionValues(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, textValues)}, nil)
+	p := page(t, m, "")
+	reset, status, level := opt(t, p, ""), opt(t, p, "Status"), opt(t, p, "Level")
+	if reset.Value != "Reset everything" || reset.ValueCertainty != Exact || reset.ValueChanges {
+		t.Errorf("reset = %q %s %v", reset.Value, reset.ValueCertainty, reset.ValueChanges)
+	}
+	if status.Value != "Enabled" || !status.ValueChanges {
+		t.Errorf("status = %q, changes %v", status.Value, status.ValueChanges)
+	}
+	if level.ValueCertainty != Pattern || level.Value != "*Level *" || level.ValueText != "Level …" {
+		t.Errorf("level = %q %q %s", level.Value, level.ValueText, level.ValueCertainty)
+	}
+}

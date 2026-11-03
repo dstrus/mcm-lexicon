@@ -60,6 +60,14 @@ type Option struct {
 	Help      string
 	Line      int  // where it's added
 	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
+	// A text option's value, shown on its right, which a click on that side
+	// matches: as the label is described, from AddTextOption's second
+	// argument. Changes is true when the menu shows another value at times
+	// (SetTextOptionValue, or the same option added with another value).
+	Value          string
+	ValueText      string
+	ValueCertainty Certainty
+	ValueChanges   bool
 }
 
 type Range struct {
@@ -83,8 +91,11 @@ var updates = map[string]string{
 }
 
 // The option events, and the state events that do the same for an ST option.
-var optionEvents = []string{"OnOptionSliderOpen", "OnOptionMenuOpen", "OnOptionHighlight", "OnOptionDefault"}
-var stateEvents = []string{"OnSliderOpenST", "OnMenuOpenST", "OnHighlightST", "OnDefaultST"}
+// The events read for what they say about options: their dialogs, help,
+// and defaults, and (OnOptionSelect, OnSelectST) whether a click changes a
+// text option's value.
+var optionEvents = []string{"OnOptionSliderOpen", "OnOptionMenuOpen", "OnOptionHighlight", "OnOptionDefault", "OnOptionSelect"}
+var stateEvents = []string{"OnSliderOpenST", "OnMenuOpenST", "OnHighlightST", "OnDefaultST", "OnSelectST"}
 
 // budget is how many statements one run may take, so a pathological script
 // can't stall a scan.
@@ -270,6 +281,13 @@ func walk(m *machine, page string) []Option {
 			label = args[0]
 		}
 		describe(&f.Option, label)
+		if typ == "text" {
+			value := unknown
+			if len(args) > 1 {
+				value = args[1]
+			}
+			f.Value, f.ValueText, f.ValueCertainty = described(value)
+		}
 		if typ == "slider" && len(args) > 2 && args[2].k == kString {
 			f.Format = args[2].s
 		}
@@ -321,6 +339,8 @@ func walk(m *machine, page string) []Option {
 						}
 					}
 				}
+			case "settextoptionvalue", "settextoptionvaluest":
+				o.ValueChanges = true
 			case "setinfotext":
 				if len(args) >= 1 {
 					switch args[0].k {
@@ -342,6 +362,10 @@ func walk(m *machine, page string) []Option {
 			ids := fixed
 			if ids == nil && len(m.scope) > 0 {
 				ids = m.scope[len(m.scope)-1]
+			}
+			// SetTextOptionValue names its option outright.
+			if strings.EqualFold(name, "SetTextOptionValue") && len(args) > 0 && args[0].k == kOption {
+				ids = args[0].ids
 			}
 			apply(name, args, ids)
 			return unknown, true
@@ -387,20 +411,26 @@ func inState(chain []*ir.Script, state string, f *ir.Function) bool {
 
 // describe sets an option's label from the value passed for it.
 func describe(o *Option, v Value) {
+	o.Label, o.Text, o.Certainty = described(v)
+}
+
+// described is a string passed to the menu as a selector matches it, as it
+// reads, and how certain both are.
+func described(v Value) (selector, text string, c Certainty) {
 	switch v.k {
 	case kString:
-		o.Label, o.Text, o.Certainty = v.s, v.s, Exact
+		return v.s, v.s, Exact
 	case kPattern:
-		o.Label, o.Text, o.Certainty = patternSelector(v.parts), patternText(v.parts), Pattern
-		if o.Label == "" {
-			o.Certainty = Unknown
+		sel := patternSelector(v.parts)
+		if sel == "" {
+			return "", patternText(v.parts), Unknown
 		}
+		return sel, patternText(v.parts), Pattern
 	default:
 		if t, ok := v.text(); ok {
-			o.Label, o.Text, o.Certainty = t, t, Exact
-			return
+			return t, t, Exact
 		}
-		o.Label, o.Text, o.Certainty = "", "", Unknown
+		return "", "", Unknown
 	}
 }
 
@@ -466,6 +496,10 @@ func fill(k *Option, o Option) {
 	}
 	if k.Format == "" {
 		k.Format = o.Format
+	}
+	// The same text option shown with another value: the value changes.
+	if k.Type == "text" && (k.Value != o.Value || k.ValueCertainty != o.ValueCertainty || o.ValueChanges) {
+		k.ValueChanges = true
 	}
 }
 

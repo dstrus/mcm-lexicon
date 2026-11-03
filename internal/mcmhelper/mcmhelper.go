@@ -39,6 +39,7 @@ type Control struct {
 	Format     string   // formatString
 	Options    []string // an enum's or stepper's choices, raw
 	Default    any      // valueOptions.defaultValue, as JSON gives it; nil when absent
+	Value      any      // a text control's value, when the config fixes it
 	Action     string   // action.type: CallFunction, CallGlobalFunction…
 }
 
@@ -63,6 +64,7 @@ type rawControl struct {
 	Help         string `json:"help"`
 	ValueOptions struct {
 		SourceType   string   `json:"sourceType"`
+		Value        any      `json:"value"` // a text control's value, when fixed
 		Min          *float64 `json:"min"`
 		Max          *float64 `json:"max"`
 		Step         *float64 `json:"step"`
@@ -113,6 +115,7 @@ func controls(raw []rawControl) []Control {
 			Format:     r.ValueOptions.FormatString,
 			Options:    r.ValueOptions.Options,
 			Default:    r.ValueOptions.DefaultValue,
+			Value:      r.ValueOptions.Value,
 			Action:     r.Action.Type,
 		}
 		if key, section, ok := strings.Cut(r.ID, ":"); ok {

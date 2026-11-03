@@ -100,6 +100,8 @@ export function sentence(c: Check, s: Step): string {
 			return t.says.page({ page: s.page });
 		case 'index':
 			return t.says.index({ index: s.index });
+		case 'value':
+			return t.says.value({ value: s.option });
 	}
 	return t.says.option;
 }
@@ -139,8 +141,11 @@ export function known(o: Option): Option['default'] {
 }
 
 // recordable reports whether a recording can name the option exactly: a
-// label built at runtime can't be matched without a wildcard.
+// label built at runtime can't be matched without a wildcard. A text option
+// without a label is clicked on its right side, by its value, so that has
+// to be known instead.
 export function recordable(o: Option): boolean {
+	if (o.type === 'text' && !o.label) return !!o.value && o.valueCertainty === 'exact';
 	return o.certainty === 'exact';
 }
 
@@ -168,15 +173,18 @@ export function stepFor(menu: string, page: string, o: Option): Step {
 			value = d?.kind === 'string' ? d.string : '';
 			break;
 	}
+	// A text option without a label is clicked on its right side, which
+	// MCM Recorder finds by the value shown there.
+	const right = kind === 'click' && !o.label;
 	return {
 		file: 0,
 		mod: menu,
 		page,
-		option: o.label,
-		index: o.index,
+		option: right ? o.value : o.label,
+		index: right ? o.valueIndex : o.index,
 		kind,
 		value,
-		side: kind === 'click' && !o.label ? 'right' : '',
+		side: right ? 'right' : '',
 		state: '',
 		wildcard: false
 	};

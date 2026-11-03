@@ -1,6 +1,6 @@
 <!-- The selected option in the open recording, in the pane, while editing:
      its value there, edited in place. An option the recording has shows its
-     step's value with Save changes; one it hasn't shows the option's own
+     step's value with Apply; one it hasn't shows the option's own
      value with Add to <recording>. With no recording chosen, it asks for
      one first. Read-only, it shows nothing. -->
 <script lang="ts">
@@ -70,7 +70,7 @@
 		}
 	}
 
-	let label = $derived(existing ? t.saveChanges : t.addTo({ recording: open.name }));
+	let label = $derived(existing ? t.apply : t.addTo({ recording: open.name }));
 	useShortcuts(() =>
 		!open.editing
 			? []

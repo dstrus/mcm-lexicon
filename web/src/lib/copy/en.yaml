@@ -207,6 +207,8 @@ option:
   indexOf: "{n} of the options with this label and type on this page; a recording says which"
   range: Range
   shownAs: Shown as {example}
+  value: Value
+  valueChanges: The menu shows other values here as it’s used, so a right-side click on another value can’t be checked.
   choices: Choices
   default: Default
   saved: Saved
@@ -238,6 +240,7 @@ values:
   edgeSpace: Ends with a space. MCM Recorder matches it exactly.
   choiceNumber: Choice {n}
   onOrOff: On or off
+  clickShowing: Click · shows “{value}”
   range: "{min} to {max} by {step}"
   aNumber: A number
   aChoice: A choice
@@ -441,7 +444,8 @@ steps:
     modMissing: There’s no menu named “{mod}” in this list, so MCM Recorder skips the step.
     inactive: The menu “{mod}” is in the list, but its plugin isn’t active, so the game won’t show it.
     unchecked: The catalog doesn’t know all of this menu’s options, so a miss here proves nothing.
-    right: A click on the right side matches an option by its value, which only the game knows.
+    right: A click on the right side finds its option by the value shown there, and this page has values built at runtime or changed as the menu is used, so a miss here proves nothing.
+    value: No text option on this page shows “{value}” on its right.
     page: The menu has no page named “{page}”.
     option: The page has no option of this type with this selector.
     index: There are fewer options with this selector than its index, {index}, says.
@@ -545,7 +549,8 @@ adding:
   addToAny: Add to a recording
   added: Added to {recording} as step {n}.
   changed: Changed step {n} of {recording}.
-  saveChanges: Save changes
+  # Changes a recorded option's step in the draft; only Save all writes.
+  apply: Apply
   inRecording: In {recording}
   stepN: Step {n}.
   notYet: Not recorded yet. Adding it records this value.

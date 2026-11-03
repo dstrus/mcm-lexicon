@@ -311,7 +311,8 @@ export const WhyIndex = "index"; // fewer options with this label than the index
 export const WhyInactive = "inactive"; // the menu's plugin isn't active
 export const WhyRange = "range"; // a slider value outside its range
 export const WhyChoice = "choice"; // a menu entry the menu doesn't have
-export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice;
+export const WhyValue = "value"; // a right-side click: no text option on the page shows this value
+export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice | typeof WhyValue;
 /**
  * Check is a step's check.
  */
