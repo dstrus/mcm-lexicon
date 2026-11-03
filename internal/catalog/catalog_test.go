@@ -577,3 +577,20 @@ func TestMarkLanding(t *testing.T) {
 		t.Errorf("same labels, other lines: %q, %v", left.Pages[0].SameAs, left.Pages[1].Landing)
 	}
 }
+
+// Text for reading is shown as SkyUI shows it, without its markup.
+func TestPlain(t *testing.T) {
+	for in, want := range map[string]string{
+		"<font color='#DD3333'>Accuracy - Localized Combat Damage is not correctly installed</font>": "Accuracy - Localized Combat Damage is not correctly installed",
+		`<FONT COLOR="#33DD33">Enabled</FONT>`:                                                       "Enabled",
+		"Line one<br>Line two<BR/>three":                                                             "Line one\nLine two\nthree",
+		"<b>Bold</b> &amp; <i>italic</i>":                                                            "Bold & italic",
+		"Plain & simple":                                                                             "Plain & simple",
+		"Health < 50%":                                                                               "Health < 50%",
+		"5 &lt; 6":                                                                                   "5 < 6",
+	} {
+		if got := plain(in); got != want {
+			t.Errorf("plain(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -76,7 +76,7 @@ The source is in the MGO snapshot under `mods/MCM Recorder/Scripts/Source/`. Rea
 
 **Matching on replay** (`McmRecorder_Player.psc`, `AttemptFindOption`): options are found by type, page and selector text. Matching is exact unless the selector is wrapped in asterisks (`*part*`), which means "contains". `index` picks among duplicates. The player also reads an optional `state` key; check `PlayAction`/`FindOption` before relying on it for state-based (`…ST`) options.
 
-Labels must match **exactly**, trailing spaces included. Sofia's slider is literally `"Sofia Health: "`.
+Labels must match **exactly**, trailing spaces included. Sofia's slider is literally `"Sofia Health: "`. SkyUI draws an MCM's text as Scaleform HTML, so some mods color or style it (`<font color='#DD3333'>…</font>`, `<b>`, `<br>`): the catalog keeps every label raw, markup and all, since that's what a recording matches, and gives the text for reading (names, labels, values, help, headers, choices) without the markup and with its entities written out, as the game shows it, both from a scan and from an older catalog file.
 
 ### 2.2 Where MCM options are defined
 

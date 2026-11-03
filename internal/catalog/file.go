@@ -33,6 +33,7 @@ func ReadFile(path string) (*Catalog, error) {
 	if c.Skipped == nil {
 		c.Skipped = []Skipped{}
 	}
+	plainText(&c) // one written before its text was read without markup
 	return &c, nil
 }
 
