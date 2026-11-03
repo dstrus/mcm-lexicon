@@ -207,6 +207,15 @@
 	{#if recording}
 		{@const rec = recorded(o)}
 		<span class="val" class:changed={!!rec && stepChanged(rec.step, o)}>
+			<!-- What the recording holds of it: a hollow diamond for a step
+			     that's saved, an amber one for a step the draft hasn't saved. -->
+			{#if rec && canEdit(o) && editingCell !== i}
+				{@const dirty = open.dirty(rec.step)}
+				<span class="mark" title={dirty ? m.adding.unsavedStep({ recording: open.name }) : m.adding.inRecording({ recording: open.name })}>
+					{#if dirty}<Diamond size={7} fill="var(--warn)" />{:else}<Diamond size={7} hollow />{/if}
+					<span class="visually-hidden">{dirty ? m.adding.unsavedStep({ recording: open.name }) : m.adding.inRecording({ recording: open.name })}</span>
+				</span>
+			{/if}
 			{#if !canEdit(o)}
 				<span class="muted" title={m.adding.cantRecord}>—</span>
 			{:else if flippable(o)}
@@ -471,27 +480,49 @@
 		align-items: center;
 		gap: var(--space-2);
 	}
-	/* Any other value's cell is a button that turns into its editor. */
+	/* Any other value's cell is a button that turns into its editor, drawn
+	   as a field at rest so it reads as editable before it's clicked: the
+	   same glass and hairline as an input, a dash in it where the option
+	   isn't recorded yet. A text option's cell, which can't be changed, is
+	   plain. */
 	.cell {
-		background: none;
-		border: 0;
-		padding: 0;
+		min-width: 3.5rem;
+		padding: 0.1em var(--space-2);
+		background: var(--glass-strong);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
 		font: inherit;
 		color: inherit;
 		text-align: right;
 		cursor: text;
-		border-bottom: 1px dashed transparent;
 	}
 	.cell:hover:not(:disabled),
 	.cell:focus-visible {
-		border-bottom-color: var(--rule-strong);
+		border-color: var(--accent);
 		outline: none;
 	}
 	.cell:disabled {
+		padding: 0;
+		min-width: 0;
+		background: none;
+		border-color: transparent;
 		cursor: default;
 	}
 	.cell.unrecorded {
 		color: var(--muted);
+	}
+	.mark {
+		flex: none;
+		display: inline-flex;
+		color: var(--muted);
+	}
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
 	}
 	.none {
 		margin: 0;

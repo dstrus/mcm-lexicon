@@ -572,6 +572,7 @@ adding:
   # Changes a recorded option's step in the draft; only Save all writes.
   apply: Apply
   inRecording: In {recording}
+  unsavedStep: Changed in {recording}, not saved yet
   stepN: Step {n}.
   notYet: Not recorded yet. Adding it records this value.
   notYetTitle: Not in {recording} yet. Change it here to record it.
