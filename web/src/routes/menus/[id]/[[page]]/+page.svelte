@@ -19,6 +19,7 @@
 	import type { Step } from '#lib/api/types/recordings.ts';
 	import { known, recordable, sameOption, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
@@ -312,7 +313,7 @@
 					<li>
 						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined}>
 							<span class="marker">{#if i === data.at}<Diamond />{/if}</span>
-							<span class="clip">{pageText(p)}</span>
+							<span class="clip" use:clipped>{pageText(p)}</span>
 							<span class="count">{p.options.length}</span>
 						</a>
 					</li>

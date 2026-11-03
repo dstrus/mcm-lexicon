@@ -231,7 +231,7 @@ The world is flat. Depth comes from the smoked-glass gradient behind everything,
 
 ### Shadow Vocabulary
 - **Modal lift** (`box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45)`, backdrop `rgb(0 0 0 / 0.45)`): only for the quick-find dialog, which floats over the page.
-- **Tip lift** (`box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 0.35)`): only for the tip that shows clipped text whole, which floats over whatever is beneath it.
+- **Tip lift** (`box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 0.35)`): only for the tip that shows clipped text whole, which floats over whatever is beneath it. The tip takes the clipped text's own type (a page name's title-size caps, a file name's mono), so it reads as the same words continued, sits just beneath it, set in 4em from its start so the first word or so of the row beneath still shows, and shows on hover after 250ms or when the link it's in takes keyboard focus.
 
 ### Named Rules
 **The Clipped Text Rule.** Text cut short with an ellipsis shows its whole self in a tip beneath it when the pointer rests there: the pane's material with a hairline edge, lifted by a soft shadow, never the browser's own tooltip. Text that fits shows nothing.

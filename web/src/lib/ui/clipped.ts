@@ -1,7 +1,8 @@
 // clipped is a Svelte action for text that may be cut short with an
-// ellipsis: when it is, resting the pointer on it shows the whole text in
-// a tip beneath it, in the app's own materials rather than the browser's.
-// Text that fits shows nothing.
+// ellipsis: when it is, resting the pointer on it, or focusing the link or
+// button it's in, shows the whole text in a tip beneath it, in the app's
+// own materials rather than the browser's, and in the text's own type, so
+// it reads as the same words continued. Text that fits shows nothing.
 
 const delay = 250; // ms before the tip appears, so passing over rows doesn't flicker
 
@@ -17,11 +18,21 @@ export function clipped(node: HTMLElement) {
 		tip.className = 'tip';
 		tip.setAttribute('role', 'tooltip');
 		tip.textContent = text;
+		const type = getComputedStyle(node);
+		tip.style.fontFamily = type.fontFamily;
+		tip.style.fontSize = type.fontSize;
+		tip.style.fontWeight = type.fontWeight;
+		tip.style.letterSpacing = type.letterSpacing;
+		tip.style.textTransform = type.textTransform;
 		document.body.appendChild(tip);
 		const r = node.getBoundingClientRect();
 		const t = tip.getBoundingClientRect();
 		const gap = 4;
-		let left = Math.min(r.left, window.innerWidth - t.width - 8);
+		// Set in from the text's start by four of its letters' height, so
+		// the first word or so of the row beneath, in a list, still shows
+		// past the tip's left edge.
+		const indent = 4 * parseFloat(type.fontSize);
+		let left = Math.min(r.left + indent, window.innerWidth - t.width - 8);
 		let top = r.bottom + gap;
 		if (top + t.height > window.innerHeight - 8) top = r.top - gap - t.height;
 		tip.style.left = `${Math.max(8, left)}px`;
@@ -40,13 +51,18 @@ export function clipped(node: HTMLElement) {
 		timer = setTimeout(show, delay);
 	}
 
+	const control = node.closest<HTMLElement>('a, button');
 	node.addEventListener('mouseenter', enter);
 	node.addEventListener('mouseleave', hide);
+	control?.addEventListener('focus', enter);
+	control?.addEventListener('blur', hide);
 	return {
 		destroy() {
 			hide();
 			node.removeEventListener('mouseenter', enter);
 			node.removeEventListener('mouseleave', hide);
+			control?.removeEventListener('focus', enter);
+			control?.removeEventListener('blur', hide);
 		}
 	};
 }

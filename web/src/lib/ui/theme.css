@@ -316,7 +316,8 @@ input[type='radio'] {
 }
 
 /* The tip beneath text cut short with an ellipsis (see clipped.ts): the
-   pane's material, lifted a little, never in the way of the pointer. */
+   pane's material, lifted a little, never in the way of the pointer. It
+   takes the clipped text's own type; this size is for text without one. */
 .tip {
 	position: fixed;
 	z-index: 3;
