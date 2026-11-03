@@ -22,6 +22,9 @@ type Config struct {
 type Page struct {
 	Name     string // pageDisplayName, raw; "" for the default page
 	Controls []Control
+	// TopToBottom is the page's cursorFillMode (the config's when the page
+	// gives none): MCM Helper fills left to right unless told otherwise.
+	TopToBottom bool
 }
 
 // Control is one entry of a page's content.
@@ -40,7 +43,10 @@ type Control struct {
 	Options    []string // an enum's or stepper's choices, raw
 	Default    any      // valueOptions.defaultValue, as JSON gives it; nil when absent
 	Value      any      // a text control's value, when the config fixes it
-	Action     string   // action.type: CallFunction, CallGlobalFunction…
+	// Position, when the config gives one, moves SkyUI's cursor before the
+	// control is added.
+	Position *int
+	Action   string // action.type: CallFunction, CallGlobalFunction…
 }
 
 // ModSetting reports whether the control's value lives in the mod's ini
@@ -48,18 +54,21 @@ type Control struct {
 func (c Control) ModSetting() bool { return strings.HasPrefix(c.SourceType, "ModSetting") }
 
 type rawConfig struct {
-	ModName     string       `json:"modName"`
-	DisplayName string       `json:"displayName"`
-	Content     []rawControl `json:"content"`
-	Pages       []struct {
-		Name    string       `json:"pageDisplayName"`
-		Content []rawControl `json:"content"`
+	ModName        string       `json:"modName"`
+	DisplayName    string       `json:"displayName"`
+	CursorFillMode string       `json:"cursorFillMode"`
+	Content        []rawControl `json:"content"`
+	Pages          []struct {
+		Name           string       `json:"pageDisplayName"`
+		CursorFillMode string       `json:"cursorFillMode"`
+		Content        []rawControl `json:"content"`
 	} `json:"pages"`
 }
 
 type rawControl struct {
 	ID           string `json:"id"`
 	Type         string `json:"type"`
+	Position     *int   `json:"position"`
 	Text         string `json:"text"`
 	Help         string `json:"help"`
 	ValueOptions struct {
@@ -91,11 +100,17 @@ func Parse(b []byte) (Config, error) {
 	if c.DisplayName == "" {
 		c.DisplayName = c.ModName
 	}
+	topToBottom := func(mode string) bool {
+		if mode == "" {
+			mode = raw.CursorFillMode
+		}
+		return strings.EqualFold(mode, "topToBottom")
+	}
 	if len(raw.Content) > 0 || len(raw.Pages) == 0 {
-		c.Pages = append(c.Pages, Page{Controls: controls(raw.Content)})
+		c.Pages = append(c.Pages, Page{Controls: controls(raw.Content), TopToBottom: topToBottom("")})
 	}
 	for _, p := range raw.Pages {
-		c.Pages = append(c.Pages, Page{Name: p.Name, Controls: controls(p.Content)})
+		c.Pages = append(c.Pages, Page{Name: p.Name, Controls: controls(p.Content), TopToBottom: topToBottom(p.CursorFillMode)})
 	}
 	return c, nil
 }
@@ -116,6 +131,7 @@ func controls(raw []rawControl) []Control {
 			Options:    r.ValueOptions.Options,
 			Default:    r.ValueOptions.DefaultValue,
 			Value:      r.ValueOptions.Value,
+			Position:   r.Position,
 			Action:     r.Action.Type,
 		}
 		if key, section, ok := strings.Cut(r.ID, ":"); ok {

@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, watchStatus } from '#lib/api/live.svelte.ts';
-	import { menusDependency } from '#lib/menus/api.ts';
+	import { menuHref, menusDependency } from '#lib/menus/api.ts';
 	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -53,6 +53,26 @@
 	const here = (path: string) => page.url.pathname === path || page.url.pathname.startsWith(`${path}/`);
 	let recordings = $derived(data.recordings?.recordings ?? []);
 	let openRecording = $derived(data.status.openRecording);
+	// The recording chosen, as listed: its page is one click away.
+	let chosen = $derived(recordings.find((r) => r.name === openRecording) ?? null);
+
+	// The menus, as SkyUI lists them: by display text, the inactive ones
+	// (which the game wouldn't list at all) after the rest, and only those
+	// matching the filter.
+	let filter = $state('');
+	let allMenus = $derived(data.menus?.menus ?? []);
+	let menus = $derived.by(() => {
+		const q = filter.trim().toLowerCase();
+		const list = allMenus.filter((s) => !q || s.nameText.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.mod.toLowerCase().includes(q));
+		const byText = (a: (typeof list)[number], b: (typeof list)[number]) => a.nameText.localeCompare(b.nameText, undefined, { sensitivity: 'base' });
+		return [...list.filter((s) => s.active).sort(byText), ...list.filter((s) => !s.active).sort(byText)];
+	});
+	let firstInactive = $derived(menus.findIndex((s) => !s.active));
+	// The menu on screen, by its page's address.
+	let currentMenu = $derived.by(() => {
+		const m = /^\/menus\/([^/]+)/.exec(page.url.pathname);
+		return m ? decodeURIComponent(m[1]!) : '';
+	});
 	let openError = $state('');
 
 	// Choosing the recording new steps go to; MCM Lexicon remembers it.
@@ -155,58 +175,65 @@
 	{#if !open}
 		<main class="solo"><SourceForm /></main>
 	{:else}
-		<!-- The column: where to go, and, at its foot, the editing session,
-		     whose controls act on the recordings listed above it. -->
+		<!-- The column, as SkyUI's MCM lays its left side out: the session at
+		     the top, where to go, then the menus, which take the rest. -->
 		<div class="column" use:fitToViewport>
+			<section class="session" class:editing aria-label={m.shell.session}>
+				<span title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
+					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly, quiet: true }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
+				</span>
+				<label class="adding">
+					<span class="caps">{editing ? m.shell.recording : m.shell.recordingReadOnly}</span>
+					<select value={openRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
+						{#if !openRecording}<option value="" disabled>{m.shell.chooseRecording}</option>{/if}
+						{#each recordings as r (r.name)}
+							<option value={r.name}>{r.unlisted ? m.shell.disabledOption({ name: r.name }) : r.name}</option>
+						{/each}
+						{#if editing}<option value={newValue}>{m.adding.newRecording}</option>{/if}
+					</select>
+				</label>
+				{#if chosen}
+					{@const unsaved = editing && (chosen.drafted || chosen.deleted)}
+					<a class="caps rec" class:unsaved class:disabled={chosen.unlisted} href={recordingHref(chosen.name)} title={[m.nav.openRecording({ name: chosen.name }), chosen.unlisted ? m.nav.disabledHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(chosen.name)) ? 'page' : undefined}>
+						<span class="marker"><Diamond hollow /></span>
+						<span class="clip">{chosen.name}</span>
+						{#if unsaved}<span class="visually-hidden">{m.nav.unsavedHere}</span>{/if}
+						{#if chosen.unlisted}<span class="visually-hidden">{m.nav.disabledHere}</span>{/if}
+					</a>
+				{/if}
+				{#if editing}
+					<a class="changes caps" class:pending={pending > 0} href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>
+						{m.nav.changes}<span class="count">{pending}</span>
+					</a>
+				{/if}
+			</section>
 			<nav class="sections" aria-label={m.nav.sections}>
 				<ul>
-					<li><a class="caps" href="/menus" aria-current={here('/menus') ? 'page' : undefined}>{m.nav.menus}</a></li>
 					<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
-					<li><a class="caps" href="/recordings" aria-current={page.url.pathname === '/recordings' ? 'page' : undefined}>{m.nav.recordings}</a></li>
 					<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
+					<li><a class="caps" href="/recordings" aria-current={here('/recordings') ? 'page' : undefined}>{m.nav.recordings}</a></li>
 				</ul>
-				{#if recordings.length}
-					<p class="group caps">{m.nav.recordingsGroup}</p>
-					<ul aria-label={m.nav.recordingsGroup}>
-						{#each recordings as r (r.name)}
-							{@const target = editing && r.name === openRecording}
-							{@const unsaved = editing && (r.drafted || r.deleted)}
-							{@const disabled = r.unlisted}
+			</nav>
+			<nav class="menus" aria-label={m.nav.menus}>
+				<a class="caps group" href="/menus" aria-current={page.url.pathname === '/menus' ? 'page' : undefined}>{m.nav.menus}<span class="count">{allMenus.length}</span></a>
+				<input type="search" bind:value={filter} placeholder={m.nav.menusFilter} aria-label={m.nav.menusFilter} spellcheck="false" autocomplete="off" />
+				{#if allMenus.length && !menus.length}
+					<p class="note">{m.common.noMatch({ query: filter })}</p>
+				{:else}
+					<ul>
+						{#each menus as s, i (s.id)}
+							{#if i === firstInactive}<li class="group caps" aria-hidden="true">{m.nav.inactiveMenus}</li>{/if}
 							<li>
-								<a class="caps rec" class:unsaved class:disabled href={recordingHref(r.name)} title={[r.name, disabled ? m.nav.disabledHere : '', target ? m.nav.addingHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(r.name)) ? 'page' : undefined}>
-									<span class="marker">{#if target}<Diamond hollow />{/if}</span>
-									<span class="clip">{r.name}</span>
-									{#if target}<span class="visually-hidden">{m.nav.addingHere}</span>{/if}
-									{#if unsaved}<span class="visually-hidden">{m.nav.unsavedHere}</span>{/if}
-									{#if disabled}<span class="visually-hidden">{m.nav.disabledHere}</span>{/if}
+								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} title={s.name !== s.nameText ? s.name : undefined} aria-current={currentMenu === s.id ? 'page' : undefined}>
+									<span class="marker">{#if currentMenu === s.id}<Diamond />{/if}</span>
+									<span class="clip">{s.nameText}</span>
+									{#if s.certainty !== 'exact'}<span class="word">{s.certainty}</span>{/if}
 								</a>
 							</li>
 						{/each}
 					</ul>
 				{/if}
 			</nav>
-			<section class="session" class:editing aria-label={m.shell.session}>
-				<span title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
-					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly, quiet: true }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
-				</span>
-				{#if editing}
-					<label class="adding">
-						<span class="caps">{m.shell.recording}</span>
-						<select value={openRecording} title={openError || m.shell.recordingTitle} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
-							{#if !openRecording}<option value="" disabled>{m.shell.chooseRecording}</option>{/if}
-							{#each recordings as r (r.name)}
-								<option value={r.name}>{r.unlisted ? m.shell.disabledOption({ name: r.name }) : r.name}</option>
-							{/each}
-							<option value={newValue}>{m.adding.newRecording}</option>
-						</select>
-					</label>
-					<a class="changes caps" class:pending={pending > 0} href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>
-						{m.nav.changes}<span class="count">{pending}</span>
-					</a>
-				{:else}
-					<p class="note">{m.shell.readOnlyNote}</p>
-				{/if}
-			</section>
 		</div>
 		<main>{@render children()}</main>
 		<QuickFind menus={data.menus?.menus ?? []} />
@@ -233,7 +260,7 @@
 		min-height: 100vh;
 	}
 	.app.withsections {
-		grid-template-columns: 13rem 1fr;
+		grid-template-columns: 18rem 1fr;
 	}
 	.top {
 		grid-column: 1 / -1;
@@ -287,9 +314,9 @@
 	.game.running {
 		color: var(--warn);
 	}
-	/* The column stays put as the page scrolls, fitted above the hints. Its
-	   sections scroll on their own when the recordings run long; the
-	   session stays at its foot. */
+	/* The column stays put as the page scrolls, fitted above the hints:
+	   the session, the sections, then the menus, which take what's left and
+	   scroll on their own. */
 	.column {
 		position: sticky;
 		top: 0;
@@ -299,32 +326,85 @@
 		min-height: 0;
 		border-right: 1px solid var(--rule);
 	}
-	.sections {
-		flex: 1 1 auto;
-		min-height: 0;
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		padding: var(--space-5) var(--space-4) var(--space-4) var(--space-6);
+	/* The editing session: the mode, the recording, and while editing the
+	   way to the draft. */
+	.session {
+		flex: none;
+		display: grid;
+		gap: var(--space-3);
+		padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+		border-bottom: 1px solid var(--rule);
 	}
-	.sections ul {
+	.adding {
+		display: grid;
+		gap: var(--space-1);
+		min-width: 0;
+	}
+	.adding > .caps {
+		font-size: var(--step--1);
+		color: var(--muted);
+	}
+	.adding select {
+		width: 100%;
+		padding: var(--space-1) var(--space-2);
+	}
+	.sections {
+		flex: none;
+		padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+		border-bottom: 1px solid var(--rule);
+	}
+	.sections ul,
+	.menus ul {
 		list-style: none;
-		margin: 0 0 var(--space-5);
+		margin: 0;
 		padding: 0;
 	}
-	.sections a {
+	.sections a,
+	.menus a,
+	.changes,
+	.session .rec {
 		display: block;
 		padding: var(--space-1) 0;
 		font-size: var(--step-1);
 		text-decoration: none;
 		color: var(--muted);
 	}
-	.sections a:hover {
+	.sections a:hover,
+	.menus a:hover,
+	.session .rec:hover {
 		color: var(--ink);
 	}
-	/* A recording: a slot for the hollow diamond that marks the one A adds
-	   to, then its name, which can outrun the column (its whole name is its
-	   title). One with unsaved changes is in full ink, as CHANGES is. */
-	.sections a.rec {
+	.sections a[aria-current='page'],
+	.menus a[aria-current='page'],
+	.session .rec[aria-current='page'] {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	/* The menus, as SkyUI's mod list: a filter, then every menu by name,
+	   the current one marked with the diamond. */
+	.menus {
+		flex: 1 1 auto;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+	}
+	.menus input {
+		margin: var(--space-2) 0 var(--space-2);
+		padding: var(--space-1) var(--space-2);
+	}
+	.menus ul {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		margin-right: calc(-1 * var(--space-2));
+		padding-right: var(--space-2);
+	}
+	/* A row with a slot for the marker, then its name, which can outrun the
+	   column (a $KEY name is its title). */
+	.menus a.menu,
+	.session a.rec {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
@@ -341,15 +421,45 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.sections a.rec.unsaved {
+	/* Certainty, when it isn't exact: a word after the name, never a color. */
+	.word {
+		flex: none;
+		font-size: var(--step--1);
+		font-weight: 400;
+		color: var(--muted);
+	}
+	.menu.inactive {
+		opacity: 0.55;
+	}
+	/* The group label over the inactive menus, and the MENUS label itself,
+	   never as bright as the current item. */
+	.group {
+		margin: 0;
+		padding: 0;
+		font-size: var(--step--1);
+		color: var(--muted);
+	}
+	li.group {
+		margin-top: var(--space-3);
+		padding-bottom: var(--space-1);
+	}
+	a.group {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+	}
+	a.group[aria-current='page'] {
+		color: var(--accent);
+	}
+	/* The recording chosen: a hollow diamond, its name. Unsaved changes are
+	   full ink, as CHANGES is; a mod the profile has disabled is amber. */
+	.session .rec.unsaved {
 		color: var(--ink);
 	}
-	/* In a mod the profile has disabled, so the game won't play it: amber, as
-	   a step that won't replay is, over unsaved's ink. */
-	.sections a.rec.disabled {
+	.session .rec.disabled {
 		color: var(--warn);
 	}
-	.sections a.rec[aria-current='page'] {
+	.session .rec[aria-current='page'] {
 		color: var(--accent);
 	}
 	.visually-hidden {
@@ -360,13 +470,24 @@
 		clip-path: inset(50%);
 		white-space: nowrap;
 	}
-	.sections a[aria-current='page'] {
-		color: var(--accent);
-		font-weight: 600;
+	.changes {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
 	}
-	/* A group's label, never as bright as the current section. */
-	.group {
-		margin-top: var(--space-4);
+	/* A draft with something in it is worth noticing: full ink, not the
+	   accent, which is for selection. */
+	.changes.pending {
+		color: var(--ink);
+	}
+	/* A count in the link's own ink: how many menus, or how many recordings
+	   the draft changes. */
+	.count {
+		font-variant-numeric: tabular-nums;
+		font-weight: 400;
+	}
+	.note {
+		margin: var(--space-2) 0 0;
 		font-size: var(--step--1);
 		color: var(--muted);
 	}
@@ -389,79 +510,46 @@
 			flex-wrap: wrap;
 			gap: var(--space-2) var(--space-4);
 		}
-		.group {
-			display: none;
-		}
-		/* The column becomes two rows under the bar: the sections, then the
-		   session. */
+		/* The column becomes rows under the bar: the session, the sections,
+		   and the menus with a short list under their filter. */
 		.column {
 			position: static;
 			border-right: 0;
 			border-bottom: 1px solid var(--rule);
 		}
-		.sections {
-			overflow: visible;
+		.session {
 			display: flex;
-			gap: var(--space-5);
+			flex-wrap: wrap;
+			align-items: center;
+			gap: var(--space-2) var(--space-5);
 			padding: var(--space-2) var(--space-6);
-			overflow-x: auto;
+		}
+		.adding {
+			display: flex;
+			align-items: center;
+			gap: var(--space-2);
+		}
+		.adding select {
+			width: auto;
+			max-width: 16rem;
+		}
+		.changes {
+			gap: var(--space-2);
+		}
+		.sections {
+			padding: var(--space-2) var(--space-6);
 		}
 		.sections ul {
 			display: flex;
 			gap: var(--space-5);
-			margin: 0;
 		}
-	}
-	/* The editing session: the mode, and while editing, where A adds steps
-	   and the way to the draft. Set off from the sections by a hairline. */
-	.session {
-		flex: none;
-		display: grid;
-		gap: var(--space-3);
-		padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
-		border-top: 1px solid var(--rule);
-	}
-	.adding {
-		display: grid;
-		gap: var(--space-1);
-		min-width: 0;
-	}
-	.adding > .caps {
-		font-size: var(--step--1);
-		color: var(--muted);
-	}
-	.adding select {
-		width: 100%;
-		padding: var(--space-1) var(--space-2);
-	}
-	.changes {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		font-size: var(--step-1);
-		text-decoration: none;
-		color: var(--muted);
-	}
-	/* A draft with something in it is worth noticing: full ink, not the
-	   accent, which is for selection. */
-	.changes:hover,
-	.changes.pending {
-		color: var(--ink);
-	}
-	.changes[aria-current='page'] {
-		color: var(--accent);
-		font-weight: 600;
-	}
-	/* The draft's size, in the link's own ink: how many recordings it changes. */
-	.count {
-		font-variant-numeric: tabular-nums;
-		font-weight: 400;
-	}
-	.note {
-		margin: 0;
-		font-size: var(--step--1);
-		color: var(--muted);
-		max-width: 22ch;
+		.menus {
+			flex: none;
+			padding: var(--space-2) var(--space-6) var(--space-3);
+		}
+		.menus ul {
+			max-height: 12rem;
+		}
 	}
 	.leave {
 		width: min(30rem, 90vw);
@@ -491,32 +579,5 @@
 	}
 	.leave .button {
 		text-decoration: none;
-	}
-	/* Under 60rem the session is one row under the sections; after its own
-	   rules above, so this wins. */
-	@media (max-width: 60rem) {
-		.session {
-			display: flex;
-			flex-wrap: wrap;
-			align-items: center;
-			gap: var(--space-2) var(--space-5);
-			padding: var(--space-2) var(--space-6);
-		}
-		.adding {
-			display: flex;
-			align-items: center;
-			gap: var(--space-2);
-		}
-		.adding select {
-			width: auto;
-			max-width: 16rem;
-		}
-		.changes {
-			justify-content: flex-start;
-			gap: var(--space-2);
-		}
-		.note {
-			max-width: none;
-		}
 	}
 </style>

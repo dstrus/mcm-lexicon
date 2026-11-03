@@ -110,6 +110,26 @@ func (m *machine) invoke(f *ir.Function, args []Value) Value {
 	return ret
 }
 
+// fillDefaults evaluates, for the first last+1 parameters, the defaults of
+// those not given, and returns that prefix.
+func fillDefaults(f *ir.Function, out []Value, given []bool, last int) []Value {
+	for i := 0; i <= last; i++ {
+		if !given[i] {
+			out[i] = unknown
+			if f.Params[i].Default != nil {
+				out[i] = evalConst(f.Params[i].Default)
+			}
+		}
+	}
+	return out[:last+1]
+}
+
+// evalConst is a parameter default's value: a constant, or unknown.
+func evalConst(e ir.Expr) Value {
+	m := &machine{globals: map[string]*Value{}}
+	return m.eval(e)
+}
+
 // exec runs statements; returned is true when a Return was certainly met.
 func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 	for _, s := range body {
@@ -451,6 +471,10 @@ func (m *machine) eval(e ir.Expr) Value {
 		}
 		return unknown
 	case *ir.Member:
+		// self.X is the script's own X.
+		if id, ok := e.X.(*ir.Ident); ok && ir.Key(id.Name) == "self" {
+			return m.eval(&ir.Ident{Name: e.Name})
+		}
 		x := m.eval(e.X)
 		if x.k == kArray && x.arr != nil && ir.Key(e.Name) == "length" {
 			return integer(float64(len(*x.arr)))
@@ -504,7 +528,51 @@ func (m *machine) callExpr(c *ir.Call) Value {
 			return v
 		}
 	}
-	return m.invoke(m.function("", c.Method), args)
+	f := m.function("", c.Method)
+	if c.Names != nil && f != nil {
+		args = byName(f, args, c.Names)
+	}
+	return m.invoke(f, args)
+}
+
+// byName puts a call's arguments in the function's parameter order: the
+// positional ones first, in order, then each named one at its parameter.
+// A parameter given neither way is left for its default.
+func byName(f *ir.Function, args []Value, names []string) []Value {
+	out := make([]Value, len(f.Params))
+	given := make([]bool, len(f.Params))
+	next := 0
+	for i, a := range args {
+		name := ""
+		if i < len(names) {
+			name = names[i]
+		}
+		at := -1
+		if name != "" {
+			for j, p := range f.Params {
+				if ir.Key(p.Name) == ir.Key(name) {
+					at = j
+					break
+				}
+			}
+		} else if next < len(f.Params) {
+			at = next
+			next++
+		}
+		if at >= 0 {
+			out[at], given[at] = a, true
+		}
+	}
+	// Trailing parameters not given fall to their defaults in invoke, which
+	// takes a shorter list; one not given before a given one has its default
+	// evaluated here, so the list keeps its shape.
+	last := -1
+	for i, g := range given {
+		if g {
+			last = i
+		}
+	}
+	return fillDefaults(f, out, given, last)
 }
 
 // snapshot copies the script variables, so each page walk can start from

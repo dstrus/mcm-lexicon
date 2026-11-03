@@ -45,7 +45,31 @@ type Menu struct {
 type Page struct {
 	Name    string // raw; "" for the default page
 	Options []Option
+	// Fixtures are what the page shows besides options: headers and gaps.
+	Fixtures []Fixture
+	// Placed is true when every option and fixture has a known position,
+	// so the page can be drawn as the game draws it.
+	Placed bool
 }
+
+// Fixture is a header or an empty slot on a page.
+type Fixture struct {
+	Kind      string // header, empty
+	Label     string // a header's text, raw
+	Text      string
+	Certainty Certainty
+	Position  int
+	Line      int
+}
+
+// SkyUI's cursor: positions 0 to 127 are 64 rows of two columns (even on
+// the left, odd on the right). Each page starts at 0, filling left to
+// right; a script may move the cursor or fill top to bottom instead.
+const (
+	positions   = 128
+	leftToRight = 1
+	topToBottom = 2
+)
 
 type Option struct {
 	Type      string // toggle, slider, menu, keymap, color, input, text
@@ -59,6 +83,7 @@ type Option struct {
 	Default   *float64 // a slider's default value, or a menu's default choice by position
 	Help      string
 	Line      int  // where it's added
+	Position  int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
 	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
 	// A text option's value, shown on its right, which a click on that side
 	// matches: as the label is described, from AddTextOption's second
@@ -121,6 +146,13 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 		}
 		for _, v := range chain[i].Variables {
 			m.globals[ir.Key(v.Name)] = initial(m, v, false)
+		}
+	}
+	// SKI_ConfigBase's cursor constants, which scripts name.
+	for name, n := range map[string]float64{"left_to_right": leftToRight, "top_to_bottom": topToBottom} {
+		if _, ok := m.globals[name]; !ok {
+			v := integer(n)
+			m.globals[name] = &v
 		}
 	}
 	for _, p := range props {
@@ -203,11 +235,11 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	pageList := append([]string{""}, names...)
 	for _, name := range pageList {
 		m.restore(initial)
-		opts := walk(m, name)
-		if name == "" && len(names) > 0 && len(opts) == 0 {
+		page := walk(m, name)
+		if name == "" && len(names) > 0 && len(page.Options) == 0 {
 			continue // the splash page of a menu with pages
 		}
-		menu.Pages = append(menu.Pages, Page{Name: name, Options: opts})
+		menu.Pages = append(menu.Pages, page)
 	}
 	return menu
 }
@@ -245,11 +277,27 @@ func initial(m *machine, v ir.Variable, property bool) *Value {
 }
 
 // walk runs OnPageReset for one page and then the option events, and
-// returns the page's options.
-func walk(m *machine, page string) []Option {
+// returns the page as it's shown.
+func walk(m *machine, page string) Page {
 	var opts []*found
+	var fixtures []Fixture
 	byState := map[string][]int{}
 	next := 0
+	// The cursor, as SkyUI keeps it: where the next option goes, and how
+	// it moves after. Lost once the script moves it somewhere the analysis
+	// can't follow.
+	cursor, fill, known := 0, leftToRight, true
+	place := func() int {
+		if !known || cursor < 0 {
+			return -1
+		}
+		at := cursor
+		cursor += fill
+		if cursor >= positions {
+			cursor = -1
+		}
+		return at
+	}
 	m.globals["currentpage"] = &Value{k: kString, s: page}
 	m.call = func(site *ir.Call, args []Value) (Value, bool) {
 		name, line := site.Method, site.Line
@@ -260,6 +308,32 @@ func walk(m *machine, page string) []Option {
 			typ, st = adders[k], false
 		}
 		if typ == "" {
+			switch k {
+			case "setcursorposition":
+				if len(args) > 0 && args[0].numeric() {
+					if n := int(args[0].n); n >= 0 && n < positions {
+						cursor, known = n, true
+					}
+				} else {
+					known = false
+				}
+			case "setcursorfillmode":
+				if len(args) > 0 && args[0].numeric() && (int(args[0].n) == leftToRight || int(args[0].n) == topToBottom) {
+					fill = int(args[0].n)
+				} else {
+					known = false
+				}
+			case "addheaderoption":
+				fx := Fixture{Kind: "header", Position: place(), Line: line}
+				if len(args) > 0 {
+					fx.Label, fx.Text, fx.Certainty = described(args[0])
+				}
+				fixtures = append(fixtures, fx)
+				return unknown, true
+			case "addemptyoption":
+				fixtures = append(fixtures, Fixture{Kind: "empty", Position: place(), Line: line})
+				return unknown, true
+			}
 			if isSKIFunction(name) {
 				return unknown, true
 			}
@@ -267,7 +341,7 @@ func walk(m *machine, page string) []Option {
 		}
 		f := &found{id: next, path: append([]step{}, m.path...), site: site}
 		next++
-		f.Type, f.Line = typ, line
+		f.Type, f.Line, f.Position = typ, line, place()
 		if st {
 			if len(args) > 0 {
 				if t, ok := args[0].text(); ok && args[0].k == kString {
@@ -395,7 +469,18 @@ func walk(m *machine, page string) []Option {
 			m.invoke(f, nil)
 		}
 	}
-	return merge(opts)
+	out := Page{Name: page, Options: merge(opts), Fixtures: fixtures, Placed: true}
+	for _, o := range out.Options {
+		if o.Position < 0 {
+			out.Placed = false
+		}
+	}
+	for _, f := range fixtures {
+		if f.Position < 0 {
+			out.Placed = false
+		}
+	}
+	return out
 }
 
 // inState reports whether f is defined in the named state, not just the

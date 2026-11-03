@@ -124,7 +124,30 @@ export interface Page {
   name: string; // raw; "" for the default page
   text: string;
   options: Option[];
+  /**
+   * Fixtures are what the page shows besides options: headers and gaps.
+   */
+  fixtures: Fixture[];
+  /**
+   * Placed is true when every option and fixture has a position, so the
+   * page can be drawn as SkyUI draws it: 64 rows of two columns, even
+   * positions on the left and odd on the right.
+   */
+  placed: boolean;
 }
+/**
+ * Fixture is a header or an empty slot on a page.
+ */
+export interface Fixture {
+  kind: FixtureKind;
+  label: string; // a header's text, raw
+  text: string; // translated
+  certainty: Certainty;
+  position: number /* int */;
+}
+export const FixtureKindHeader = "header";
+export const FixtureKindEmpty = "empty";
+export type FixtureKind = typeof FixtureKindHeader | typeof FixtureKindEmpty;
 /**
  * OptionType is an option's type as a recording names it.
  */
@@ -151,6 +174,11 @@ export interface Option {
   help: string; // the info text the menu shows, raw
   helpText: string; // translated
   certainty: Certainty;
+  /**
+   * Position is SkyUI's cursor position when the option is added: where
+   * the game draws it; -1 when the script decides it at runtime.
+   */
+  position: number /* int */;
   /**
    * A text option's value, shown on its right, which a click on that side
    * matches: raw (exact, or a *pattern*), translated, and how certain.

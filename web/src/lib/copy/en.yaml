@@ -26,6 +26,8 @@ shell:
   chooseRecording: Choose a recording
   disabledOption: "{name} (mod disabled)"
   recordingTitle: The recording A adds steps to, from any menu or search result
+  recordingReadOnly: Recording
+  recordingReadOnlyTitle: The recording to look at; turn on editing to add to it
   mode: Read-only or editing
   session: Editing session
   readOnlyNote: Nothing can be changed until you turn on editing.
@@ -70,6 +72,9 @@ nav:
   recordings: Recordings
   compare: Compare
   changes: Changes
+  menusFilter: Filter menus
+  inactiveMenus: Inactive
+  openRecording: Open {name}
   # The count beside Changes is of recordings, not steps.
   changesTitle:
     one: "{count} recording with changes not yet saved"
@@ -123,6 +128,7 @@ menus:
   filterLabel: Filter menus
   rescan: Rescan
   firstScan: Reading the list’s menus. This takes a moment on a large list.
+  pickOne: Choose a menu from the column to see it as the game shows it.
   scanFailed: "The scan failed: {error}"
   none: No menus were found in this list. MCM Lexicon looks in each mod’s MCM folder for MCM Helper’s menus.
   pane: Menu
@@ -198,6 +204,14 @@ menu:
   default: Default
   saved: Saved
   indexOf: "{n} of {count}"
+
+# A menu drawn as SkyUI draws it; the info text at its foot.
+mcm:
+  noHelp: This option has no help text.
+  pick: Select an option to see its help and where it's defined.
+  stepOf: Step {n} of {recording}
+  leftColumn: Options, left column
+  rightColumn: Options, right column
 
 # One option, in the pane.
 option:

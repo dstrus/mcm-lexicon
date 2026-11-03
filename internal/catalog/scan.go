@@ -165,10 +165,43 @@ func (s *scan) helperMenu(f modlist.File, id string, cfg mcmhelper.Config) Menu 
 		saved = s.ini("MCM/Settings/" + id + ".ini")
 	}
 	for _, p := range cfg.Pages {
-		page := Page{Name: p.Name, Text: s.tr.Text(p.Name, prefer...), Options: []Option{}}
+		page := Page{Name: p.Name, Text: s.tr.Text(p.Name, prefer...), Options: []Option{}, Fixtures: []Fixture{}, Placed: true}
+		// SkyUI's cursor, as MCM Helper drives it: each control takes the
+		// next slot, one on in left-to-right fill or two on in top-to-bottom,
+		// and a control's position moves the cursor first.
+		cursor, step := 0, 1
+		if p.TopToBottom {
+			step = 2
+		}
+		place := func(at *int) int {
+			if at != nil && *at >= 0 && *at < 128 {
+				cursor = *at
+			}
+			if cursor < 0 {
+				return -1
+			}
+			pos := cursor
+			cursor += step
+			if cursor >= 128 {
+				cursor = -1
+			}
+			return pos
+		}
 		for _, ctl := range p.Controls {
+			switch ctl.Type {
+			case "header":
+				page.Fixtures = append(page.Fixtures, Fixture{Kind: FixtureKindHeader, Label: ctl.Text, Text: s.tr.Text(ctl.Text, prefer...), Certainty: CertaintyExact, Position: place(ctl.Position)})
+				continue
+			case "empty":
+				page.Fixtures = append(page.Fixtures, Fixture{Kind: FixtureKindEmpty, Certainty: CertaintyExact, Position: place(ctl.Position)})
+				continue
+			}
 			if o, ok := s.helperOption(ctl, defaults, saved, prefer); ok {
 				o.Source = m.Source
+				o.Position = place(ctl.Position)
+				if o.Position < 0 {
+					page.Placed = false
+				}
 				page.Options = append(page.Options, o)
 			}
 		}

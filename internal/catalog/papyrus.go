@@ -225,10 +225,21 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 		m.Notes = append(m.Notes, Note{Kind: NoteKindFramework, Detail: chain[len(chain)-1].Name})
 	}
 	for _, p := range result.Pages {
-		page := Page{Name: p.Name, Text: s.tr.Text(p.Name, prefer...), Options: []Option{}}
+		page := Page{Name: p.Name, Text: s.tr.Text(p.Name, prefer...), Options: []Option{}, Fixtures: []Fixture{}, Placed: p.Placed}
+		for _, fx := range p.Fixtures {
+			f := Fixture{Kind: FixtureKind(fx.Kind), Label: fx.Label, Text: fx.Text, Certainty: Certainty(fx.Certainty), Position: fx.Position}
+			if fx.Kind == "header" && fx.Certainty == mcm.Exact {
+				f.Text = s.tr.Text(fx.Label, prefer...)
+			}
+			if fx.Kind == "empty" {
+				f.Certainty = CertaintyExact
+			}
+			page.Fixtures = append(page.Fixtures, f)
+		}
 		for _, o := range p.Options {
 			opt := Option{
 				Type:      OptionType(o.Type),
+				Position:  o.Position,
 				Label:     o.Label,
 				Text:      o.Text,
 				State:     o.State,

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -354,7 +355,10 @@ func describe(m mcm.Menu) string {
 			if len(o.Choices) > 0 {
 				b.WriteString(" choices " + strings.Join(o.Choices, "|"))
 			}
-			b.WriteString("\n")
+			b.WriteString(" @" + strconv.Itoa(o.Position) + "\n")
+		}
+		for _, f := range p.Fixtures {
+			b.WriteString("  " + f.Kind + " " + strings.ToLower(f.Label) + " @" + strconv.Itoa(f.Position) + "\n")
 		}
 	}
 	return b.String()

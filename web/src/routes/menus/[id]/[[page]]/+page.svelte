@@ -1,48 +1,81 @@
-<!-- One menu: its pages as tabs, the current page's options as an item
-     table, and the selected option in the pane. While editing, with a
-     recording chosen, a Recorded column shows each option's value in it,
-     edited in the table: a change records the option, and Record all
-     settings on this page records every one whose value is known. -->
+<!-- One menu, as SkyUI draws it: the name across the top, the pages down
+     the left, and the options in two columns placed where the game puts
+     them, each a label with its value at the right. The value is the open
+     recording's where it has the option, else the menu's own; while
+     editing, it changes in place, and any change records the option. The
+     selected option's help and details sit at the foot, where SkyUI shows
+     its info text. -->
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
 	import { ApiError } from '#lib/api/client.ts';
-	import type { Option } from '#lib/api/types/catalog.ts';
+	import type { Fixture, Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
-	import OptionPane from '#lib/menus/OptionPane.svelte';
-	import Adder from '#lib/recordings/Adder.svelte';
+	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
-	import Switch from '#lib/ui/Switch.svelte';
-	import { addAll, addStep, recordingsDependency } from '#lib/recordings/api.ts';
+	import { addAll, addStep, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
-	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
-	import Selector from '#lib/menus/Selector.svelte';
-	import { allowed, changed, hex, show } from '#lib/menus/values.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
-	import Tabs from '#lib/ui/Tabs.svelte';
-	import Up from '#lib/ui/Up.svelte';
-	import { fitToViewport } from '#lib/ui/fit.ts';
+	import Switch from '#lib/ui/Switch.svelte';
+	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
 	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	const t = m.menu;
+	const s = m.mcm;
 
 	let menu = $derived(data.menu);
 	let page = $derived(menu.pages[data.at]);
 	let options = $derived(page?.options ?? []);
 	let pageText = (p: { name: string; text: string }) => (p.name === '' ? t.mainPage : p.text);
-	// A menu without pages has one, unnamed, and no tabs.
-	let tabbed = $derived(menu.pages.length > 1 || (menu.pages[0]?.name ?? '') !== '');
-	let withSaved = $derived(menu.pages.some((p) => p.options.some((o) => o.saved)));
+	// A menu without pages has one, unnamed, and no page list.
+	let paged = $derived(menu.pages.length > 1 || (menu.pages[0]?.name ?? '') !== '');
 
-	// Rows are kept by position, which the address holds as ?item=.
-	let rows = $derived(options.map((option, i) => ({ option, i })));
+	// The page's slots, as the game places them: options and fixtures by
+	// position, each in a row and a column of the game's grid (even
+	// positions down the left, odd down the right), a slot the script
+	// places at runtime in an unused row. Two slots in one cell, from
+	// branches the game decides, take the next free rows. A page the script
+	// places at runtime is one column, in the order its options are added,
+	// without its headers.
+	interface Slot {
+		position: number;
+		row: number;
+		col: number;
+		option?: Option;
+		i?: number; // the option's position in the page
+		fixture?: Fixture;
+	}
+	let placed = $derived(!!page?.placed);
+	let slots = $derived.by((): Slot[] => {
+		const out: Slot[] = options.map((option, i) => ({ position: placed ? option.position : i * 2, row: 0, col: 0, option, i }));
+		if (placed) for (const fixture of page?.fixtures ?? []) out.push({ position: fixture.position, row: 0, col: 0, fixture });
+		out.sort((a, b) => a.position - b.position);
+		const taken = new Set<string>();
+		for (const x of out) {
+			x.col = x.position % 2;
+			x.row = Math.floor(x.position / 2);
+			while (taken.has(`${x.col}:${x.row}`)) x.row++;
+			taken.add(`${x.col}:${x.row}`);
+		}
+		return out;
+	});
+	let twoColumns = $derived(placed && slots.some((x) => x.col === 1));
+	// Rows are the options in reading order (down the left, then the right),
+	// kept by their position in the page, which the address holds as ?item=.
+	let rows = $derived(
+		[...slots]
+			.sort((a, b) => a.col - b.col || a.row - b.row)
+			.filter((x) => x.option)
+			.map((x) => ({ option: x.option!, i: x.i! }))
+	);
 	const selection = new Selection(() => rows, (r) => String(r.i), { param: 'item' });
 	let current = $derived(selection.current);
+	const selected = (i: number) => current?.i === i;
 
 	// How many options share each type and label on the page, so a
 	// duplicate says which of them it is.
@@ -60,7 +93,7 @@
 	let recording = $derived(open.editing && !!open.name);
 	const base = (o: Option) => stepFor(menu.name, page?.name ?? '', o);
 	const recorded = (o: Option) => open.find(base(o));
-	// What a cell shows and starts from: the recorded value, else the
+	// What a value shows and starts from: the recorded value, else the
 	// option's own.
 	const valueNow = (o: Option) => recorded(o)?.step ?? base(o);
 	const on = (o: Option) => valueNow(o).value.toLowerCase() === 'on';
@@ -73,7 +106,7 @@
 	let error = $state('');
 	let note = $state('');
 	let inline = $state<InlineValue>();
-	let editingCell = $derived(recording && param('mode') === 'edit' && selection.current ? selection.current.i : -1);
+	let editingCell = $derived(recording && param('mode') === 'edit' && current ? current.i : -1);
 
 	// record puts the option in the open recording with this value: a new
 	// step, or its step changed.
@@ -92,11 +125,22 @@
 		}
 	}
 	const flip = (o: Option) => record(o, on(o) ? 'off' : 'on');
-	function editCell(r: (typeof rows)[number]) {
+	function edit(r: { option: Option; i: number }) {
 		selection.select(r);
 		if (flippable(r.option)) return flip(r.option);
 		if (r.option.type === 'text') return record(r.option, '');
 		setParams({ item: String(r.i), mode: 'edit' });
+	}
+	// A records the selected option as it shows, asking which recording
+	// first when none is chosen; an option whose value isn't known opens
+	// its editor instead.
+	async function add() {
+		const r = current;
+		if (!r || !canEdit(r.option) || working) return;
+		if (!open.name && !(await choose())) return;
+		if (recorded(r.option)) return;
+		if (flippable(r.option) || known(r.option) || r.option.type === 'text') return record(r.option, valueNow(r.option).value);
+		setParams({ mode: 'edit' });
 	}
 
 	// Record all settings on this page: every option whose value is known
@@ -112,11 +156,7 @@
 		try {
 			const r = await addAll(open.name, recordableNow.map(base));
 			const skipped = options.length - recordableNow.length;
-			note = [
-				t.recordedAdded({ count: r.added, recording: open.name }),
-				r.kept ? t.recordedKept({ count: r.kept }) : '',
-				skipped ? t.recordedSkipped({ count: skipped }) : ''
-			]
+			note = [t.recordedAdded({ count: r.added, recording: open.name }), r.kept ? t.recordedKept({ count: r.kept }) : '', skipped ? t.recordedSkipped({ count: skipped }) : '']
 				.filter(Boolean)
 				.join(' ');
 			await invalidate(recordingsDependency);
@@ -127,7 +167,6 @@
 		}
 	}
 
-	let sel = $derived(selection.current);
 	useShortcuts(() =>
 		editingCell >= 0
 			? [
@@ -138,105 +177,141 @@
 			: [
 					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
 					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
-					...(recording && sel && canEdit(sel.option)
-						? flippable(sel.option)
-							? [{ key: ' ', shown: 'Space', label: on(sel.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(sel.option) }]
-							: sel.option.type === 'text'
+					...(recording && current && canEdit(current.option)
+						? flippable(current.option)
+							? [{ key: ' ', shown: 'Space', label: on(current.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(current!.option) }]
+							: current.option.type === 'text'
 								? []
 								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => setParams({ mode: 'edit' }) }]
 						: []),
-					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto(`/menus?item=${encodeURIComponent(menu.id)}`) }
+					...(open.editing && current && canEdit(current.option) && !recorded(current.option)
+						? [{ key: 'a', shown: 'A', label: open.name ? m.adding.addTo({ recording: open.name }) : m.adding.addToAny, disabled: working, run: add }]
+						: []),
+					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto('/menus') }
 				]
 	);
 </script>
 
-<Up href="/menus?item={encodeURIComponent(menu.id)}" label={t.up} />
 <h1 class="caps">{menu.nameText}</h1>
 <p class="muted sub">{menu.mod}{#if menu.plugin}{' · '}{menu.plugin}{/if}{' · '}{m.menus.kinds[menu.kind]}</p>
 {#if !menu.active}<p class="notice warn">{m.menus.inactive({ plugin: menu.plugin })}</p>{/if}
-
-{#if tabbed}
-	<Tabs label={t.pages} tabs={menu.pages.map((p, i) => ({ href: menuHref(menu.id, i), label: pageText(p), count: p.options.length }))} />
-{/if}
-
-{#if open.editing && options.length}
-	<div class="tools">
-		<button type="button" class="button" disabled={working || !recordableNow.length} onclick={recordAll}>{t.recordAll}</button>
-		{#if note}<p class="muted" role="status">{note}</p>{/if}
-	</div>
-{/if}
 {#if error}<p class="notice error" role="alert">{error}</p>{/if}
 
-{#if !options.length}
-	<p class="empty">{tabbed ? t.noOptions : t.noPages}</p>
-{:else}
-	<div class="split">
-		<table>
-			<thead>
-				<tr>
-					<th class="mark" aria-label={m.common.selected}></th>
-					<th class="caps">{t.option}</th>
-					<th class="caps">{t.type}</th>
-					<th class="caps allowed">{t.allowed}</th>
-					<th class="caps">{t.default}</th>
-					{#if withSaved}<th class="caps">{t.saved}</th>{/if}
-					{#if recording}<th class="caps" title={open.name}>{t.recorded}</th>{/if}
-				</tr>
-			</thead>
-			<tbody>
-				{#each rows as r (r.i)}
-					{@const o = r.option}
-					<tr aria-selected={selection.is(r)} onclick={() => selection.select(r)}>
-						<td class="mark">{#if selection.is(r)}<Diamond />{/if}</td>
-						<td class="option">
-							<Selector text={o.text} raw={o.label} certainty={o.certainty} />
-							{#if o.index > 0}<span class="caps word">{t.indexOf({ n: o.index, count: sharing.get(`${o.type}\0${o.label}`) ?? o.index })}</span>{/if}
-							{#if o.certainty !== 'exact'}<span class="caps word">{o.certainty}</span>{/if}
-						</td>
-						<td class="type caps">{typeLabel(o)}</td>
-						<td class="allowed">{allowed(o)}</td>
-						<td class="value">{#if o.default}{#if o.type === 'color'}<span class="swatch" style:background={hex(o.default.number)}></span>{/if}{show(o, o.default)}{/if}</td>
-						{#if withSaved}
-							<td class="value" class:changed={changed(o)}>{#if o.saved}{#if o.type === 'color'}<span class="swatch" style:background={hex(o.saved.number)}></span>{/if}{show(o, o.saved)}{/if}</td>
-						{/if}
-						{#if recording}
-							{@const rec = recorded(o)}
-							<td class="value rec" class:changed={!!rec && stepChanged(rec.step, o)}>
-								{#if !canEdit(o)}
-									<span class="muted" title={m.adding.cantRecord}></span>
-								{:else if flippable(o)}
-									<span class="flip" title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
-										<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
-										{#if rec}{stepValue(rec.step, o)}{/if}
-									</span>
-								{:else if editingCell === r.i}
-									<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
-								{:else if rec}
-									<button type="button" class="cell" title={m.edit.editValue} disabled={o.type === 'text'} onclick={(e) => (e.stopPropagation(), editCell(r))}>
-										{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
-									</button>
-								{:else}
-									<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), editCell(r))}>—</button>
-								{/if}
-							</td>
-						{/if}
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-		<aside class="pane" aria-label={t.pane} use:fitToViewport>
-			{#if current}
-				{#key current.i}
-					<div class="enter">
-						<OptionPane option={current.option} page={page && page.name !== '' ? pageText(page) : ''}>
-							{#snippet action()}<Adder option={current.option} menu={menu.name} pageName={page?.name ?? ''} {open} {choose} />{/snippet}
-						</OptionPane>
-					</div>
-				{/key}
+{#snippet value(o: Option, i: number)}
+	{#if recording}
+		{@const rec = recorded(o)}
+		<span class="val" class:changed={!!rec && stepChanged(rec.step, o)}>
+			{#if !canEdit(o)}
+				<span class="muted" title={m.adding.cantRecord}>—</span>
+			{:else if flippable(o)}
+				<span class="flip" title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
+					{#if rec}{stepValue(rec.step, o)}{/if}
+					<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
+				</span>
+			{:else if editingCell === i}
+				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
+			{:else if rec}
+				<button type="button" class="cell" title={m.edit.editValue} disabled={o.type === 'text'} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+					{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
+				</button>
+			{:else}
+				<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>—</button>
 			{/if}
-		</aside>
+		</span>
+	{:else}
+		{@const k = known(o)}
+		<span class="val" class:changed={changed(o)}>
+			{#if o.type === 'toggle' && k}
+				<Switch checked={k.kind === 'bool' && k.bool} disabled label={m.edit.toggleLabel({ option: o.text })} onchange={() => {}} />
+			{:else if o.type === 'text'}
+				{#if o.valueText || o.value}{o.valueText || o.value}{/if}
+			{:else if k}
+				{#if o.type === 'color'}<span class="swatch" style:background={hex(k.number)}></span>{/if}{show(o, k)}
+			{:else}
+				<span class="muted">—</span>
+			{/if}
+		</span>
+	{/if}
+{/snippet}
+
+{#snippet slot(x: Slot)}
+	{#if x.fixture?.kind === 'header'}
+		<li class="header caps" style:grid-row={x.row + 1} style:grid-column={x.col + 1}>{x.fixture.text || x.fixture.label}{#if x.fixture.certainty !== 'exact'}<span class="word">{x.fixture.certainty}</span>{/if}</li>
+	{:else if x.fixture}
+		<li class="empty" aria-hidden="true" style:grid-row={x.row + 1} style:grid-column={x.col + 1}></li>
+	{:else if x.option}
+		{@const o = x.option}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<li class="opt" role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && selection.select({ option: o, i: x.i! })}>
+			<span class="marker">{#if selected(x.i!)}<Diamond />{/if}</span>
+			<span class="label">
+				{o.text || o.label || m.values.noLabel}
+				{#if o.index > 0}<span class="word">{t.indexOf({ n: o.index, count: sharing.get(`${o.type}\0${o.label}`) ?? o.index })}</span>{/if}
+				{#if o.certainty !== 'exact'}<span class="word">{o.certainty}</span>{/if}
+			</span>
+			{@render value(o, x.i!)}
+		</li>
+	{/if}
+{/snippet}
+
+<div class="mcm" class:paged>
+	{#if paged}
+		<nav class="pages" aria-label={t.pages}>
+			<ul>
+				{#each menu.pages as p, i (i)}
+					<li>
+						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined}>
+							<span class="marker">{#if i === data.at}<Diamond />{/if}</span>
+							<span class="clip">{pageText(p)}</span>
+							<span class="count">{p.options.length}</span>
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</nav>
+	{/if}
+	<div class="panel">
+		{#if !options.length}
+			<p class="none muted">{paged ? t.noOptions : t.noPages}</p>
+		{:else}
+			<ul class="grid" class:two={twoColumns} role="listbox" aria-label={t.option}>
+				{#each slots as x, i (i)}{@render slot(x)}{/each}
+			</ul>
+		{/if}
+		{#if open.editing && options.length}
+			<div class="tools">
+				<button type="button" class="button" disabled={working || !recordableNow.length} onclick={recordAll}>{t.recordAll}</button>
+				{#if note}<p class="muted" role="status">{note}</p>{/if}
+			</div>
+		{/if}
 	</div>
-{/if}
+	<div class="info" aria-live="polite">
+		{#if current}
+			{@const o = current.option}
+			{@const rec = recorded(o)}
+			{#key current.i}
+				<div class="enter">
+					{#if o.helpText}<p class="help">{o.helpText}</p>{:else}<p class="help muted">{s.noHelp}</p>{/if}
+					<p class="details muted">
+						<span class="caps">{m.option.selector}</span> <span class="raw">{o.label}</span>{#if edgeSpace(o.label)} <span class="warn">{m.values.edgeSpace}</span>{/if}
+						{#if o.index > 0}<span class="sep">·</span> <span class="caps">{m.option.index}</span> {o.index}{/if}
+						<span class="sep">·</span> <span class="caps">{m.option.type}</span> {typeLabel(o)}
+						<span class="sep">·</span> {allowed(o)}
+						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
+						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
+						<span class="sep">·</span> <span class="caps">{m.option.definedIn}</span> <span class="raw">{o.source.path}</span>{#if o.source.line}:{o.source.line}{/if}{#if o.source.archive} {m.common.inArchive({ archive: o.source.archive })}{/if}
+						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{/if}
+					</p>
+					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
+					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
+					{#if recording && !canEdit(o)}<p class="notice">{m.adding.cantRecord}</p>{/if}
+				</div>
+			{/key}
+		{:else if options.length}
+			<p class="help muted">{s.pick}</p>
+		{/if}
+	</div>
+</div>
 
 <ChooseRecording bind:this={chooser} />
 
@@ -253,94 +328,134 @@
 		margin-top: var(--space-2);
 		max-width: 70ch;
 	}
-	.empty {
-		margin-top: var(--space-5);
-		max-width: 60ch;
-	}
-	.split {
+	/* The config panel: pages down the left, options to their right, and the
+	   info text under both, as SkyUI's. */
+	.mcm {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) clamp(18rem, 26vw, 24rem);
-		gap: var(--space-5);
-		align-items: start;
-		margin-top: var(--space-4);
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto auto;
+		gap: var(--space-4) var(--space-6);
+		margin-top: var(--space-5);
 	}
-	table {
-		width: 100%;
-		border-collapse: collapse;
+	.mcm.paged {
+		grid-template-columns: 13rem minmax(0, 1fr);
 	}
-	th {
-		text-align: left;
-		font-size: var(--step--1);
+	.pages ul,
+	.grid {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.pages a {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) 0;
+		font-size: var(--step-1);
 		color: var(--muted);
-		font-weight: inherit;
-		padding: var(--space-2) var(--space-3);
-		border-bottom: 1px solid var(--rule-strong);
+		text-decoration: none;
+	}
+	.pages a:hover {
+		color: var(--ink);
+	}
+	.pages a[aria-current='page'] {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.pages .count {
+		margin-left: auto;
+		padding-left: var(--space-2);
+		font-size: var(--step--1);
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+	}
+	.marker {
+		flex: none;
+		display: inline-flex;
+		width: 9px;
+	}
+	.clip {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	td {
-		padding: var(--space-2) var(--space-3);
-		border-bottom: 1px solid var(--rule);
-		vertical-align: baseline;
+	/* The options, on the game's grid: a row and a column each, so the two
+	   columns line up row for row, and a slot nothing fills stays blank. */
+	.grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		grid-auto-rows: minmax(2.4rem, auto);
+		gap: 0 var(--space-6);
+		align-items: stretch;
 	}
-	tbody tr {
+	.grid.two {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.grid li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		min-height: 2.4rem;
+		padding: var(--space-1) var(--space-2);
+		border-bottom: 1px solid var(--rule);
+	}
+	.grid .opt {
 		cursor: default;
 	}
-	tbody tr[aria-selected]:not([aria-selected='true']):hover td {
+	.grid .opt:hover:not([aria-selected='true']) {
 		background: var(--glass);
 	}
-	tr[aria-selected='true'] td {
+	.grid .opt[aria-selected='true'] {
 		background: var(--select);
 	}
-	.mark {
-		width: 1.5rem;
-		padding-right: 0;
-		vertical-align: middle;
+	.label {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
-	.option {
-		max-width: 28rem;
-	}
-	/* Certainty, when it isn't exact: a word after the label, never a color. */
-	.word {
-		display: inline-block;
-		margin-top: var(--space-1);
-		font-size: var(--step--1);
-		color: var(--muted);
-	}
-	.type {
-		font-size: var(--step--1);
-		color: var(--muted);
+	/* The value at the right, as the game shows it. */
+	.val {
+		flex: none;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		max-width: 50%;
+		margin-left: auto;
+		text-align: right;
 		white-space: nowrap;
-	}
-	.allowed {
-		color: var(--muted);
-		font-size: var(--step--1);
-	}
-	td.value {
-		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.changed {
 		color: var(--changed);
+	}
+	/* A header is a group heading in the list; a gap is a row with nothing. */
+	.header {
+		color: var(--accent);
+		font-size: var(--step--1);
+		font-weight: 500;
+		border-bottom-color: var(--rule-strong);
+	}
+	.empty {
+		border-bottom-color: transparent;
+	}
+	/* Certainty, and a duplicate's number: a word after the label, never a color. */
+	.word {
+		display: inline-block;
+		margin-left: var(--space-2);
+		font-size: var(--step--1);
+		font-weight: 400;
+		color: var(--muted);
 	}
 	.swatch {
 		display: inline-block;
 		width: 9px;
 		height: 9px;
-		margin-right: var(--space-2);
+		margin-right: var(--space-1);
 		border: 1px solid var(--rule-strong);
 	}
-	.tools {
-		display: flex;
-		align-items: baseline;
-		flex-wrap: wrap;
-		gap: var(--space-3);
-		margin-top: var(--space-4);
-	}
-	.tools p {
-		margin: 0;
-		font-size: var(--step--1);
-	}
-	/* A toggle's recorded cell is its switch; one not recorded yet is
-	   dimmed, showing what the menu has, so a click records the other. */
 	.flip {
 		display: inline-flex;
 		align-items: center;
@@ -353,7 +468,7 @@
 		padding: 0;
 		font: inherit;
 		color: inherit;
-		text-align: left;
+		text-align: right;
 		cursor: text;
 		border-bottom: 1px dashed transparent;
 	}
@@ -368,18 +483,47 @@
 	.cell.unrecorded {
 		color: var(--muted);
 	}
-	.pane {
-		position: sticky;
-		top: 0;
-		display: flex;
-		flex-direction: column;
-		min-height: calc(100vh - 7rem);
-		padding: var(--space-5);
-		background: var(--panel);
-		border-left: 1px solid var(--rule-strong);
-		overflow-y: auto;
+	.none {
+		margin: 0;
 	}
-	/* The pane's content enters with a short rise when the selection moves. */
+	.tools {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+	}
+	.tools p {
+		margin: 0;
+		font-size: var(--step--1);
+	}
+	/* The info text, as SkyUI's: the selected option's help, then its
+	   details in one line of label caps and raw text. */
+	.info {
+		grid-column: 1 / -1;
+		min-height: 5.5rem;
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--rule-strong);
+	}
+	.help {
+		margin: 0;
+		max-width: 70ch;
+	}
+	.details {
+		margin: var(--space-2) 0 0;
+		font-size: var(--step--1);
+		line-height: 1.7;
+		overflow-wrap: anywhere;
+	}
+	.details .caps {
+		font-size: inherit;
+	}
+	.details .sep {
+		margin: 0 var(--space-1);
+	}
+	.raw {
+		font-family: var(--font-mono);
+	}
 	.enter {
 		animation: rise 180ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
@@ -389,20 +533,20 @@
 			transform: translateY(6px);
 		}
 	}
-	@media (max-width: 70rem) {
-		.allowed {
-			display: none;
-		}
+	.warn {
+		color: var(--warn);
 	}
 	@media (max-width: 60rem) {
-		.split {
-			grid-template-columns: 1fr;
+		.mcm.paged {
+			grid-template-columns: minmax(0, 1fr);
 		}
-		.pane {
-			position: static;
-			min-height: 0;
-			border-left: 0;
-			border-top: 1px solid var(--rule-strong);
+		.pages ul {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--space-4);
+		}
+		.pages .count {
+			margin-left: var(--space-1);
 		}
 	}
 </style>

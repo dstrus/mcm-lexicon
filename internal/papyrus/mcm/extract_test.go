@@ -480,3 +480,75 @@ func TestTextOptionValues(t *testing.T) {
 		t.Errorf("level = %q %q %s", level.Value, level.ValueText, level.ValueCertainty)
 	}
 }
+
+// SkyUI's cursor: left to right by default, top to bottom on request, moved
+// outright by position, with headers and gaps taking slots too.
+const placed = `Scriptname Placed_MCM extends SKI_ConfigBase
+Event OnPageReset(string page)
+	if page == "Grid"
+		AddHeaderOption("Left")
+		AddHeaderOption("Right")
+		AddToggleOption("A", true)
+		AddToggleOption("B", true)
+	elseif page == "Columns"
+		SetCursorFillMode(TOP_TO_BOTTOM)
+		AddToggleOption("C", true)
+		AddEmptyOption()
+		AddToggleOption("D", true)
+		SetCursorPosition(1)
+		AddToggleOption("E", true)
+	elseif page == "Lost"
+		SetCursorPosition(Game.GetPlayer().GetLevel())
+		AddToggleOption("F", true)
+	endif
+EndEvent
+`
+
+func TestCursorPositions(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, placed)}, nil)
+	grid := page(t, m, "Grid")
+	if !grid.Placed || len(grid.Fixtures) != 2 || grid.Fixtures[0].Position != 0 || grid.Fixtures[1].Position != 1 || opt(t, grid, "A").Position != 2 || opt(t, grid, "B").Position != 3 {
+		t.Errorf("grid = %+v", grid)
+	}
+	cols := page(t, m, "Columns")
+	if !cols.Placed || opt(t, cols, "C").Position != 0 || cols.Fixtures[0].Position != 2 || opt(t, cols, "D").Position != 4 || opt(t, cols, "E").Position != 1 {
+		t.Errorf("columns = %+v", cols)
+	}
+	lost := page(t, m, "Lost")
+	if lost.Placed || opt(t, lost, "F").Position != -1 {
+		t.Errorf("lost = %+v", lost)
+	}
+}
+
+// A call that names its arguments binds them by name, as the compiler does.
+const namedArgs = `Scriptname Named_MCM extends SKI_ConfigBase
+Function Fill(bool topDown = false, bool leftRight = false)
+	if topDown
+		SetCursorFillMode(TOP_TO_BOTTOM)
+	else
+		SetCursorFillMode(LEFT_TO_RIGHT)
+	endif
+EndFunction
+Event OnPageReset(string page)
+	Fill(leftRight = true)
+	AddToggleOption("A", true)
+	AddToggleOption("B", true)
+	Fill(true)
+	AddToggleOption("C", true)
+	AddToggleOption("D", true)
+	self.SetCursorFillMode(self.LEFT_TO_RIGHT)
+	AddToggleOption("E", true)
+	AddToggleOption("F", true)
+EndEvent
+`
+
+func TestNamedArgumentsAndSelf(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, namedArgs)}, nil)
+	p := page(t, m, "")
+	want := map[string]int{"A": 0, "B": 1, "C": 2, "D": 4, "E": 6, "F": 7}
+	for label, pos := range want {
+		if got := opt(t, p, label).Position; got != pos {
+			t.Errorf("%s at %d, want %d", label, got, pos)
+		}
+	}
+}

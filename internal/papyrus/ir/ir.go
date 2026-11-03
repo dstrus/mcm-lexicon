@@ -161,7 +161,10 @@ type Call struct {
 	Parent bool
 	Method string
 	Args   []Expr
-	Line   int
+	// Names, when a source call names its arguments (f(b = 1)), is each
+	// argument's parameter, "" for a positional one; nil when none is named.
+	Names []string
+	Line  int
 }
 
 type Binary struct {

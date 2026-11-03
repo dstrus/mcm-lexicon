@@ -66,7 +66,29 @@ type Page struct {
 	Name    string   `json:"name"` // raw; "" for the default page
 	Text    string   `json:"text"`
 	Options []Option `json:"options"`
+	// Fixtures are what the page shows besides options: headers and gaps.
+	Fixtures []Fixture `json:"fixtures"`
+	// Placed is true when every option and fixture has a position, so the
+	// page can be drawn as SkyUI draws it: 64 rows of two columns, even
+	// positions on the left and odd on the right.
+	Placed bool `json:"placed"`
 }
+
+// Fixture is a header or an empty slot on a page.
+type Fixture struct {
+	Kind      FixtureKind `json:"kind"`
+	Label     string      `json:"label"` // a header's text, raw
+	Text      string      `json:"text"`  // translated
+	Certainty Certainty   `json:"certainty"`
+	Position  int         `json:"position"`
+}
+
+type FixtureKind string
+
+const (
+	FixtureKindHeader FixtureKind = "header"
+	FixtureKindEmpty  FixtureKind = "empty"
+)
 
 // OptionType is an option's type as a recording names it.
 type OptionType string
@@ -96,6 +118,9 @@ type Option struct {
 	Help      string     `json:"help"`     // the info text the menu shows, raw
 	HelpText  string     `json:"helpText"` // translated
 	Certainty Certainty  `json:"certainty"`
+	// Position is SkyUI's cursor position when the option is added: where
+	// the game draws it; -1 when the script decides it at runtime.
+	Position int `json:"position"`
 	// A text option's value, shown on its right, which a click on that side
 	// matches: raw (exact, or a *pattern*), translated, and how certain.
 	// ValueChanges is true when the menu shows other values at times.

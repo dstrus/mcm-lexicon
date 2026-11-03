@@ -458,7 +458,8 @@ func (p *parser) postfix() ir.Expr {
 			p.next()
 			name := p.ident()
 			if p.atOp("(") {
-				c := &ir.Call{Method: name, Line: p.peek().line, Args: p.args()}
+				c := &ir.Call{Method: name, Line: p.peek().line}
+				c.Args, c.Names = p.args()
 				if id, ok := x.(*ir.Ident); ok && ir.Key(id.Name) == "parent" {
 					c.Parent = true
 				} else if !(ok && ir.Key(id.Name) == "self") {
@@ -481,22 +482,32 @@ func (p *parser) postfix() ir.Expr {
 
 // args reads a call's arguments. A named argument (name = value) keeps
 // only its value.
-func (p *parser) args() []ir.Expr {
+// args reads a call's arguments, and the parameter each names, if any.
+func (p *parser) args() ([]ir.Expr, []string) {
 	p.expectOp("(")
 	var out []ir.Expr
+	var names []string
+	named := false
 	for !p.atOp(")") {
+		name := ""
 		if p.at(tIdent) && p.peekAt(1).kind == tOp && p.peekAt(1).text == "=" {
+			name = p.peek().text
+			named = true
 			p.next()
 			p.next()
 		}
 		out = append(out, p.expr())
+		names = append(names, name)
 		if !p.atOp(",") {
 			break
 		}
 		p.next()
 	}
 	p.expectOp(")")
-	return out
+	if !named {
+		names = nil
+	}
+	return out, names
 }
 
 func (p *parser) primary() ir.Expr {
@@ -540,7 +551,9 @@ func (p *parser) primary() ir.Expr {
 		}
 		p.next()
 		if p.atOp("(") {
-			return &ir.Call{Method: t.text, Line: t.line, Args: p.args()}
+			c := &ir.Call{Method: t.text, Line: t.line}
+			c.Args, c.Names = p.args()
+			return c
 		}
 		return &ir.Ident{Name: t.text}
 	case tOp:
