@@ -43,6 +43,14 @@ export class Selection<T> {
 		else this.#own = this.keyOf(item);
 	}
 
+	// moveTo selects item in place, as an arrow key does, and scrolls it
+	// into view.
+	async moveTo(item: T) {
+		this.key = this.keyOf(item);
+		await tick();
+		document.querySelector(this.options.marker ?? '[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+	}
+
 	// move selects the row by rows away, and scrolls it into view.
 	async move(by: number) {
 		// From the key as it stands once earlier moves are in, so a run of

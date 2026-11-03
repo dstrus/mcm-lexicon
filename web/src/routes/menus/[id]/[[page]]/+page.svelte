@@ -74,11 +74,53 @@
 		[...slots]
 			.sort((a, b) => a.col - b.col || a.row - b.row)
 			.filter((x) => x.option)
-			.map((x) => ({ option: x.option!, i: x.i! }))
+			.map((x) => ({ option: x.option!, i: x.i!, row: x.row, col: x.col }))
 	);
 	const selection = new Selection(() => rows, (r) => String(r.i), { param: 'item' });
 	let current = $derived(selection.current);
 	const selected = (i: number) => current?.i === i;
+
+	// The arrow keys move as on the game's grid: ↑ ↓ within a column, ← →
+	// to the nearest option in the column beside, and ← from the left
+	// column to the page list, where ↑ ↓ open the page above or below and
+	// → comes back to the options.
+	let inPages = $state(false);
+	let listed = $derived(menu.pages.map((p, i) => ({ p, i })).filter((x) => !x.p.sameAs).map((x) => x.i));
+	// pick selects the option at i, as a click on it does.
+	function pick(i: number) {
+		inPages = false;
+		const r = rows.find((r) => r.i === i);
+		if (r) selection.select(r);
+	}
+	function vertical(by: 1 | -1) {
+		if (inPages) {
+			const at = listed.indexOf(data.at);
+			const next = listed[Math.min(listed.length - 1, Math.max(0, at + by))];
+			if (next !== undefined && next !== data.at) goto(menuHref(menu.id, next), { replace: true });
+			return;
+		}
+		const c = current;
+		if (!c) return;
+		const column = rows.filter((r) => r.col === c.col);
+		const next = by > 0 ? column.find((r) => r.row > c.row) : column.findLast((r) => r.row < c.row);
+		if (next) selection.moveTo(next);
+	}
+	function across(by: 1 | -1) {
+		if (inPages) {
+			if (by > 0) inPages = false;
+			return;
+		}
+		const c = current;
+		if (!c) return;
+		const column = rows.filter((r) => r.col === c.col + by);
+		if (!column.length) {
+			if (by < 0 && paged && listed.length) inPages = true;
+			return;
+		}
+		// The nearest row; between two as near, the one above.
+		const next = column.reduce((a, b) => (Math.abs(b.row - c.row) < Math.abs(a.row - c.row) ? b : a));
+		selection.moveTo(next);
+	}
 
 	// How many options share each type and label on the page, so a
 	// duplicate says which of them it is.
@@ -141,7 +183,7 @@
 	}
 	const flip = (o: Option) => record(o, on(o) ? 'off' : 'on');
 	function edit(r: { option: Option; i: number }) {
-		selection.select(r);
+		pick(r.i);
 		if (flippable(r.option)) return flip(r.option);
 		if (r.option.type === 'text') return record(r.option, '');
 		setParams({ item: String(r.i), mode: 'edit' });
@@ -224,16 +266,18 @@
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
 			: [
-					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => selection.move(1) },
-					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => selection.move(-1) },
-					...(recording && current && canEdit(current.option)
+					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => vertical(1) },
+					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => vertical(-1) },
+					{ key: 'ArrowRight', label: m.common.next, hidden: true, run: () => across(1) },
+					{ key: 'ArrowLeft', label: m.common.previous, hidden: true, run: () => across(-1) },
+					...(!inPages && recording && current && canEdit(current.option)
 						? flippable(current.option)
 							? [{ key: ' ', shown: 'Space', label: on(current.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(current!.option) }]
 							: current.option.type === 'text'
 								? []
 								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => setParams({ mode: 'edit' }) }]
 						: []),
-					...(open.editing && current && canEdit(current.option) && !recorded(current.option)
+					...(!inPages && open.editing && current && canEdit(current.option) && !recorded(current.option)
 						? [{ key: 'a', shown: 'A', label: open.name ? m.adding.addTo({ recording: open.name }) : m.adding.addToAny, disabled: working, run: add }]
 						: []),
 					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto('/menus') }
@@ -318,7 +362,7 @@
 	{:else if x.option}
 		{@const o = x.option}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && selection.select({ option: o, i: x.i! })}>
+		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && pick(x.i!)}>
 			<span class="marker">{#if selected(x.i!)}<Diamond />{/if}</span>
 			<span class="label">
 				{o.text || o.label || m.values.noLabel}
@@ -330,14 +374,14 @@
 	{/if}
 {/snippet}
 
-<div class="mcm" class:paged style:--hints="{hintsHeight}px">
+<div class="mcm" class:paged class:inpages={inPages} style:--hints="{hintsHeight}px">
 	{#if paged}
-		<nav class="pages" aria-label={t.pages}>
+		<nav class="pages" class:active={inPages} aria-label={t.pages}>
 			<ul>
 				{#each menu.pages as p, i (i)}
 					{#if !p.sameAs}
 					<li>
-						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined}>
+						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined} onclick={() => (inPages = false)}>
 							<span class="marker">{#if i === data.at}<Diamond />{/if}</span>
 							<span class="clip" use:clipped>{pageText(p)}</span>
 							<span class="count">{p.options.length}</span>
@@ -446,6 +490,14 @@
 	.pages a[aria-current='page'] {
 		color: var(--accent);
 		font-weight: 600;
+	}
+	/* The arrow keys in the page list: the current page takes the selected
+	   haze, and the option the keys left keeps its diamond without it. */
+	.pages.active a[aria-current='page'] {
+		background: var(--select);
+	}
+	.mcm.inpages .grid .opt[aria-selected='true'] {
+		background: none;
 	}
 	.pages .count {
 		margin-left: auto;
