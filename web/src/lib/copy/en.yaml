@@ -591,6 +591,10 @@ adding:
   readOnly: For reading only. The menu shows it greyed out, so a recording can’t set it.
   clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.
   clickRecorded: "{recording} clicks this option"
+  # A text option has no value to set, so a step on it is only a click;
+  # the info area says so, since nothing in the row looks different.
+  clickNote: This option has no value to set. A step on it selects it in the menu, the way a button is pressed, which is what some text options are for, such as a reset or a save. Recording it changes nothing you can see here.
+  clickNoteRecorded: "{recording} selects this option when it plays, the way a button is pressed. It has no value to set, so nothing here looks different: the step is the click."
 
   openIt: Open it
   choose: Choose a recording
@@ -624,7 +628,7 @@ editor:
   defaultIs: The default is {value}.
   notInMenu: “{entry}” (not in this menu now)
   entriesUnknown: The catalog doesn’t know this menu’s entries, so type one as the menu holds it.
-  clickOnly: The step clicks the option. There’s nothing to set.
+  clickOnly: The step selects the option in the menu, the way a button is pressed. There’s nothing to set, so nothing here changes.
 
 # Comparing the catalog with an older one.
 compare:

@@ -288,7 +288,7 @@
 				<!-- A text option can only be clicked: its value is the menu's,
 				     and a click on it is the step. -->
 				<button type="button" class="click" title={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.clickTitle({ recording: open.name })} aria-label={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
-					{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
+					{#if rec}<span class="caps word click-word">{m.steps.click}</span>{/if}{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
 				</button>
 			{:else if editingCell === i}
 				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
@@ -379,6 +379,7 @@
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
 					{#if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
+					{#if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>{/if}
 					{#if recording && !canEdit(o) && o.disabled !== 'always'}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}
@@ -577,6 +578,11 @@
 	.click:focus-visible {
 		border-bottom-color: var(--accent);
 		outline: none;
+	}
+	/* A recorded click says so, since the value doesn't change. */
+	.click-word {
+		margin: 0 var(--space-2) 0 0;
+		color: var(--ink);
 	}
 	/* Greyed out in the game, so here: the label and its value muted, and
 	   nothing to edit. */
