@@ -123,8 +123,9 @@
 	{:else if kind === 'click'}
 		<p class="muted">{t.clickOnly}</p>
 		{#if !option?.label}
-			<span class="caps label">{t.side}</span>
-			<Segmented bind:value={() => side || 'left', (v) => (side = v === 'left' ? '' : v)} options={[{ value: 'left', label: t.left }, { value: 'right', label: t.right }]} label={t.side} />
+			<span class="caps label">{t.foundBy}</span>
+			<Segmented bind:value={() => side || 'left', (v) => (side = v === 'left' ? '' : v)} options={[{ value: 'left', label: t.byLabel }, { value: 'right', label: t.byValue }]} label={t.foundBy} />
+			<p class="muted">{t.foundByNote}</p>
 		{/if}
 	{/if}
 	<!-- Nothing chosen yet isn't a mistake to point out: the button waits. -->

@@ -227,7 +227,7 @@ option:
   range: Range
   shownAs: Shown as {example}
   value: Value
-  valueChanges: The menu shows other values here as it’s used, so a right-side click on another value can’t be checked.
+  valueChanges: The menu changes this value as it’s used, so a step that finds this option by its value can’t be checked against it.
   choices: Choices
   default: Default
   saved: Saved
@@ -436,7 +436,8 @@ recording:
   menu: Menu
   index: Index
   state: State
-  side: Side
+  foundBy: Found by
+  byItsValue: Its value, the text on the option’s right
   asWritten: As written
   suggestion: The catalog has {label}.
   suggestionOnPage: The catalog has {label} on the page {page}.
@@ -444,7 +445,7 @@ recording:
 # How steps read.
 steps:
   click: Click
-  clickRight: Click (right side)
+  clickRight: Click, by value
   wontReplay:
     one: "{count} won’t replay"
     other: "{count} won’t replay"
@@ -463,8 +464,8 @@ steps:
     modMissing: There’s no menu named “{mod}” in this list, so MCM Recorder skips the step.
     inactive: The menu “{mod}” is in the list, but its plugin isn’t active, so the game won’t show it.
     unchecked: The catalog doesn’t know all of this menu’s options, so a miss here proves nothing.
-    right: A click on the right side finds its option by the value shown there, and this page has values built at runtime or changed as the menu is used, so a miss here proves nothing.
-    value: No text option on this page shows “{value}” on its right.
+    right: This step finds its option by the value shown on its right, and this page has values built at runtime or changed as the menu is used, so a miss here proves nothing.
+    value: This step finds its option by its value, and no text option on this page shows “{value}”.
     page: The menu has no page named “{page}”.
     option: The page has no option of this type with this selector.
     index: There are fewer options with this selector than its index, {index}, says.
@@ -593,9 +594,10 @@ editor:
   key: Key
   color: Color
   text: Text
-  side: Side
-  left: Left
-  right: Right
+  foundBy: Found by
+  byLabel: Label
+  byValue: Value
+  foundByNote: With nothing to click on the left, MCM Recorder finds the option by the value shown on its right.
   pressKey: Press the key to use
   pressKeyHint: Focus the box, then press a key or a mouse button other than the left one.
   noKeyYet: Press a key first.
