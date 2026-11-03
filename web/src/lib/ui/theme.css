@@ -184,14 +184,18 @@ textarea {
 	padding: var(--space-2) var(--space-3);
 }
 
-/* A select draws its own arrow, the same in every browser, with room for it. */
+/* A select draws its own arrow, the same in every browser, with room for
+   it, so a long choice is cut off before the arrow, not under it. A
+   compact select sets --chevron-inset, and only its block and left
+   padding: a padding shorthand would take the arrow's room away. */
 select {
 	appearance: none;
 	background-image: var(--chevron);
 	background-repeat: no-repeat;
-	background-position: right var(--space-3) center;
+	background-position: right var(--chevron-inset, var(--space-3)) center;
 	background-size: 10px 6px;
-	padding-right: calc(var(--space-3) * 2 + 10px);
+	padding-right: calc(var(--chevron-inset, var(--space-3)) * 2 + 10px);
+	text-overflow: ellipsis;
 }
 
 input::placeholder,

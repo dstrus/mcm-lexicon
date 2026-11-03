@@ -133,7 +133,9 @@
 	input:not([type='color']),
 	select {
 		width: 9rem;
-		padding: 0.15em var(--space-2);
+		--chevron-inset: var(--space-2);
+		padding-block: 0.15em;
+		padding-left: var(--space-2);
 		font: inherit;
 	}
 	input[type='color'] {

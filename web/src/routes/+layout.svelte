@@ -325,7 +325,9 @@
 		font-size: var(--step--1);
 	}
 	.source select {
-		padding: var(--space-1) var(--space-2);
+		--chevron-inset: var(--space-2);
+		padding-block: var(--space-1);
+		padding-left: var(--space-2);
 	}
 	/* A catalog's file name, in the File font since it's a path's last part. */
 	.file {
@@ -376,7 +378,9 @@
 	}
 	.adding select {
 		width: 100%;
-		padding: var(--space-1) var(--space-2);
+		--chevron-inset: var(--space-2);
+		padding-block: var(--space-1);
+		padding-left: var(--space-2);
 	}
 	.sections {
 		flex: none;
