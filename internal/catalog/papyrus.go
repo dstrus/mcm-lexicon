@@ -240,6 +240,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 			opt := Option{
 				Type:      OptionType(o.Type),
 				Position:  o.Position,
+				Disabled:  Disabled(o.Disabled),
 				Label:     o.Label,
 				Text:      o.Text,
 				State:     o.State,

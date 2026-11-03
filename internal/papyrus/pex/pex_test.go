@@ -355,7 +355,11 @@ func describe(m mcm.Menu) string {
 			if len(o.Choices) > 0 {
 				b.WriteString(" choices " + strings.Join(o.Choices, "|"))
 			}
-			b.WriteString(" @" + strconv.Itoa(o.Position) + "\n")
+			b.WriteString(" @" + strconv.Itoa(o.Position))
+			if o.Disabled != "" {
+				b.WriteString(" disabled=" + o.Disabled)
+			}
+			b.WriteString("\n")
 		}
 		for _, f := range p.Fixtures {
 			b.WriteString("  " + f.Kind + " " + strings.ToLower(f.Label) + " @" + strconv.Itoa(f.Position) + "\n")

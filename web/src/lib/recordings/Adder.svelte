@@ -91,7 +91,7 @@
 		{:else}
 			<h3 class="caps">{t.inRecording({ recording: open.name })}</h3>
 			{#if !can}
-				<p class="muted">{t.cantRecord}</p>
+				<p class="muted">{option.disabled === 'always' ? t.readOnly : t.cantRecord}</p>
 			{:else}
 				<p class="muted">
 					{#if existing}{t.stepN({ n: existing.n })} <a href={recordingHref(open.name) + `?item=${existing.n}`}>{t.openIt}</a>{:else}{t.notYet}{/if}

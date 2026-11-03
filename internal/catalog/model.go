@@ -90,6 +90,14 @@ type Fixture struct {
 	Position  int         `json:"position"`
 }
 
+// Disabled says whether an option can't be selected.
+type Disabled string
+
+const (
+	DisabledAlways    Disabled = "always"    // added with OPTION_FLAG_DISABLED, and nothing changes that
+	DisabledSometimes Disabled = "sometimes" // the game decides, or SetOptionFlags changes it
+)
+
 type FixtureKind string
 
 const (
@@ -128,6 +136,9 @@ type Option struct {
 	// Position is SkyUI's cursor position when the option is added: where
 	// the game draws it; -1 when the script decides it at runtime.
 	Position int `json:"position"`
+	// Disabled is whether SkyUI draws the option greyed out, so neither the
+	// player nor a recording can select it: always, or at times.
+	Disabled Disabled `json:"disabled,omitempty"`
 	// A text option's value, shown on its right, which a click on that side
 	// matches: raw (exact, or a *pattern*), translated, and how certain.
 	// ValueChanges is true when the menu shows other values at times.

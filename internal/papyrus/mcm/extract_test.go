@@ -552,3 +552,35 @@ func TestNamedArgumentsAndSelf(t *testing.T) {
 		}
 	}
 }
+
+// An option added with OPTION_FLAG_DISABLED can't be selected; one whose
+// flags the game decides, or that SetOptionFlags changes, sometimes can't.
+const flagged = `Scriptname Flagged_MCM extends SKI_ConfigBase
+GlobalVariable property Ready auto
+int changing
+Event OnPageReset(string page)
+	AddTextOption("Version", "1.2", OPTION_FLAG_DISABLED)
+	AddToggleOption("Plain", true)
+	AddSliderOption("Height", 1.0, "{1}", OPTION_FLAG_DISABLED)
+	AddToggleOption("Decided", true, Utility.RandomInt(0, 1))
+	if Ready.GetValue() as bool
+		AddToggleOption("Armed", true)
+	else
+		AddToggleOption("Armed", false, OPTION_FLAG_DISABLED)
+	endif
+	changing = AddToggleOption("Changing", true, OPTION_FLAG_DISABLED)
+	AddMenuOption("Passed", "x", OPTION_FLAG_NONE)
+EndEvent
+Event OnOptionSelect(int option)
+	SetOptionFlags(changing, OPTION_FLAG_NONE)
+EndEvent`
+
+func TestOptionFlags(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, flagged)}, nil)
+	p := m.Pages[0]
+	for label, want := range map[string]string{"Version": "always", "Plain": "", "Height": "always", "Decided": "sometimes", "Armed": "sometimes", "Changing": "sometimes", "Passed": ""} {
+		if got := opt(t, p, label).Disabled; got != want {
+			t.Errorf("%s: disabled %q, want %q", label, got, want)
+		}
+	}
+}

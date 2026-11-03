@@ -154,6 +154,12 @@ export interface Fixture {
   certainty: Certainty;
   position: number /* int */;
 }
+/**
+ * Disabled says whether an option can't be selected.
+ */
+export const DisabledAlways = "always"; // added with OPTION_FLAG_DISABLED, and nothing changes that
+export const DisabledSometimes = "sometimes"; // the game decides, or SetOptionFlags changes it
+export type Disabled = typeof DisabledAlways | typeof DisabledSometimes;
 export const FixtureKindHeader = "header";
 export const FixtureKindEmpty = "empty";
 export type FixtureKind = typeof FixtureKindHeader | typeof FixtureKindEmpty;
@@ -188,6 +194,11 @@ export interface Option {
    * the game draws it; -1 when the script decides it at runtime.
    */
   position: number /* int */;
+  /**
+   * Disabled is whether SkyUI draws the option greyed out, so neither the
+   * player nor a recording can select it: always, or at times.
+   */
+  disabled?: Disabled;
   /**
    * A text option's value, shown on its right, which a click on that side
    * matches: raw (exact, or a *pattern*), translated, and how certain.

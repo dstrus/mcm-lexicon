@@ -29,6 +29,7 @@ const (
 	WhyRange    Why = "range"    // a slider value outside its range
 	WhyChoice   Why = "choice"   // a menu entry the menu doesn't have
 	WhyValue    Why = "value"    // a right-side click: no text option on the page shows this value
+	WhyDisabled Why = "disabled" // the menu draws the option greyed out, so it can't be selected
 )
 
 // Check is a step's check.
@@ -203,6 +204,9 @@ func matches(s Step, label string) bool {
 // allowed checks a step's value against what its option allows, where
 // the catalog knows it.
 func allowed(s Step, o *catalog.Option) (Status, Why) {
+	if o.Disabled == catalog.DisabledAlways {
+		return StatusNotAllowed, WhyDisabled
+	}
 	switch s.Kind {
 	case KindSlider:
 		if o.Slider == nil {

@@ -246,8 +246,26 @@
 {#if !menu.active}<p class="notice warn">{m.menus.inactive({ plugin: menu.plugin })}</p>{/if}
 {#if error}<p class="notice error" role="alert">{error}</p>{/if}
 
+<!-- A value as the menu shows it, for reading: a toggle's switch, at rest,
+     a text option's value, or the known value, a dash where it isn't known. -->
+{#snippet shown(o: Option)}
+	{@const k = known(o)}
+	{#if o.type === 'toggle' && k}
+		<Switch checked={k.kind === 'bool' && k.bool} disabled label={m.edit.toggleLabel({ option: o.text })} onchange={() => {}} />
+	{:else if o.type === 'text'}
+		{#if o.valueText || o.value}{o.valueText || o.value}{/if}
+	{:else if k}
+		{#if o.type === 'color'}<span class="swatch" style:background={hex(k.number)}></span>{/if}{show(o, k)}
+	{:else}
+		<span class="muted">—</span>
+	{/if}
+{/snippet}
+
 {#snippet value(o: Option, i: number)}
-	{#if recording}
+	{#if recording && o.disabled === 'always'}
+		<!-- Greyed out in the game: for reading only. -->
+		<span class="val readonly" title={m.adding.readOnly}>{@render shown(o)}</span>
+	{:else if recording}
 		{@const rec = recorded(o)}
 		<span class="val" class:changed={!!rec && stepChanged(rec.step, o)}>
 			<!-- What the recording holds of it: a hollow diamond for a step
@@ -266,10 +284,16 @@
 					{#if rec}{stepValue(rec.step, o)}{/if}
 					<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
 				</span>
+			{:else if o.type === 'text'}
+				<!-- A text option can only be clicked: its value is the menu's,
+				     and a click on it is the step. -->
+				<button type="button" class="click" title={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.clickTitle({ recording: open.name })} aria-label={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+					{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
+				</button>
 			{:else if editingCell === i}
 				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
 			{:else if rec}
-				<button type="button" class="cell" title={m.edit.editValue} disabled={o.type === 'text'} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+				<button type="button" class="cell" title={m.edit.editValue} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
 					{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
 				</button>
 			{:else}
@@ -277,18 +301,7 @@
 			{/if}
 		</span>
 	{:else}
-		{@const k = known(o)}
-		<span class="val" class:changed={changed(o)}>
-			{#if o.type === 'toggle' && k}
-				<Switch checked={k.kind === 'bool' && k.bool} disabled label={m.edit.toggleLabel({ option: o.text })} onchange={() => {}} />
-			{:else if o.type === 'text'}
-				{#if o.valueText || o.value}{o.valueText || o.value}{/if}
-			{:else if k}
-				{#if o.type === 'color'}<span class="swatch" style:background={hex(k.number)}></span>{/if}{show(o, k)}
-			{:else}
-				<span class="muted">—</span>
-			{/if}
-		</span>
+		<span class="val" class:changed={changed(o)} class:readonly={o.disabled === 'always'}>{@render shown(o)}</span>
 	{/if}
 {/snippet}
 
@@ -300,7 +313,7 @@
 	{:else if x.option}
 		{@const o = x.option}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<li class="opt" role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && selection.select({ option: o, i: x.i! })}>
+		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && selection.select({ option: o, i: x.i! })}>
 			<span class="marker">{#if selected(x.i!)}<Diamond />{/if}</span>
 			<span class="label">
 				{o.text || o.label || m.values.noLabel}
@@ -365,7 +378,8 @@
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
-					{#if recording && !canEdit(o)}<p class="notice">{m.adding.cantRecord}</p>{/if}
+					{#if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
+					{#if recording && !canEdit(o) && o.disabled !== 'always'}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}
 		{:else if options.length}
@@ -547,12 +561,28 @@
 		border-color: var(--accent);
 		outline: none;
 	}
-	.cell:disabled {
+	/* A text option's click: its value, plain, as the game shows it; a
+	   hairline under it on hover says a click records it. */
+	.click {
 		padding: 0;
-		min-width: 0;
 		background: none;
-		border-color: transparent;
-		cursor: default;
+		border: 0;
+		border-bottom: 1px solid transparent;
+		font: inherit;
+		color: inherit;
+		text-align: right;
+		cursor: pointer;
+	}
+	.click:hover,
+	.click:focus-visible {
+		border-bottom-color: var(--accent);
+		outline: none;
+	}
+	/* Greyed out in the game, so here: the label and its value muted, and
+	   nothing to edit. */
+	.grid .opt.disabled .label,
+	.val.readonly {
+		color: var(--muted);
 	}
 	.cell.unrecorded {
 		color: var(--muted);

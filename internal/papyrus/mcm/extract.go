@@ -85,6 +85,12 @@ type Option struct {
 	Line      int  // where it's added
 	Position  int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
 	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
+	// Disabled is whether SkyUI draws the option greyed out, so neither the
+	// player nor a recording can select it: "always" when it's added with
+	// OPTION_FLAG_DISABLED and nothing changes that, "sometimes" when its
+	// flags come from a value the game decides or SetOptionFlags changes
+	// them, "" when it's never disabled.
+	Disabled string
 	// A text option's value, shown on its right, which a click on that side
 	// matches: as the label is described, from AddTextOption's second
 	// argument. Changes is true when the menu shows another value at times
@@ -97,6 +103,22 @@ type Option struct {
 
 type Range struct {
 	Min, Max, Step float64
+}
+
+// optionFlagDisabled is SkyUI's OPTION_FLAG_DISABLED bit.
+const optionFlagDisabled = 1
+
+// disabledBy is what an option's flags argument says about it being
+// disabled: "always" or "" for a known value, "sometimes" for one the
+// game decides.
+func disabledBy(flags Value) string {
+	if !flags.numeric() {
+		return "sometimes"
+	}
+	if int(flags.n)&optionFlagDisabled != 0 {
+		return "always"
+	}
+	return ""
 }
 
 // The Add…Option functions and the option types they make.
@@ -149,7 +171,7 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 		}
 	}
 	// SKI_ConfigBase's cursor constants, which scripts name.
-	for name, n := range map[string]float64{"left_to_right": leftToRight, "top_to_bottom": topToBottom} {
+	for name, n := range map[string]float64{"left_to_right": leftToRight, "top_to_bottom": topToBottom, "option_flag_none": 0, "option_flag_disabled": optionFlagDisabled, "option_flag_hidden": 2, "option_flag_with_unmap": 4} {
 		if _, ok := m.globals[name]; !ok {
 			v := integer(n)
 			m.globals[name] = &v
@@ -323,6 +345,16 @@ func walk(m *machine, page string) Page {
 				} else {
 					known = false
 				}
+			case "setoptionflags":
+				// Flags set as the page is drawn, right after the option is
+				// added: they're the ones it's shown with.
+				if len(args) > 1 && args[0].k == kOption {
+					for _, id := range args[0].ids {
+						if id >= 0 && id < len(opts) {
+							opts[id].Disabled = disabledBy(args[1])
+						}
+					}
+				}
 			case "addheaderoption":
 				fx := Fixture{Kind: "header", Position: place(), Line: line}
 				if len(args) > 0 {
@@ -364,6 +396,15 @@ func walk(m *machine, page string) Page {
 		}
 		if typ == "slider" && len(args) > 2 && args[2].k == kString {
 			f.Format = args[2].s
+		}
+		// The flags follow the label and value (and a slider's format);
+		// left out, they're OPTION_FLAG_NONE.
+		at := 2
+		if typ == "slider" {
+			at = 3
+		}
+		if len(args) > at {
+			f.Disabled = disabledBy(args[at])
 		}
 		opts = append(opts, f)
 		if f.State != "" {
@@ -415,6 +456,17 @@ func walk(m *machine, page string) Page {
 				}
 			case "settextoptionvalue", "settextoptionvaluest":
 				o.ValueChanges = true
+			case "setoptionflags", "setoptionflagsst":
+				// SetOptionFlags(option, flags), SetOptionFlagsST(flags):
+				// flags other than the ones it was added with make it
+				// sometimes one, sometimes the other.
+				at := 1
+				if strings.EqualFold(name, "SetOptionFlagsST") {
+					at = 0
+				}
+				if len(args) > at && disabledBy(args[at]) != o.Disabled {
+					o.Disabled = "sometimes"
+				}
 			case "setinfotext":
 				if len(args) >= 1 {
 					switch args[0].k {
@@ -437,8 +489,8 @@ func walk(m *machine, page string) Page {
 			if ids == nil && len(m.scope) > 0 {
 				ids = m.scope[len(m.scope)-1]
 			}
-			// SetTextOptionValue names its option outright.
-			if strings.EqualFold(name, "SetTextOptionValue") && len(args) > 0 && args[0].k == kOption {
+			// SetTextOptionValue and SetOptionFlags name their option outright.
+			if (strings.EqualFold(name, "SetTextOptionValue") || strings.EqualFold(name, "SetOptionFlags")) && len(args) > 0 && args[0].k == kOption {
 				ids = args[0].ids
 			}
 			apply(name, args, ids)
@@ -585,6 +637,10 @@ func fill(k *Option, o Option) {
 	// The same text option shown with another value: the value changes.
 	if k.Type == "text" && (k.Value != o.Value || k.ValueCertainty != o.ValueCertainty || o.ValueChanges) {
 		k.ValueChanges = true
+	}
+	// Disabled in one arm and not the other: sometimes.
+	if k.Disabled != o.Disabled {
+		k.Disabled = "sometimes"
 	}
 }
 

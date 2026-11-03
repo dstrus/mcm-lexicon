@@ -201,8 +201,8 @@ menu:
     one: "{count} was there already and kept its value."
     other: "{count} were there already and kept their values."
   recordedSkipped:
-    one: "{count} has no value the catalog knows, or a label built at runtime, so it wasn’t recorded."
-    other: "{count} have no value the catalog knows, or a label built at runtime, so they weren’t recorded."
+    one: "{count} is for reading only, has no value the catalog knows, or has a label built at runtime, so it wasn’t recorded."
+    other: "{count} are for reading only, have no value the catalog knows, or have a label built at runtime, so they weren’t recorded."
   pages: Pages
   mainPage: Main
   noOptions: This page has nothing a recording can set.
@@ -234,6 +234,8 @@ option:
   range: Range
   shownAs: Shown as {example}
   value: Value
+  disabledAlways: The menu shows this option greyed out, for reading only. Nothing can select it, so a recording can’t set it.
+  disabledSometimes: The menu greys this option out at times, depending on other settings or the game. While it is, a step on it does nothing.
   valueChanges: The menu changes this value as it’s used, so a step that finds this option by its value can’t be checked against it.
   choices: Choices
   default: Default
@@ -468,6 +470,7 @@ steps:
     matched: The catalog has this option, and the value is one it allows.
     range: The option is there, but {value} is outside its range.
     choice: The option is there, but “{value}” isn’t one of its entries.
+    disabled: The menu shows this option greyed out, so MCM Recorder can’t select it, and the step does nothing.
     modMissing: There’s no menu named “{mod}” in this list, so MCM Recorder skips the step.
     inactive: The menu “{mod}” is in the list, but its plugin isn’t active, so the game won’t show it.
     unchecked: The catalog doesn’t know all of this menu’s options, so a miss here proves nothing.
@@ -585,6 +588,10 @@ adding:
   notYetTitle: Not in {recording} yet. Change it here to record it.
   recordThis: Record {option}
   cantRecord: Its label is built at runtime, so a recording can’t name it exactly.
+  readOnly: For reading only. The menu shows it greyed out, so a recording can’t set it.
+  clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.
+  clickRecorded: "{recording} clicks this option"
+
   openIt: Open it
   choose: Choose a recording
   chooseLead: New steps go to the recording you choose, until you choose another under Adding to.

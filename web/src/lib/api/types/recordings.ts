@@ -314,7 +314,8 @@ export const WhyInactive = "inactive"; // the menu's plugin isn't active
 export const WhyRange = "range"; // a slider value outside its range
 export const WhyChoice = "choice"; // a menu entry the menu doesn't have
 export const WhyValue = "value"; // a right-side click: no text option on the page shows this value
-export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice | typeof WhyValue;
+export const WhyDisabled = "disabled"; // the menu draws the option greyed out, so it can't be selected
+export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice | typeof WhyValue | typeof WhyDisabled;
 /**
  * Check is a step's check.
  */
