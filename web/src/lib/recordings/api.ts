@@ -25,6 +25,12 @@ export function putDraft(name: string, draft: Draft): Promise<Editor> {
 	return request<Editor>('PUT', `${at(name)}/draft`, draft);
 }
 
+// putFileText replaces one of a recording's files with its text as typed:
+// file 0 is the info file, and file n the nth step file Save would write.
+export function putFileText(name: string, file: number, text: string): Promise<Editor> {
+	return request<Editor>('PUT', `${at(name)}/files/${file}`, { text });
+}
+
 export function discardDraft(name: string): Promise<Editor> {
 	return request<Editor>('DELETE', `${at(name)}/draft`);
 }

@@ -232,3 +232,55 @@ func TestRightSideClicks(t *testing.T) {
 		}
 	}
 }
+
+// Typed text is read strictly: what MCM Recorder reads passes, in any key
+// case, and a slip is refused with the step's number.
+func TestParseSteps(t *testing.T) {
+	steps, err := ParseSteps("\uFEFF[\n {\"Mod\": \"VRIK\", \"option\": \"Head Bobbing Height\", \"slider\": 0.5, \"page\": \"VRIK Options\", \"index\": 2},\n {\"mod\": \"Be Seated\", \"click\": \"Reset\", \"side\": \"right\"}\n]")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(steps) != 2 || steps[0].Kind != KindSlider || steps[0].Value != "0.5" || steps[0].Index != 2 || steps[0].Page != "VRIK Options" || steps[1].Kind != KindClick || steps[1].Option != "Reset" || steps[1].Side != "right" {
+		t.Errorf("steps = %+v", steps)
+	}
+	for text, want := range map[string]string{
+		`{"mod": "x"}`: "array of actions",
+		`[{"mod": "x", "option": "y", "toggle": "on"}] x`:               "more text",
+		`[{"mod": "x", "option": "y", "togle": "on"}]`:                  `MCM Recorder doesn't read, "togle"`,
+		`[{"mod": "x", "option": "y"}]`:                                 "doesn't say what it does",
+		`[{"mod": "x", "option": "y", "toggle": "on", "slider": 1.0}]`:  "does one thing",
+		`[{"option": "y", "toggle": "on"}]`:                             "names no menu",
+		`[{"mod": "x", "toggle": "on"}]`:                                "names no option",
+		`[{"mod": "x", "option": "y", "toggle": "yes"}]`:                "on or off",
+		`[{"mod": "x", "option": "y", "slider": "wide"}]`:               "a number",
+		`[{"mod": 3, "option": "y", "toggle": "on"}]`:                   "in quotes",
+		`[{"mod": "x", "option": "y", "toggle": "on", "index": "two"}]`: "whole number",
+	} {
+		if _, err := ParseSteps(text); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", text, err, want)
+		}
+	}
+	if steps, err := ParseSteps("[]"); err != nil || len(steps) != 0 {
+		t.Errorf("empty: %v, %v", steps, err)
+	}
+}
+
+func TestParseInfo(t *testing.T) {
+	info, err := ParseInfo(`{"author": "Moyce", "autorun": "True", "name": "MGO", "version": "1.0.0"}`)
+	if err != nil || info != (Info{Title: "MGO", Version: "1.0.0", Author: "Moyce", Autorun: true}) {
+		t.Errorf("info = %+v, %v", info, err)
+	}
+	if info, err := ParseInfo(`{"Autorun": false, "Name": "x"}`); err != nil || info.Autorun || info.Title != "x" {
+		t.Errorf("bool autorun: %+v, %v", info, err)
+	}
+	for text, want := range map[string]string{
+		`[]`:                         "JSON object",
+		`{"name": "x", "colour": 1}`: "isn't a key MCM Recorder reads",
+		`{"autorun": "maybe"}`:       "true or false",
+		`{"version": 2}`:             "in quotes",
+	} {
+		if _, err := ParseInfo(text); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", text, err, want)
+		}
+	}
+}

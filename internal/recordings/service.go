@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -122,6 +123,11 @@ type CreateRequest struct {
 	Name    string `json:"name"`
 	Author  string `json:"author"`
 	Autorun bool   `json:"autorun"`
+}
+
+// FileTextRequest is one of a recording's files, typed.
+type FileTextRequest struct {
+	Text string `json:"text"`
 }
 
 // AddRequest adds a step to a recording's draft.
@@ -419,36 +425,23 @@ func (s *Service) Routes(m *http.ServeMux) {
 		if err != nil {
 			return Editor{}, err
 		}
-		name := r.PathValue("name")
-		if _, err := s.editor(e, name); err != nil {
+		return s.replaceDraft(e, r.PathValue("name"), d)
+	}))
+	// The text of one file as it will be written, typed: read as MCM
+	// Recorder reads it, and put in the draft in its place.
+	m.Handle("PUT /api/recordings/{name}/files/{file}", httpapi.JSON(func(r *http.Request, req FileTextRequest) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
 			return Editor{}, err
 		}
-		if d.Steps == nil {
-			d.Steps = []Step{}
-		}
-		d.Name = s.canonical(e, name)
-		if d.Target, err = s.checkTarget(e, d.Target); err != nil {
+		e, err := s.env(r)
+		if err != nil {
 			return Editor{}, err
 		}
-		key := strings.ToLower(d.Name)
-		s.mu.Lock()
-		if s.deleted[key] {
-			s.mu.Unlock()
-			return Editor{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to change it", d.Name)
+		file, err := strconv.Atoi(r.PathValue("file"))
+		if err != nil || file < 0 {
+			return Editor{}, apperr.New(apperr.NotFound, "There's no file %q", r.PathValue("file"))
 		}
-		s.drafts[key] = &d
-		s.persist()
-		s.mu.Unlock()
-		ed, err := s.editor(e, name)
-		if err == nil && !ed.Changed && ed.Recording != nil {
-			// Back to what's on disk: nothing left to save.
-			s.mu.Lock()
-			delete(s.drafts, key)
-			s.persist()
-			s.mu.Unlock()
-			return s.editor(e, name)
-		}
-		return ed, err
+		return s.putText(e, r.PathValue("name"), file, req.Text)
 	}))
 	m.Handle("DELETE /api/recordings/{name}/draft", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
 		if err := s.mustEdit(); err != nil {
@@ -985,6 +978,83 @@ func prepare(step Step) (Step, error) {
 		return step, apperr.New(apperr.Invalid, "That step can't be written: %v", err)
 	}
 	return step, nil
+}
+
+// replaceDraft puts d in the draft as name's recording, dropping it if it
+// matches what's on disk.
+func (s *Service) replaceDraft(e *env, name string, d Draft) (Editor, error) {
+	if _, err := s.editor(e, name); err != nil {
+		return Editor{}, err
+	}
+	if d.Steps == nil {
+		d.Steps = []Step{}
+	}
+	var err error
+	d.Name = s.canonical(e, name)
+	if d.Target, err = s.checkTarget(e, d.Target); err != nil {
+		return Editor{}, err
+	}
+	key := strings.ToLower(d.Name)
+	s.mu.Lock()
+	if s.deleted[key] {
+		s.mu.Unlock()
+		return Editor{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to change it", d.Name)
+	}
+	s.drafts[key] = &d
+	s.persist()
+	s.mu.Unlock()
+	ed, err := s.editor(e, name)
+	if err == nil && !ed.Changed && ed.Recording != nil {
+		// Back to what's on disk: nothing left to save.
+		s.mu.Lock()
+		delete(s.drafts, key)
+		s.persist()
+		s.mu.Unlock()
+		return s.editor(e, name)
+	}
+	return ed, err
+}
+
+// putText replaces one of a recording's files with text typed for it: file
+// 0 is the info file, and file n the nth step file Save would write, whose
+// run of steps the text's steps take the place of.
+func (s *Service) putText(e *env, name string, file int, text string) (Editor, error) {
+	ed, err := s.editor(e, name)
+	if err != nil {
+		return Editor{}, err
+	}
+	if ed.Deleted {
+		return Editor{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to change it", ed.Draft.Name)
+	}
+	d := ed.Draft
+	d.Steps = append([]Step{}, d.Steps...)
+	if file == 0 {
+		info, err := ParseInfo(text)
+		if err != nil {
+			return Editor{}, err
+		}
+		d.Title, d.Version, d.Author, d.Autorun = info.Title, info.Version, info.Author, info.Autorun
+		return s.replaceDraft(e, name, d)
+	}
+	steps, err := ParseSteps(text)
+	if err != nil {
+		return Editor{}, err
+	}
+	first, last := -1, -1
+	for i, st := range d.Steps {
+		if st.File == file-1 {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 {
+		return Editor{}, apperr.New(apperr.NotFound, "%s has no step file %d", ed.Draft.Name, file)
+	}
+	rest := append([]Step{}, d.Steps[last+1:]...)
+	d.Steps = append(append(d.Steps[:first], steps...), rest...)
+	return s.replaceDraft(e, name, d)
 }
 
 // addAll appends the steps the recording doesn't have yet, all or none.

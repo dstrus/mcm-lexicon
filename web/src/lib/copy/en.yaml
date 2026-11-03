@@ -567,6 +567,12 @@ info:
 files:
   inFolder: Written to {folder}.
   changesTo: Changes to {file}
+  # Typing a file: the text is read as MCM Recorder reads it, into the draft.
+  editText: Edit as text
+  editing: Editing {file}
+  apply: Apply
+  cancel: Cancel
+  typedNote: The text is read the way MCM Recorder reads it and goes into the draft; Save writes it in MCM Recorder’s own form, so spacing and key order may differ from what you type. A key MCM Recorder doesn’t read, or a step that says nothing, is refused.
   changes:
     same: Unchanged
     changed: Changed

@@ -206,7 +206,7 @@ A near-monochrome palette, off-white on near-black (or near-black on pale smoke)
 - **Body** (Jost 400, 0.9375rem, line-height 1.5, tabular figures): table cells, values, prose. Long text in the pane runs at line-height 1.6 with a 65ch measure.
 - **Label** (Barlow Condensed 500, 0.8125rem, 0.12em tracking, uppercase): column heads, group headings, definition terms in caps, the profile, recording, scan-state, and game-state labels, and the theme switch.
 - **Button** (Barlow Condensed 500, 0.9375rem, 0.12em tracking, uppercase): buttons and the hint strip.
-- **File** (DM Mono 400, 0.8125rem, line-height 1.55): a raw selector beside its text, a catalog's file name, and a whole file as it will be written, in the editor's Files tab.
+- **File** (DM Mono 400, 0.8125rem, line-height 1.55): also the field a recording's file is typed in on the Files tab, which replaces the file's diff while open, with APPLY and CANCEL beneath and a muted line saying the text is read as MCM Recorder reads it; a raw selector beside its text, a catalog's file name, and a whole file as it will be written, in the editor's Files tab.
 
 ### Named Rules
 **The Label Versus Read Rule.** Anything that labels is tracked condensed caps; anything that is read is Jost in sentence case. Counts beside a label switch back to Jost with no tracking.

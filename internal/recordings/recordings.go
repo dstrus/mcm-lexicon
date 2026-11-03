@@ -12,10 +12,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
+	"lexicon/internal/apperr"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -239,6 +242,132 @@ func readSteps(r *Recording, file int) []Step {
 		out = append(out, s)
 	}
 	return out
+}
+
+// The keys MCM Recorder reads from an action, besides the one that holds
+// its value.
+var stepKeys = map[string]bool{"mod": true, "page": true, "option": true, "index": true, "side": true, "state": true}
+
+// ParseSteps reads a step file's text as typed, strictly: a JSON array of
+// actions, each with the keys MCM Recorder reads and exactly one value
+// key, so a slip (a misspelled key, a step that says nothing) is refused
+// with the step's number rather than dropped, as the lenient reader for
+// files on disk would. The steps' File is 0.
+func ParseSteps(s string) ([]Step, error) {
+	dec := json.NewDecoder(strings.NewReader(strings.TrimPrefix(s, "\uFEFF")))
+	dec.UseNumber()
+	var actions []map[string]any
+	if err := dec.Decode(&actions); err != nil {
+		return nil, apperr.New(apperr.Invalid, "The text isn't a JSON array of actions: %v", err)
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return nil, apperr.New(apperr.Invalid, "There's more text after the array of actions")
+	}
+	out := []Step{}
+	for i, raw := range actions {
+		n := i + 1
+		var kind Kind
+		for k, v := range raw {
+			lk := strings.ToLower(k)
+			switch {
+			case stepKeys[lk]:
+				if _, ok := v.(string); !ok && lk != "index" {
+					return nil, apperr.New(apperr.Invalid, "Step %d: %s is text, in quotes", n, k)
+				}
+				if _, ok := v.(json.Number); lk == "index" && !ok {
+					return nil, apperr.New(apperr.Invalid, "Step %d: index is a whole number", n)
+				}
+			case slices.Contains(kinds, Kind(lk)):
+				if kind != "" {
+					return nil, apperr.New(apperr.Invalid, "Step %d has both %s and %s; a step does one thing", n, kind, lk)
+				}
+				kind = Kind(lk)
+			default:
+				return nil, apperr.New(apperr.Invalid, "Step %d has a key MCM Recorder doesn't read, %q", n, k)
+			}
+		}
+		if kind == "" {
+			return nil, apperr.New(apperr.Invalid, "Step %d doesn't say what it does: it needs one of toggle, slider, choose, shortcut, color, text, or click", n)
+		}
+		a := lower(raw)
+		st := Step{Mod: text(a["mod"]), Page: text(a["page"]), Option: text(a["option"]), Side: text(a["side"]), State: text(a["state"]), Kind: kind, Value: text(a[string(kind)])}
+		if idx, ok := a["index"]; ok {
+			k, err := strconv.Atoi(text(idx))
+			if err != nil || k < 0 {
+				return nil, apperr.New(apperr.Invalid, "Step %d: index is a whole number", n)
+			}
+			st.Index = k
+		}
+		if strings.TrimSpace(st.Mod) == "" {
+			return nil, apperr.New(apperr.Invalid, "Step %d names no menu: it needs a mod", n)
+		}
+		if kind == KindClick {
+			st.Option = st.Value
+		} else if st.Option == "" {
+			return nil, apperr.New(apperr.Invalid, "Step %d names no option", n)
+		}
+		st.Wildcard = len(st.Option) > 2 && strings.HasPrefix(st.Option, "*") && strings.HasSuffix(st.Option, "*")
+		if _, err := Plan(&Draft{Name: "probe", Steps: []Step{st}}); err != nil {
+			return nil, apperr.New(apperr.Invalid, "Step %d: %v", n, strings.TrimPrefix(err.Error(), "step 1: "))
+		}
+		out = append(out, st)
+	}
+	return out, nil
+}
+
+// Info is what a recording's info file says.
+type Info struct {
+	Title, Version, Author string
+	Autorun                bool
+}
+
+// ParseInfo reads an info file's text as typed, strictly: an object with
+// the keys MCM Recorder reads, name, author, version, and autorun.
+func ParseInfo(s string) (Info, error) {
+	dec := json.NewDecoder(strings.NewReader(strings.TrimPrefix(s, "\uFEFF")))
+	var raw map[string]any
+	if err := dec.Decode(&raw); err != nil {
+		return Info{}, apperr.New(apperr.Invalid, "The text isn't a JSON object: %v", err)
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return Info{}, apperr.New(apperr.Invalid, "There's more text after the object")
+	}
+	var info Info
+	for k, v := range raw {
+		switch strings.ToLower(k) {
+		case "name", "author", "version":
+			t, ok := v.(string)
+			if !ok {
+				return Info{}, apperr.New(apperr.Invalid, "%s is text, in quotes", k)
+			}
+			switch strings.ToLower(k) {
+			case "name":
+				info.Title = t
+			case "author":
+				info.Author = t
+			case "version":
+				info.Version = t
+			}
+		case "autorun":
+			switch x := v.(type) {
+			case bool:
+				info.Autorun = x
+			case string:
+				switch strings.ToLower(x) {
+				case "true":
+					info.Autorun = true
+				case "false":
+				default:
+					return Info{}, apperr.New(apperr.Invalid, "autorun is true or false, not %q", x)
+				}
+			default:
+				return Info{}, apperr.New(apperr.Invalid, "autorun is true or false")
+			}
+		default:
+			return Info{}, apperr.New(apperr.Invalid, "%q isn't a key MCM Recorder reads; the info file has name, author, version, and autorun", k)
+		}
+	}
+	return info, nil
 }
 
 // lower is a map with its keys lowercased.

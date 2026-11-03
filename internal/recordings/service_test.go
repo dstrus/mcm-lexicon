@@ -425,3 +425,36 @@ func TestDraftKeptAcrossRestarts(t *testing.T) {
 		t.Errorf("another list's draft file: %v", err)
 	}
 }
+
+// A step file's text, typed, takes the place of that file's run of steps
+// in the draft, and the info file's text sets the recording's info.
+func TestPutFileText(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	var ed Editor
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if len(ed.Files) < 2 {
+		t.Fatalf("files: %+v", ed.Files)
+	}
+	// The one step file: Be Seated's toggle becomes two steps.
+	code := h.call("PUT", "/api/recordings/MGO/files/1", FileTextRequest{Text: `[{"mod": "Be Seated", "option": "Prompts", "toggle": "on"}, {"mod": "Be Seated", "option": "Height", "slider": 3.0}]`}, &ed)
+	if code != 200 || len(ed.Draft.Steps) != 2 || ed.Draft.Steps[1].Option != "Height" || ed.Draft.Steps[1].Value != "3.0" || !ed.Drafted {
+		t.Fatalf("after typing steps: %d, %+v", code, ed.Draft.Steps)
+	}
+	if code := h.call("PUT", "/api/recordings/MGO/files/1", FileTextRequest{Text: `[{"mod": "Be Seated", "option": "Prompts", "togle": "on"}]`}, &ed); code != 400 {
+		t.Errorf("a slip: %d", code)
+	}
+	if code := h.call("PUT", "/api/recordings/MGO/files/3", FileTextRequest{Text: `[]`}, &ed); code != 404 {
+		t.Errorf("no such file: %d", code)
+	}
+	code = h.call("PUT", "/api/recordings/MGO/files/0", FileTextRequest{Text: `{"author": "Me", "autorun": "false", "name": "MGO", "version": "2.0.0"}`}, &ed)
+	if code != 200 || ed.Draft.Author != "Me" || ed.Draft.Autorun || ed.Draft.Version != "2.0.0" {
+		t.Fatalf("after typing the info: %d, %+v", code, ed.Draft)
+	}
+	// Typed back to what's on disk: nothing left to save.
+	h.call("PUT", "/api/recordings/MGO/files/0", FileTextRequest{Text: ed.Files[0].Old}, &ed)
+	h.call("PUT", "/api/recordings/MGO/files/1", FileTextRequest{Text: `[{"Mod": "Be Seated", "option": "Prompts", "toggle": "off"}]`}, &ed)
+	if ed.Drafted || ed.Changed {
+		t.Errorf("typed back: drafted %v, changed %v", ed.Drafted, ed.Changed)
+	}
+}
