@@ -11,6 +11,7 @@
 	import type { Fixture, Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
+	import { column } from '#lib/menus/column.svelte.ts';
 	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
@@ -82,43 +83,77 @@
 
 	// The arrow keys move as on the game's grid: ↑ ↓ within a column, ← →
 	// to the nearest option in the column beside, and ← from the left
-	// column to the page list, where ↑ ↓ open the page above or below and
-	// → comes back to the options.
-	let inPages = $state(false);
+	// column to the page list, then to the column's list of menus. In
+	// either list ↑ ↓ open the page or menu above or below, and → comes
+	// back toward the options.
+	let zone = $state<'options' | 'pages' | 'menus'>(column.active ? 'menus' : 'options');
+	let inPages = $derived(zone === 'pages');
+	$effect(() => {
+		column.active = zone === 'menus';
+	});
+	// A click in the column, or leaving it, takes the keys back to the options.
+	$effect(() => {
+		if (!column.active && zone === 'menus') zone = 'options';
+	});
 	let listed = $derived(menu.pages.map((p, i) => ({ p, i })).filter((x) => !x.p.sameAs).map((x) => x.i));
 	// pick selects the option at i, as a click on it does.
 	function pick(i: number) {
-		inPages = false;
+		zone = 'options';
 		const r = rows.find((r) => r.i === i);
 		if (r) selection.select(r);
 	}
+	// Where the keys are headed, while that menu or page loads, so presses
+	// in quick succession each move one further rather than from the same
+	// place.
+	let headed: { menu: string; page: number } | null = null;
+	$effect(() => {
+		if (headed && headed.menu === menu.id && (headed.page < 0 || headed.page === data.at)) headed = null;
+	});
 	function vertical(by: 1 | -1) {
+		if (zone === 'menus') {
+			const from = headed?.menu ?? menu.id;
+			const at = column.ids.indexOf(from);
+			const next = column.ids[Math.min(column.ids.length - 1, Math.max(0, at + by))];
+			if (next && next !== from) {
+				headed = { menu: next, page: -1 };
+				goto(menuHref(next), { replace: true });
+			}
+			return;
+		}
 		if (inPages) {
-			const at = listed.indexOf(data.at);
+			const from = headed?.menu === menu.id && headed.page >= 0 ? headed.page : data.at;
+			const at = listed.indexOf(from);
 			const next = listed[Math.min(listed.length - 1, Math.max(0, at + by))];
-			if (next !== undefined && next !== data.at) goto(menuHref(menu.id, next), { replace: true });
+			if (next !== undefined && next !== from) {
+				headed = { menu: menu.id, page: next };
+				goto(menuHref(menu.id, next), { replace: true });
+			}
 			return;
 		}
 		const c = current;
 		if (!c) return;
-		const column = rows.filter((r) => r.col === c.col);
-		const next = by > 0 ? column.find((r) => r.row > c.row) : column.findLast((r) => r.row < c.row);
+		const here = rows.filter((r) => r.col === c.col);
+		const next = by > 0 ? here.find((r) => r.row > c.row) : here.findLast((r) => r.row < c.row);
 		if (next) selection.moveTo(next);
 	}
+	let hasPages = $derived(paged && listed.length > 0);
 	function across(by: 1 | -1) {
-		if (inPages) {
-			if (by > 0) inPages = false;
+		if (zone === 'menus') {
+			if (by > 0) zone = hasPages ? 'pages' : 'options';
+			return;
+		}
+		if (zone === 'pages') {
+			zone = by > 0 ? 'options' : column.ids.length ? 'menus' : 'pages';
 			return;
 		}
 		const c = current;
-		if (!c) return;
-		const column = rows.filter((r) => r.col === c.col + by);
-		if (!column.length) {
-			if (by < 0 && paged && listed.length) inPages = true;
+		const beside = c ? rows.filter((r) => r.col === c.col + by) : [];
+		if (!c || !beside.length) {
+			if (by < 0) zone = hasPages ? 'pages' : column.ids.length ? 'menus' : 'options';
 			return;
 		}
 		// The nearest row; between two as near, the one above.
-		const next = column.reduce((a, b) => (Math.abs(b.row - c.row) < Math.abs(a.row - c.row) ? b : a));
+		const next = beside.reduce((a, b) => (Math.abs(b.row - c.row) < Math.abs(a.row - c.row) ? b : a));
 		selection.moveTo(next);
 	}
 
@@ -296,14 +331,14 @@
 					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => vertical(-1) },
 					{ key: 'ArrowRight', label: m.common.next, hidden: true, run: () => across(1) },
 					{ key: 'ArrowLeft', label: m.common.previous, hidden: true, run: () => across(-1) },
-					...(!inPages && recording && current && canEdit(current.option)
+					...(zone === 'options' && recording && current && canEdit(current.option)
 						? flippable(current.option)
 							? [{ key: ' ', shown: 'Space', label: on(current.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(current!.option) }]
 							: current.option.type === 'text'
 								? []
 								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => setParams({ mode: 'edit' }) }]
 						: []),
-					...(!inPages && open.editing && current && canEdit(current.option) && !recorded(current.option)
+					...(zone === 'options' && open.editing && current && canEdit(current.option) && !recorded(current.option)
 						? [{ key: 'a', shown: 'A', label: open.name ? m.adding.addTo({ recording: open.name }) : m.adding.addToAny, disabled: working, run: add }]
 						: []),
 					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto('/menus') }
@@ -407,14 +442,14 @@
 	{/if}
 {/snippet}
 
-<div class="mcm" class:paged class:inpages={inPages} style:--hints="{hintsHeight}px">
+<div class="mcm" class:paged class:inpages={zone !== 'options'} style:--hints="{hintsHeight}px">
 	{#if paged}
 		<nav class="pages" class:active={inPages} aria-label={t.pages}>
 			<ul>
 				{#each menu.pages as p, i (i)}
 					{#if !p.sameAs}
 					<li>
-						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined} onclick={() => (inPages = false)}>
+						<a class="caps" href={menuHref(menu.id, i)} aria-current={i === data.at ? 'page' : undefined} onclick={() => (zone = 'options')}>
 							<span class="marker">{#if i === data.at}<Diamond />{/if}</span>
 							<span class="clip" use:clipped>{pageText(p)}</span>
 							<span class="count">{p.options.length}</span>

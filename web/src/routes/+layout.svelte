@@ -5,6 +5,7 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, watchStatus } from '#lib/api/live.svelte.ts';
 	import { menuHref, menusDependency } from '#lib/menus/api.ts';
+	import { column } from '#lib/menus/column.svelte.ts';
 	import { recordingHref, recordingsDependency, redo, saveAll, setOpen, undo } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
@@ -68,6 +69,16 @@
 		return [...list.filter((s) => s.active).sort(byText), ...list.filter((s) => !s.active).sort(byText)];
 	});
 	let firstInactive = $derived(menus.findIndex((s) => !s.active));
+	// The menu screen's arrow keys move through the menus as listed here.
+	$effect(() => {
+		column.ids = menus.map((s) => s.id);
+	});
+	// Off a menu, the keys aren't in the list; in it, the menu on screen
+	// stays in view as they move.
+	$effect(() => {
+		if (!currentMenu) column.active = false;
+		else if (column.active) document.querySelector('.menus a.menu[aria-current="page"]')?.scrollIntoView({ block: 'nearest' });
+	});
 	// The menu on screen, by its page's address.
 	let currentMenu = $derived.by(() => {
 		const m = /^\/menus\/([^/]+)/.exec(page.url.pathname);
@@ -273,7 +284,7 @@
 					<li><a class="caps" href="/recordings" aria-current={here('/recordings') ? 'page' : undefined}>{m.nav.recordings}</a></li>
 				</ul>
 			</nav>
-			<nav class="menus" aria-label={m.nav.menus}>
+			<nav class="menus" class:active={column.active} aria-label={m.nav.menus}>
 				<a class="caps group" href="/menus" aria-current={page.url.pathname === '/menus' ? 'page' : undefined}>{m.nav.menus}<span class="count">{allMenus.length}</span></a>
 				<input type="search" bind:value={filter} placeholder={m.nav.menusFilter} aria-label={m.nav.menusFilter} spellcheck="false" autocomplete="off" />
 				{#if allMenus.length && !menus.length}
@@ -283,7 +294,7 @@
 						{#each menus as s, i (s.id)}
 							{#if i === firstInactive}<li class="group caps" aria-hidden="true">{m.nav.inactiveMenus}</li>{/if}
 							<li>
-								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} title={s.name !== s.nameText ? s.name : undefined} aria-current={currentMenu === s.id ? 'page' : undefined}>
+								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} onclick={() => (column.active = false)} title={s.name !== s.nameText ? s.name : undefined} aria-current={currentMenu === s.id ? 'page' : undefined}>
 									<span class="marker">{#if currentMenu === s.id}<Diamond />{/if}</span>
 									<span class="clip">{s.nameText}</span>
 								</a>
@@ -465,6 +476,11 @@
 	}
 	/* A row with a slot for the marker, then its name, which can outrun the
 	   column (a $KEY name is its title). */
+	/* The arrow keys in the menu list: the menu on screen takes the
+	   selected haze, as the selected row of a list does. */
+	.menus.active a.menu[aria-current='page'] {
+		background: var(--select);
+	}
 	.menus a.menu,
 	.session a.rec {
 		display: flex;
