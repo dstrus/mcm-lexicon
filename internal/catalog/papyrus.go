@@ -268,6 +268,13 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 			if o.Type == "menu" {
 				opt.Choices = s.choices(o.Choices, prefer)
 			}
+			// A text option that cycles through values as it's clicked is a
+			// stepper, as MCM Helper's: a recording can only click it.
+			if o.Type == "text" && len(o.Cycle) > 0 {
+				opt.Control = "stepper"
+				opt.Choices = s.choices(o.Cycle, prefer)
+				opt.Notes = append(opt.Notes, Note{Kind: NoteKindStepper})
+			}
 			if o.Default != nil {
 				opt.Default = &Value{Kind: ValueKindNumber, Number: *o.Default}
 			}

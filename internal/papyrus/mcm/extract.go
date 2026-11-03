@@ -13,6 +13,8 @@
 package mcm
 
 import (
+	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -99,6 +101,36 @@ type Option struct {
 	ValueText      string
 	ValueCertainty Certainty
 	ValueChanges   bool
+	// Cycle is the values a text option shows in turn as it's clicked, in
+	// the order its click handler sets them, when the handler sets them
+	// from literal strings: a stepper made of a text option. Nil when the
+	// option doesn't cycle, or the values can't be read.
+	Cycle []string
+}
+
+// shown is a literal value a click handler gives a text option: for the
+// options a branch names, or for whichever option the handler's If chain
+// is about when it dispatches some other way, such as by the option's name.
+type shown struct {
+	ids   []int  // the options the branch is scoped to; nil when unscoped
+	chain *ir.If // the If chain (an If with its ElseIfs) the call sits in; nil at the top
+	arm   string // which arm of it
+	text  string
+}
+
+// chainOf is the If chain the innermost step of path belongs to, as its
+// top If, and the arm as a key. A compiled script's ElseIf is an Else
+// holding an If, so the chain is followed up through those.
+func chainOf(path []step) (*ir.If, string) {
+	if len(path) == 0 {
+		return nil, ""
+	}
+	i := len(path) - 1
+	arm := fmt.Sprintf("%p:%d", path[i].at, path[i].arm)
+	for i > 0 && path[i-1].arm == len(path[i-1].at.Branches) && continuation(path[i-1].at.Else) == path[i].at {
+		i--
+	}
+	return path[i].at, arm
 }
 
 type Range struct {
@@ -416,8 +448,20 @@ func walk(m *machine, page string) Page {
 	m.invoke(m.function("", "OnPageReset"), []Value{str(page)})
 
 	// The option events: dialog calls in a branch scoped to options apply
-	// to those options.
+	// to those options. A literal a click handler shows a text option is
+	// kept, to find the values an option cycles through.
+	var shows []shown
 	apply := func(name string, args []Value, ids []int) {
+		if k := strings.ToLower(name); k == "settextoptionvalue" || k == "settextoptionvaluest" {
+			at := 1
+			if k == "settextoptionvaluest" {
+				at = 0
+			}
+			if len(args) > at && args[at].k == kString {
+				chain, arm := chainOf(m.path)
+				shows = append(shows, shown{ids: ids, chain: chain, arm: arm, text: args[at].s})
+			}
+		}
 		for _, id := range ids {
 			if id < 0 || id >= len(opts) {
 				continue
@@ -521,6 +565,7 @@ func walk(m *machine, page string) Page {
 			m.invoke(f, nil)
 		}
 	}
+	cycles(opts, shows)
 	out := Page{Name: page, Options: merge(opts), Fixtures: fixtures, Placed: true}
 	for _, o := range out.Options {
 		if o.Position < 0 {
@@ -568,6 +613,80 @@ func described(v Value) (selector, text string, c Certainty) {
 			return t, t, Exact
 		}
 		return "", "", Unknown
+	}
+}
+
+// cycles gives each text option the values its click handler shows it in
+// turn. The handler's If chain (an If with its ElseIfs) that sets a value
+// is one cycle when each of its arms, three or more, sets one value for
+// the same option: the arms are chosen by a counter the click moves. The
+// cycle is the option's when the chain is in a branch scoped to the
+// option, or, when the handler dispatches some other way (VRIK's by the
+// option's name), when the value the option is added with is one of
+// exactly one unscoped chain's values. Anything else is a message: a
+// single Will Reset, a Working then Done or Error, a DONE on each of
+// several buttons.
+func cycles(opts []*found, shows []shown) {
+	type group struct {
+		ids    []int
+		arms   map[string]int // values each arm sets
+		values []string
+	}
+	var groups []*group
+	byKey := map[string]*group{}
+	for _, s := range shows {
+		key := fmt.Sprintf("%p:%v", s.chain, s.ids)
+		g := byKey[key]
+		if g == nil {
+			g = &group{ids: s.ids, arms: map[string]int{}}
+			byKey[key] = g
+			groups = append(groups, g)
+		}
+		g.arms[s.arm]++
+		if !slices.Contains(g.values, s.text) {
+			g.values = append(g.values, s.text)
+		}
+	}
+	cyclic := func(g *group) bool {
+		if len(g.arms) < 3 || len(g.values) != len(g.arms) {
+			return false
+		}
+		for _, n := range g.arms {
+			if n != 1 {
+				return false
+			}
+		}
+		return true
+	}
+	for _, o := range opts {
+		if o.Type != "text" {
+			continue
+		}
+		var cycle []string
+		var matched int
+		for _, g := range groups {
+			if !cyclic(g) {
+				continue
+			}
+			if g.ids != nil {
+				if containsInt(g.ids, o.id) {
+					cycle = g.values
+					break
+				}
+				continue
+			}
+			if o.ValueCertainty == Exact && o.Value != "" && slices.Contains(g.values, o.Value) {
+				matched++
+				cycle = g.values
+			}
+		}
+		if cycle == nil || (matched > 1 && !slices.ContainsFunc(groups, func(g *group) bool { return g.ids != nil && containsInt(g.ids, o.id) })) {
+			continue
+		}
+		if o.ValueCertainty == Exact && o.Value != "" && !slices.Contains(cycle, o.Value) {
+			cycle = append([]string{o.Value}, cycle...)
+		}
+		o.Cycle = append([]string{}, cycle...)
 	}
 }
 
@@ -641,6 +760,9 @@ func fill(k *Option, o Option) {
 	// Disabled in one arm and not the other: sometimes.
 	if k.Disabled != o.Disabled {
 		k.Disabled = "sometimes"
+	}
+	if k.Cycle == nil {
+		k.Cycle = o.Cycle
 	}
 }
 

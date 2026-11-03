@@ -2,6 +2,7 @@ package mcm
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -581,6 +582,68 @@ func TestOptionFlags(t *testing.T) {
 	for label, want := range map[string]string{"Version": "always", "Plain": "", "Height": "always", "Decided": "sometimes", "Armed": "sometimes", "Changing": "sometimes", "Passed": ""} {
 		if got := opt(t, p, label).Disabled; got != want {
 			t.Errorf("%s: disabled %q, want %q", label, got, want)
+		}
+	}
+}
+
+// A text option whose click handler shows it literal values in turn is a
+// stepper: the values are read from the handler's If chain, whether the
+// handler finds the option by its ID or some other way.
+const cycling = `Scriptname Cycling_MCM extends SKI_ConfigBase
+GlobalVariable property ModeGlobal auto
+int modeOID
+int handOID
+int resetOID
+string Function NameOf(int option)
+	Return "hand" + option
+EndFunction
+Event OnPageReset(string page)
+	modeOID = AddTextOption("Mode", "Low")
+	handOID = AddTextOption("Permit Hands", "Both Hands")
+	resetOID = AddTextOption("Reset Position", "")
+	AddTextOption("Plain", "Fixed")
+EndEvent
+Event OnOptionSelect(int option)
+	if option == modeOID
+		int mode = ModeGlobal.GetValueInt() + 1
+		if mode > 2
+			mode = 0
+		endif
+		if mode == 0
+			SetTextOptionValue(option, "Low")
+		elseif mode == 1
+			SetTextOptionValue(option, "Medium")
+		else
+			SetTextOptionValue(option, "High")
+		endif
+	else
+		string name = NameOf(option)
+		if name == "hand"
+			int v = Utility.RandomInt(0, 2)
+			if v == 0
+				SetTextOptionValue(option, "Both Hands")
+			elseif v == 1
+				SetTextOptionValue(option, "Left Hand Only")
+			else
+				SetTextOptionValue(option, "Right Hand Only")
+			endif
+		elseif name == "reset"
+			SetTextOptionValue(option, "Will Reset")
+		endif
+	endif
+EndEvent`
+
+func TestClickCycles(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, cycling)}, nil)
+	p := m.Pages[0]
+	for label, want := range map[string][]string{
+		"Mode":           {"Low", "Medium", "High"},
+		"Permit Hands":   {"Both Hands", "Left Hand Only", "Right Hand Only"},
+		"Reset Position": nil,
+		"Plain":          nil,
+	} {
+		if got := opt(t, p, label).Cycle; !slices.Equal(got, want) {
+			t.Errorf("%s: cycle %q, want %q", label, got, want)
 		}
 	}
 }

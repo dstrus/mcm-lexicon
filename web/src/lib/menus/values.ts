@@ -69,7 +69,7 @@ export function allowed(o: Option): string {
 		case 'input':
 			return t.text;
 	}
-	if (o.control === 'stepper') return t.clickToCycle;
+	if (o.control === 'stepper') return o.choices?.length ? t.clickCycles({ values: o.choices.map((c) => c.text).join(', ') }) : t.clickToCycle;
 	// A text option showing a value: a right-side click finds it by that.
 	if (o.value && o.valueCertainty === 'exact') return t.clickShowing({ value: o.valueText || o.value });
 	return t.click;

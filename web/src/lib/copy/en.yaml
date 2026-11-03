@@ -245,7 +245,7 @@ option:
   help: In the menu
   pattern: This label is built while the game runs, so a recording can only match it with a *wildcard* around its fixed parts.
   unknown: This label is only known while the game runs, so a recording can’t name it.
-  stepper: A stepper moves to its next choice on each click, so a recording can only click it.
+  stepper: Each click moves this option to its next value, so a recording can only click it, once per step; from the mod’s default, reaching a value takes as many clicks as it is along.
   repeats: The menu adds this option once for each of something the game holds, so it can appear several times, and a recording says which by its index.
   savedNote: Your saved value, {value}, differs from the mod’s default.
   types:
@@ -278,6 +278,8 @@ values:
   text: Text
   click: Click
   clickToCycle: Click to cycle
+  # A stepper's values, in the order clicks move through them.
+  clickCycles: "Each click moves on: {values}"
 
 # Search across every menu.
 search:

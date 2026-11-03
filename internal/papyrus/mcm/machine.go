@@ -67,6 +67,15 @@ func (m *machine) lookup(name string) *Value {
 	return nil
 }
 
+// isLocal reports whether name is a local of the running function.
+func (m *machine) isLocal(name string) bool {
+	if n := len(m.frames); n > 0 {
+		_, ok := m.frames[n-1][ir.Key(name)]
+		return ok
+	}
+	return false
+}
+
 // set assigns to a local or a script variable of that name. A name that's
 // neither is a property the script inherits (SKI_ConfigBase's ModName and
 // Pages), so it's a script variable.
@@ -170,9 +179,18 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 // leave a variable differently, it depends on the game, so it's unknown
 // afterward (option IDs are pooled): Accuracy's "If found / Status = True /
 // Else / Status = False".
+var dbgIf func(line, arm int, c Value, known, t bool)
+
 func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 	names := ifAssigned(s)
+	// What the variables hold if no arm runs: a local with a value (a
+	// counter being wrapped, "If n > 2 / n = 0 / EndIf") is joined with
+	// what the arms set, so it's uncertain after. A script variable is
+	// left as the arms set it, so an option ID assigned in an arm that
+	// may not run stays pooled.
+	before := m.values(names)
 	var outcomes [][]*Value // the variables' values after each arm that carries on
+	skipped := false        // whether no arm may run
 	run := func(arm int, body []ir.Stmt, scope *Value) (bool, Value) {
 		m.path = append(m.path, step{s, arm})
 		if scope != nil {
@@ -192,6 +210,9 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 	for i, b := range s.Branches {
 		c := m.eval(b.Cond)
 		t, known := c.truth()
+		if dbgIf != nil {
+			dbgIf(s.Line, i, c, known, t)
+		}
 		if known && !t {
 			continue
 		}
@@ -209,24 +230,29 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 		}
 	}
 	if !certain {
-		if s.Else == nil {
-			return false, unknown // an arm may not run: what they set may hold
+		if s.Else != nil {
+			run(len(s.Branches), s.Else, nil)
 		}
-		run(len(s.Branches), s.Else, nil)
-		if !exhaustive(s) {
-			return false, unknown
+		if s.Else == nil || !exhaustive(s) {
+			skipped = true
 		}
 	}
-	if len(outcomes) < 2 {
+	if len(outcomes) < 2 && !skipped {
 		return false, unknown
 	}
 	for i, name := range names {
-		if outcomes[0][i] == nil {
+		if len(outcomes) == 0 || outcomes[0][i] == nil {
 			continue
 		}
 		merged := *outcomes[0][i]
 		for _, o := range outcomes[1:] {
 			merged = join(merged, o[i])
+		}
+		// A local that may keep its earlier value: a counter being wrapped.
+		// A script variable is left pooled: a compiled script declares every
+		// one with a zero, which isn't a value it was given.
+		if skipped && before[i] != nil && m.isLocal(name) {
+			merged = join(merged, before[i])
 		}
 		m.set(name, merged)
 	}

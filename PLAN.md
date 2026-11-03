@@ -99,7 +99,7 @@ MCM Helper control types seen in MGO: `toggle` 275, `slider` 203, `header` 91, `
 - `input` → input
 - `enum` → menu (`choose` from `valueOptions.options`)
 - `text`, `CallFunction`, `CallGlobalFunction` → text option (`click`)
-- `stepper` → text option that cycles on click. A recording can only click it, so represent it as "click N times" or mark it unsupported.
+- `stepper` → text option that cycles on click. A recording can only click it, so represent it as "click N times" or mark it unsupported. A Papyrus text option whose click handler shows it literal values in turn is read as a stepper too (§3.3): the handler's If chain that sets the value, when three or more arms each set one value for the same option (the arms are chosen by a counter the click moves), is the cycle, attached to the option its branch is scoped to or, where the handler dispatches by the option's name (VRIK), to the option added with one of the chain's values. A chain of fewer arms, or one setting several values in an arm, is a message (Working, Done, Error), not a cycle. The catalog gives such an option `control: stepper` and its values as `choices`; the info line reads "Each click moves on: Both Hands, Left Hand Only, Right Hand Only". MCM Recorder's player plays each action in a file in turn, a text click as one OnOptionSelect, with no deduplication, so a value N along is N identical click steps; recording that is not built yet.
 - `hiddenToggle`, `header`, `empty` → not recordable
 
 ### 2.3 Facts about the classic scripts
