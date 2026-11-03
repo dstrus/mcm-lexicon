@@ -335,7 +335,7 @@
 					{#if rec}<span class="caps word click-word">{m.steps.click}</span>{/if}{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
 				</button>
 			{:else if editingCell === i}
-				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
+				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} fresh={!recorded(o)} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
 			{:else if rec}
 				<button type="button" class="cell" title={m.edit.editValue} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
 					{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}

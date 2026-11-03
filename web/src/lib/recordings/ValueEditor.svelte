@@ -97,8 +97,9 @@
 			<span class="caps label">{t.entry}</span>
 			{#if choices.length}
 				<select bind:value>
+					{#if !value}<option value="" disabled>{t.chooseEntry}</option>{/if}
 					{#each choices as c, i (i)}
-						<option value={c.raw}>{c.text}{c.raw !== c.text ? ` (${c.raw})` : ''}</option>
+						<option value={c.raw}>{c.text}{c.raw !== c.text ? ` (${c.raw})` : ''}{option?.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
 					{/each}
 					{#if value && !known}<option value={value}>{t.notInMenu({ entry: value })}</option>{/if}
 				</select>

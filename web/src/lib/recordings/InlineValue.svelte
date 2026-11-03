@@ -16,11 +16,15 @@
 		option,
 		value,
 		apply,
-		cancel
+		cancel,
+		fresh = false
 	}: {
 		kind: Kind;
 		option: Option | null | undefined;
 		value: string;
+		// The option isn't recorded yet: a menu opens on no entry, so choosing
+		// any one, the one it has included, records it.
+		fresh?: boolean;
 		apply: (value: string) => void;
 		cancel: () => void;
 	} = $props();
@@ -119,9 +123,11 @@
 			/>
 		</span>
 	{:else if kind === 'choose' && choices.length}
+		{@const pick = fresh || !value}
 		<select bind:this={field} aria-label={t.entry} onchange={(e) => apply(e.currentTarget.value)} onkeydown={keys} onblur={cancel}>
+			{#if pick}<option value="" disabled selected>{t.chooseEntry}</option>{/if}
 			{#each choices as c, i (i)}
-				<option value={c.raw} selected={c.raw.toLowerCase() === value.toLowerCase()}>{c.text}</option>
+				<option value={c.raw} selected={!pick && c.raw.toLowerCase() === value.toLowerCase()}>{c.text}{option?.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
 			{/each}
 			{#if value && !choices.some((c) => c.raw.toLowerCase() === value.toLowerCase())}<option value={value} selected>{t.notInMenu({ entry: value })}</option>{/if}
 		</select>
