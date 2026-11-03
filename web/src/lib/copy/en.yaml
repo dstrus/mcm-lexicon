@@ -417,6 +417,8 @@ recordings:
 # One recording, in the editor.
 recording:
   up: Recordings
+  # A run of identical click steps: a stepper clicked that many times.
+  clickOf: "{n} of {count}"
   tabs: Recording
   steps: Steps
   files: Files
@@ -599,6 +601,15 @@ adding:
   readOnly: For reading only. The menu shows it greyed out, so a recording can’t set it.
   clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.
   clickRecorded: "{recording} clicks this option"
+  # A stepper: clicked as many times as it takes to reach a value.
+  clicksShort:
+    one: ×{count}
+    other: ×{count}
+  stepperTitle: Click to record one more click, moving it on to {next}.
+  stepperLabel:
+    one: "{option}: {value}, after {count} click"
+    other: "{option}: {value}, after {count} clicks"
+  stepperNote: Each click moves this option to its next value, and the recording clicks it as many times as it takes to reach the value shown. That count starts from the mod’s default, {start}, so it’s right on a new game, where the option starts there, but not over a game where the option was already changed.
   # A text option has no value to set, so a step on it is only a click;
   # the info area says so, since nothing in the row looks different.
   clickNote: This option has no value to set. Adding it to an MCM recording will record a click or button press. When played back, the mod will apply that click.

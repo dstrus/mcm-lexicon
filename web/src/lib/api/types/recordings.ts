@@ -84,6 +84,15 @@ export interface Problem {
   path: string;
   detail: string;
 }
+/**
+ * Info is what a recording's info file says.
+ */
+export interface Info {
+  Title: string;
+  Version: string;
+  Author: string;
+  Autorun: boolean;
+}
 
 //////////
 // source: service.go
@@ -192,10 +201,23 @@ export interface CreateRequest {
   autorun: boolean;
 }
 /**
+ * FileTextRequest is one of a recording's files, typed.
+ */
+export interface FileTextRequest {
+  text: string;
+}
+/**
  * AddRequest adds a step to a recording's draft.
  */
 export interface AddRequest {
   step: Step;
+  /**
+   * Clicks, for a click step on a stepper, is how many times the
+   * recording clicks it: that many identical steps, in one run where the
+   * first was, or appended; 0 takes them out. Nil adds or changes one
+   * step, as for any other option.
+   */
+  clicks?: number /* int */;
 }
 /**
  * AddAllRequest records many options at once, in order (Record all settings

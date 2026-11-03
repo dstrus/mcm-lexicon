@@ -458,3 +458,49 @@ func TestPutFileText(t *testing.T) {
 		t.Errorf("typed back: drafted %v, changed %v", ed.Drafted, ed.Changed)
 	}
 }
+
+// A stepper's clicks are a run of identical click steps: set, changed,
+// and taken out, in place, leaving the other steps as they were.
+func TestSetClicks(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	click := Step{Mod: "Be Seated", Option: "Mode", Kind: KindClick}
+	n := func(k int) *int { return &k }
+	var reply AddReply
+	if code := h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(2)}, &reply); code != 200 || reply.Number != 2 {
+		t.Fatalf("two clicks: %d, %+v", code, reply)
+	}
+	var ed Editor
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	clicks := func() (int, []string) {
+		var c int
+		var order []string
+		for _, s := range ed.Draft.Steps {
+			order = append(order, s.Option)
+			if s.Kind == KindClick && s.Option == "Mode" {
+				c++
+			}
+		}
+		return c, order
+	}
+	if c, order := clicks(); c != 2 || len(order) != 3 || order[0] != "Prompts" {
+		t.Fatalf("after two: %d, %v", c, order)
+	}
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Height", Kind: KindSlider, Value: "2"}}, &reply)
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(3)}, &reply)
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if c, order := clicks(); c != 3 || order[1] != "Mode" || order[3] != "Mode" || order[4] != "Height" {
+		t.Fatalf("after three, in place: %d, %v", c, order)
+	}
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(0)}, &reply)
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if c, order := clicks(); c != 0 || len(order) != 2 {
+		t.Fatalf("after none: %d, %v", c, order)
+	}
+	if code := h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "on"}, Clicks: n(2)}, &reply); code != 400 {
+		t.Errorf("clicks on a toggle: %d", code)
+	}
+	if code := h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(1000)}, &reply); code != 400 {
+		t.Errorf("a thousand clicks: %d", code)
+	}
+}

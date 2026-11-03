@@ -32,6 +32,19 @@
 	let ed = $derived(data.editor);
 	let steps = $derived(ed.draft.steps);
 	let rows = $derived(steps.map((step, i) => ({ step, check: ed.checks[i]!, n: i + 1 })));
+	// A run of identical click steps is a stepper clicked that many times:
+	// each says which click of the run it is.
+	const same = (a: Step | undefined, b: Step) => !!a && a.kind === 'click' && b.kind === 'click' && a.mod === b.mod && a.page === b.page && a.option === b.option && a.index === b.index && a.side === b.side;
+	let runs = $derived.by(() => {
+		const out: { at: number; of: number }[] = [];
+		for (let i = 0; i < steps.length; ) {
+			let j = i;
+			while (same(steps[j + 1], steps[i]!)) j++;
+			for (let k = i; k <= j; k++) out[k] = { at: k - i + 1, of: j - i + 1 };
+			i = j + 1;
+		}
+		return out;
+	});
 	const selection = new Selection(() => rows, (r) => String(r.n), { param: 'item' });
 	let current = $derived(selection.current);
 	// The step files' names, by the position steps give them.
@@ -184,7 +197,7 @@
 									{#if r.step.kind === 'color'}<span class="swatch" style:background={hex(Number(r.step.value))}></span>{/if}{value(r.step, r.check.option)}
 								</button>
 							{:else}
-								{value(r.step, r.check.option)}
+								{value(r.step, r.check.option)}{#if runs[r.n - 1] && runs[r.n - 1]!.of > 1}<span class="muted run">{t.clickOf({ n: runs[r.n - 1]!.at, count: runs[r.n - 1]!.of })}</span>{/if}
 							{/if}
 						</td>
 						<td class="word caps" class:warn={failing(r.check)}>{word(r.check)}</td>
@@ -447,5 +460,10 @@
 			border-left: 0;
 			border-top: 1px solid var(--rule-strong);
 		}
+	}
+	/* Which click of a run of identical clicks a step is. */
+	.run {
+		margin-left: var(--space-2);
+		font-size: var(--step--1);
 	}
 </style>

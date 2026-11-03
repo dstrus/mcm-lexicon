@@ -14,10 +14,10 @@
 	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
-	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
+	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency, setClicks } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import type { Step } from '#lib/api/types/recordings.ts';
-	import { known, recordable, sameOption, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
+	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
@@ -182,9 +182,33 @@
 		}
 	}
 	const flip = (o: Option) => record(o, on(o) ? 'off' : 'on');
+
+	// A stepper: a text option that moves to its next value on each click.
+	// The recording clicks it as many times as it takes to reach a value,
+	// counted from the mod's default (MCM Helper's, or the first value its
+	// script sets), and each click here moves one further, wrapping back
+	// to the default, which is no clicks at all.
+	const stepper = (o: Option) => o.type === 'text' && o.control === 'stepper' && (o.choices?.length ?? 0) > 1;
+	const startOf = (o: Option) => (o.default?.kind === 'number' && o.default.number >= 0 && o.default.number < (o.choices?.length ?? 0) ? o.default.number : 0);
+	const clicksOf = (o: Option) => open.clicks(base(o), page?.landing);
+	const cycled = (o: Option, n: number) => o.choices![(startOf(o) + n) % o.choices!.length]!.text;
+	async function cycle(o: Option) {
+		if (working) return;
+		working = true;
+		error = '';
+		try {
+			await setClicks(open.name, base(o), (clicksOf(o) + 1) % o.choices!.length);
+			await invalidate(recordingsDependency);
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			working = false;
+		}
+	}
 	function edit(r: { option: Option; i: number }) {
 		pick(r.i);
 		if (flippable(r.option)) return flip(r.option);
+		if (stepper(r.option)) return cycle(r.option);
 		if (r.option.type === 'text') return record(r.option, '');
 		setParams({ item: String(r.i), mode: 'edit' });
 	}
@@ -196,6 +220,7 @@
 		if (!r || !canEdit(r.option) || working) return;
 		if (!open.name && !(await choose())) return;
 		if (recorded(r.option)) return;
+		if (stepper(r.option)) return cycle(r.option);
 		if (flippable(r.option) || known(r.option) || r.option.type === 'text') return record(r.option, valueNow(r.option).value);
 		setParams({ mode: 'edit' });
 	}
@@ -207,7 +232,8 @@
 	// The draft's unsaved steps for this menu, on every page: what Discard
 	// takes back.
 	const ofMenu = (s: Step) => s.mod.toLowerCase() === menu.name.toLowerCase();
-	let unsavedHere = $derived(open.editing ? open.steps.filter((s) => ofMenu(s) && open.dirty(s)).length : 0);
+	// Counted by option, so a stepper's run of clicks is one change.
+	let unsavedHere = $derived(open.editing ? new Set(open.steps.filter((s) => ofMenu(s) && open.dirty(s)).map((s) => `${s.page}\0${s.option}\0${s.index}\0${s.kind}`.toLowerCase())).size : 0);
 
 	// discardMenu takes this menu's unsaved steps out of the draft: a step
 	// the saved recording has goes back to its saved value, and one it
@@ -218,16 +244,16 @@
 		error = '';
 		note = '';
 		try {
+			// The menu's steps go back to the saved recording's, in its order,
+			// where the draft's first step for the menu was; the rest of the
+			// draft is left as it is.
+			const n = unsavedHere;
 			const ed = await getRecording(open.name);
-			const saved = ed.recording?.steps ?? [];
-			const steps: Step[] = [];
-			let n = 0;
-			for (const s of ed.draft.steps) {
-				const was = ofMenu(s) ? saved.find((w) => sameOption(w, s)) : undefined;
-				if (!ofMenu(s) || (was && was.value === s.value && was.side === s.side)) steps.push(s);
-				else if (was) (steps.push(was), n++);
-				else n++;
-			}
+			const saved = (ed.recording?.steps ?? []).filter(ofMenu);
+			const others = ed.draft.steps.filter((s) => !ofMenu(s));
+			const first = ed.draft.steps.findIndex(ofMenu);
+			const at = first < 0 ? others.length : ed.draft.steps.slice(0, first).filter((s) => !ofMenu(s)).length;
+			const steps: Step[] = [...others.slice(0, at), ...saved, ...others.slice(at)];
 			await putDraft(open.name, { ...ed.draft, steps });
 			note = t.discardedHere({ count: n });
 			await invalidate(recordingsDependency);
@@ -328,6 +354,13 @@
 					{#if rec}{stepValue(rec.step, o)}{/if}
 					<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
 				</span>
+			{:else if stepper(o)}
+				<!-- A stepper: the value it reaches after the recording's
+				     clicks, and how many; each click here moves one on. -->
+				{@const n = clicksOf(o)}
+				<button type="button" class="click" title={m.adding.stepperTitle({ next: cycled(o, n + 1) })} aria-label={m.adding.stepperLabel({ option: o.text, value: cycled(o, n), count: n })} disabled={working} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+					{#if n}<span class="caps word click-word">{m.adding.clicksShort({ count: n })}</span>{/if}{cycled(o, n)}
+				</button>
 			{:else if o.type === 'text'}
 				<!-- A text option can only be clicked: its value is the menu's,
 				     and a click on it is the step. -->
@@ -428,7 +461,8 @@
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
 					{#if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
-					{#if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>{/if}
+					{#if recording && stepper(o) && canEdit(o)}<p class="notice">{m.adding.stepperNote({ start: cycled(o, 0) })}</p>
+					{:else if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>{/if}
 					{#if recording && !canEdit(o) && o.disabled !== 'always'}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}

@@ -44,11 +44,20 @@ export class OpenRecording {
 		});
 	}
 
-	// dirty reports whether a step of the draft isn't on disk yet: the saved
-	// recording has no step for its option, or sets it to something else.
+	// dirty reports whether the draft's steps for step's option aren't on
+	// disk yet: the saved recording has none, sets the option to something
+	// else, or clicks a stepper another number of times.
 	dirty(step: Step): boolean {
-		const was = this.saved.find((s) => sameOption(s, step));
-		return !was || was.value !== step.value || was.side !== step.side;
+		const mine = this.steps.filter((s) => sameOption(s, step));
+		const was = this.saved.filter((s) => sameOption(s, step));
+		return mine.length !== was.length || mine.some((s, i) => s.value !== was[i]!.value || s.side !== was[i]!.side);
+	}
+
+	// clicks is how many times the recording clicks step's option: its
+	// identical click steps. On a landing page, the default page's count.
+	clicks(step: Step, landing = false): number {
+		const n = this.steps.filter((s) => sameOption(s, step)).length;
+		return n || !landing ? n : this.steps.filter((s) => sameOption(s, { ...step, page: '' })).length;
 	}
 
 	// find is the recording's step for the same option as step, with its

@@ -133,6 +133,11 @@ type FileTextRequest struct {
 // AddRequest adds a step to a recording's draft.
 type AddRequest struct {
 	Step Step `json:"step"`
+	// Clicks, for a click step on a stepper, is how many times the
+	// recording clicks it: that many identical steps, in one run where the
+	// first was, or appended; 0 takes them out. Nil adds or changes one
+	// step, as for any other option.
+	Clicks *int `json:"clicks,omitempty"`
 }
 
 // AddAllRequest records many options at once, in order (Record all settings
@@ -469,6 +474,9 @@ func (s *Service) Routes(m *http.ServeMux) {
 		e, err := s.env(r)
 		if err != nil {
 			return AddReply{}, err
+		}
+		if req.Clicks != nil {
+			return s.setClicks(e, r.PathValue("name"), req.Step, *req.Clicks)
 		}
 		return s.add(e, r.PathValue("name"), req.Step)
 	}))
@@ -1055,6 +1063,58 @@ func (s *Service) putText(e *env, name string, file int, text string) (Editor, e
 	rest := append([]Step{}, d.Steps[last+1:]...)
 	d.Steps = append(append(d.Steps[:first], steps...), rest...)
 	return s.replaceDraft(e, name, d)
+}
+
+// maxClicks is the most clicks one step can stand for: more than any
+// stepper's values, and few enough that a slip can't write thousands.
+const maxClicks = 64
+
+// setClicks makes the recording click a stepper n times: its steps for the
+// option become n identical clicks, in one run where the first of them
+// was, or at the end; 0 takes them out. MCM Recorder plays every action in
+// a file in turn, so each step is one click.
+func (s *Service) setClicks(e *env, name string, step Step, n int) (AddReply, error) {
+	if step.Kind != KindClick {
+		return AddReply{}, apperr.New(apperr.Invalid, "Only a click step is recorded as a number of clicks")
+	}
+	if n < 0 || n > maxClicks {
+		return AddReply{}, apperr.New(apperr.Invalid, "A stepper is clicked from 0 to %d times, not %d", maxClicks, n)
+	}
+	ed, err := s.editor(e, name)
+	if err != nil {
+		return AddReply{}, err
+	}
+	if ed.Deleted {
+		return AddReply{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to add to it", ed.Draft.Name)
+	}
+	step, err = prepare(step)
+	if err != nil {
+		return AddReply{}, err
+	}
+	d := ed.Draft
+	at := -1
+	var kept []Step
+	for _, st := range d.Steps {
+		if Find([]Step{st}, step) == 0 {
+			if at < 0 {
+				at = len(kept)
+			}
+			continue
+		}
+		kept = append(kept, st)
+	}
+	if at < 0 {
+		at = len(kept)
+	}
+	run := make([]Step, n)
+	for i := range run {
+		run[i] = step
+	}
+	d.Steps = append(append(append([]Step{}, kept[:at]...), run...), kept[at:]...)
+	if _, err := s.replaceDraft(e, name, d); err != nil {
+		return AddReply{}, err
+	}
+	return AddReply{Number: at + 1, Replaced: n == 0}, nil
 }
 
 // addAll appends the steps the recording doesn't have yet, all or none.

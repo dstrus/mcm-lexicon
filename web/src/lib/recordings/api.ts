@@ -40,6 +40,12 @@ export function addStep(name: string, step: Step): Promise<AddReply> {
 	return request<AddReply>('POST', `${at(name)}/steps`, { step });
 }
 
+// setClicks makes the recording click a stepper n times: that many
+// identical click steps, in place; 0 takes them out.
+export function setClicks(name: string, step: Step, clicks: number): Promise<AddReply> {
+	return request<AddReply>('POST', `${at(name)}/steps`, { step, clicks });
+}
+
 // addAll records many options at once; ones the recording has keep their
 // steps.
 export function addAll(name: string, steps: Step[]): Promise<AddAllReply> {
