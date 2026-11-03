@@ -18,6 +18,7 @@
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
@@ -105,6 +106,11 @@
 	let working = $state(false);
 	let error = $state('');
 	let note = $state('');
+	// What covers the window's bottom edge, the info area and the hint strip
+	// under it, so a row scrolled into view stops above both.
+	let infoHeight = $state(0);
+	let hintsHeight = $derived(infoHeight && (document.querySelector<HTMLElement>('.hints')?.offsetHeight ?? 0));
+	let covered = $derived(infoHeight + hintsHeight);
 	let inline = $state<InlineValue>();
 	let editingCell = $derived(recording && param('mode') === 'edit' && current ? current.i : -1);
 
@@ -254,7 +260,7 @@
 	{/if}
 {/snippet}
 
-<div class="mcm" class:paged>
+<div class="mcm" class:paged style:--hints="{hintsHeight}px">
 	{#if paged}
 		<nav class="pages" aria-label={t.pages}>
 			<ul>
@@ -274,7 +280,7 @@
 		{#if !options.length}
 			<p class="none muted">{paged ? t.noOptions : t.noPages}</p>
 		{:else}
-			<ul class="grid" class:two={twoColumns} role="listbox" aria-label={t.option}>
+			<ul class="grid" class:two={twoColumns} role="listbox" aria-label={t.option} style:--covered="{covered}px">
 				{#each slots as x, i (i)}{@render slot(x)}{/each}
 			</ul>
 		{/if}
@@ -285,7 +291,7 @@
 			</div>
 		{/if}
 	</div>
-	<div class="info" aria-live="polite">
+	<div class="info" aria-live="polite" use:aboveHints bind:offsetHeight={infoHeight}>
 		{#if current}
 			{@const o = current.option}
 			{@const rec = recorded(o)}
@@ -336,6 +342,10 @@
 		grid-template-rows: auto auto;
 		gap: var(--space-4) var(--space-6);
 		margin-top: var(--space-5);
+		/* The info area ends the page at the hint strip's top edge: this
+		   takes back the part of main's bottom padding (5rem) the strip
+		   doesn't cover, so scrolled to the end there's no gap. */
+		margin-bottom: calc(var(--hints, 5rem) - 5rem);
 	}
 	.mcm.paged {
 		grid-template-columns: 13rem minmax(0, 1fr);
@@ -498,12 +508,21 @@
 		font-size: var(--step--1);
 	}
 	/* The info text, as SkyUI's: the selected option's help, then its
-	   details in one line of label caps and raw text. */
+	   details in one line of label caps and raw text. On a page taller
+	   than the window it sticks above the hint strip, so the selected
+	   option and what it is are always in view together. */
 	.info {
 		grid-column: 1 / -1;
+		position: sticky;
 		min-height: 5.5rem;
-		padding-top: var(--space-3);
+		/* Out to main's edges, so nothing shows past it as the page scrolls. */
+		margin-inline: calc(-1 * var(--space-6));
+		padding: var(--space-3) var(--space-6);
+		background: var(--panel);
 		border-top: 1px solid var(--rule-strong);
+	}
+	.grid .opt {
+		scroll-margin-bottom: var(--covered, 0px);
 	}
 	.help {
 		margin: 0;
