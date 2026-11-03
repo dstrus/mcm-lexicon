@@ -297,7 +297,12 @@
 					{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
 				</button>
 			{:else}
-				<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>—</button>
+				<!-- Not recorded yet: the value the option has, muted, as the
+				     editor starts from it; a dash when none is known. -->
+				{@const k = known(o)}
+				<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+					{#if k}{#if o.type === 'color'}<span class="swatch" style:background={hex(k.number)}></span>{/if}{show(o, k)}{:else}—{/if}
+				</button>
 			{/if}
 		</span>
 	{:else}
