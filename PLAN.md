@@ -310,7 +310,7 @@ API routes follow Hermaeus's shape (`httpapi.JSON`, typed structs, `apperr` kind
 | `GET /api/status` | Source (live list or catalog file), profile, language, theme, Skyrim running, scan state (idle, or running with mods done and total, and when the last scan finished), the open recording (§5.3) |
 | `PUT /api/source` | Choose an MO2 instance / `Data` folder (and profile), or a catalog file; remembered |
 | `PUT /api/theme` | `system`, `dark` or `light`; remembered (Hermaeus's route, copied) |
-| `POST /api/scan` | Rescan (incremental by default; full on request) |
+| `POST /api/scan` | Rescan (incremental by default; full on request). The list is also rescanned by itself when the MO2 profile's `modlist.txt` or `plugins.txt` changes: the server looks every 2 seconds, compares the files' contents with what they held when the last scan began (MO2 rewrites them unchanged too), and rescans once two looks agree, so MO2 has finished writing; the page follows the scan as it does any other. A Data folder isn't watched, since the game keeps its plugins.txt elsewhere, and neither is a catalog file. |
 | `GET /api/menus` | Catalog summary: each menu's name, kind, mod, counts, certainty |
 | `GET /api/menus/{id}` | One menu with pages and options, plus saved MCM Helper values where its `MCM/Settings/<id>.ini` exists |
 | `GET /api/search?q=` | Options across all menus by label, text, page or mod |

@@ -594,3 +594,60 @@ func TestPlain(t *testing.T) {
 		}
 	}
 }
+
+// A change to the profile's modlist.txt or plugins.txt rescans the list
+// once MO2 has finished writing it; the same contents written again don't.
+func TestWatchRescans(t *testing.T) {
+	was := watchEvery
+	watchEvery = 20 * time.Millisecond
+	t.Cleanup(func() { watchEvery = was })
+	inst := testcorpus.New(t, "Watched", "Default")
+	inst.Mod("Be Seated", false, map[string]string{
+		"MCM/Config/BeSeated/config.json": `{"modName": "BeSeated", "displayName": "Be Seated", "content": [{"text": "Prompts", "type": "toggle", "id": "bPrompts:Main"}]}`,
+		"BeSeated.esp":                    testcorpus.Plugin(),
+	})
+	inst.Plugins("*BeSeated.esp")
+	src, err := modlist.Check(inst.Dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewService("test")
+	s.UseList(src)
+	runs := func() int {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.runs
+	}
+	menus := func() int {
+		c, err := s.Catalog(httptest.NewRequest("GET", "/", nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(c.Menus)
+	}
+	until := func(what string, ok func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(3 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			if ok() {
+				return
+			}
+		}
+		t.Fatalf("timed out waiting for %s", what)
+	}
+	if n := menus(); n != 0 {
+		t.Fatalf("with the mod disabled: %d menus", n)
+	}
+	// Enabling the mod in MO2 rewrites modlist.txt.
+	inst.Mod("Be Seated", true, nil)
+	until("a rescan after modlist.txt changed", func() bool { return runs() >= 2 && !s.State().Scanning && menus() == 1 })
+	// The same plugins.txt written again: no rescan.
+	before := runs()
+	inst.Plugins("*BeSeated.esp")
+	time.Sleep(10 * watchEvery)
+	if runs() != before {
+		t.Errorf("an unchanged plugins.txt rescanned: %d runs, was %d", runs(), before)
+	}
+	// A plugin disabled: a rescan.
+	inst.Plugins("BeSeated.esp")
+	until("a rescan after plugins.txt changed", func() bool { return runs() > before && !s.State().Scanning })
+}

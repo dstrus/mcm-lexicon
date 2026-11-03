@@ -26,6 +26,8 @@ type Service struct {
 	scanning bool
 	done     chan struct{} // closed when the current scan ends
 	runs     int           // bumped per scan, so a stale one doesn't land
+	scanned  sums          // what the profile's modlist.txt and plugins.txt held when the last scan began
+	watching sync.Once     // the watch on those files, started with the first list
 }
 
 func NewService(version string) *Service {
@@ -41,6 +43,7 @@ func (s *Service) UseList(src modlist.Source) {
 	s.cur, s.err = nil, nil
 	s.mu.Unlock()
 	s.Rescan()
+	s.watching.Do(func() { go s.watch() })
 }
 
 // UseFile opens a catalog file in place of a list.
@@ -88,6 +91,9 @@ func (s *Service) Rescan() error {
 		return apperr.New(apperr.Unavailable, "Choose a mod list first")
 	}
 	src := *s.source
+	// What the files say now, before the scan reads them: a change while it
+	// runs is then a change the next look sees.
+	s.scanned = sumsOf(profileFiles(&src))
 	s.runs++
 	run := s.runs
 	if !s.scanning {
