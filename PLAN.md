@@ -403,7 +403,7 @@ Hints: ↑ ↓ (hidden) · while editing, SPACE TURN ON/OFF (a toggle) or E EDIT
 **Value editors**, one per option type, for adding a step from a menu or a search result; editing a step's value uses the compact ones in its table cell, above. Each uses Hermaeus's field style (smoked field, strong hairline, the label in muted caps above) and has a keyboard path:
 
 - toggle: a sliding switch, with ON or OFF beside it
-- slider: a number input with the range and step as its `min`, `max` and `step` when known, the range named beside it ("0 to 100, by 5; default 25"); a value outside the range is refused with a sentence
+- slider: when its range is known, a slider (DESIGN.md, Range) with a number input beside it for an exact value, the range named under them ("0 to 100, by 5; default 25"); without a range, the number input alone; a value outside the range is refused with a sentence. In a table cell, the slider applies as the pointer lets go and the field on Enter
 - menu: a select of the choices, showing text and storing raw; a choice not in the list (from an older recording) stays selectable, marked "(not in this menu now)", so it can be seen and replaced
 - keymap: Hermaeus's hotkey capture (the "Press the key to use" button in `settings/SettingsTable.svelte`, with `settings/keys.ts`), with the table swapped: SkyrimNet's hotkeys are Windows virtual-key codes, MCM Recorder's are DirectX scan codes, so write `keys.ts` from `KeyboardEvent.code` to scan code (mouse buttons from 256 up), and show the key's name beside its code
 - color: a color input and the hex, stored as `0xRRGGBB`

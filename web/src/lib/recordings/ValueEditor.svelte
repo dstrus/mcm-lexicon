@@ -8,6 +8,7 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
 	import { hex, number } from '#lib/menus/values.ts';
+	import Range from '#lib/ui/Range.svelte';
 	import Segmented from '#lib/ui/Segmented.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
 
@@ -83,7 +84,12 @@
 	{:else if kind === 'slider'}
 		<label>
 			<span class="caps label">{t.value}</span>
-			<input type="number" bind:value={() => value, (v) => (value = v == null ? '' : String(v))} min={range?.min} max={range?.max} step={range?.step || 'any'} inputmode="decimal" autocomplete="off" />
+			<!-- The slider when the range is known, and the field, which takes
+			     an exact value. -->
+			<span class="row slider">
+				{#if range}<Range bind:value min={range.min} max={range.max} step={range.step} label={t.slide} />{/if}
+				<input type="number" class:exact={!!range} bind:value={() => value, (v) => (value = v == null ? '' : String(v))} min={range?.min} max={range?.max} step={range?.step || 'any'} inputmode="decimal" autocomplete="off" />
+			</span>
 		</label>
 		{#if range}<p class="muted small">{t.range({ min: number(range.min), max: number(range.max), step: number(range.step) })}{#if option?.default}{' '}{t.defaultIs({ value: number(option.default.number, range.format) })}{/if}</p>{/if}
 	{:else if kind === 'choose'}
@@ -155,6 +161,15 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
+	}
+	.row.slider {
+		display: flex;
+		width: 100%;
+	}
+	.row.slider input.exact {
+		width: 6rem;
+		flex: none;
+		font-variant-numeric: tabular-nums;
 	}
 	.small {
 		font-size: var(--step--1);

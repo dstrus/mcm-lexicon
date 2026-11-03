@@ -8,6 +8,7 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
 	import { hex, number } from '#lib/menus/values.ts';
+	import Range from '#lib/ui/Range.svelte';
 	import { onMount, tick } from 'svelte';
 
 	let {
@@ -66,6 +67,13 @@
 		}
 	}
 
+	// A slider and its field are one editor: moving between them isn't
+	// leaving it.
+	function left(e: FocusEvent) {
+		const to = e.relatedTarget;
+		if (!(to instanceof Node) || !(e.currentTarget as HTMLElement).contains(to)) cancel();
+	}
+
 	function captureKey(e: KeyboardEvent) {
 		if (e.key === 'Escape') return keys(e);
 		if (e.key === 'Tab') return;
@@ -92,19 +100,24 @@
 			<button type="button" onclick={() => apply('off')} onkeydown={keys}>{m.values.off}</button>
 		</span>
 	{:else if kind === 'slider'}
-		<input
-			bind:this={field}
-			bind:value={draft}
-			type="text"
-			inputmode="decimal"
-			class:bad={!!problem}
-			title={problem || (range ? t.range({ min: number(range.min), max: number(range.max), step: number(range.step) }) : undefined)}
-			aria-label={t.value}
-			aria-invalid={!!problem}
-			onkeydown={keys}
-			onblur={cancel}
-			autocomplete="off"
-		/>
+		<!-- The slider when the range is known, which applies as the pointer
+		     lets go; the field, which takes an exact value, applies on Enter. -->
+		<span class="pair" onfocusout={left}>
+			{#if range}<Range bind:value={draft} min={range.min} max={range.max} step={range.step} label={t.slide} oncommit={done} onkeydown={keys} />{/if}
+			<input
+				bind:this={field}
+				bind:value={draft}
+				type="text"
+				inputmode="decimal"
+				class:bad={!!problem}
+				class:exact={!!range}
+				title={problem || (range ? t.range({ min: number(range.min), max: number(range.max), step: number(range.step) }) : undefined)}
+				aria-label={t.value}
+				aria-invalid={!!problem}
+				onkeydown={keys}
+				autocomplete="off"
+			/>
+		</span>
 	{:else if kind === 'choose' && choices.length}
 		<select bind:this={field} aria-label={t.entry} onchange={(e) => apply(e.currentTarget.value)} onkeydown={keys} onblur={cancel}>
 			{#each choices as c, i (i)}
@@ -137,6 +150,17 @@
 		padding-block: 0.15em;
 		padding-left: var(--space-2);
 		font: inherit;
+	}
+	.pair {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		width: 13rem;
+	}
+	.pair input.exact {
+		width: 4.5rem;
+		flex: none;
+		font-variant-numeric: tabular-nums;
 	}
 	input[type='color'] {
 		width: 2.5rem;

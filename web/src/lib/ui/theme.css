@@ -198,6 +198,52 @@ select {
 	text-overflow: ellipsis;
 }
 
+/* A slider: a hairline track with the diamond as its knob, in the accent,
+   drawn the same in every browser. Focus turns the knob to ink. */
+input[type='range'] {
+	appearance: none;
+	height: 1.25rem;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+	height: 1px;
+	background: var(--rule-strong);
+}
+input[type='range']::-moz-range-track {
+	height: 1px;
+	background: var(--rule-strong);
+}
+input[type='range']::-webkit-slider-thumb {
+	appearance: none;
+	width: 12px;
+	height: 12px;
+	margin-top: -5.5px;
+	background: var(--accent);
+	border: 0;
+	clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+input[type='range']::-moz-range-thumb {
+	width: 12px;
+	height: 12px;
+	background: var(--accent);
+	border: 0;
+	border-radius: 0;
+	clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+input[type='range']:focus-visible {
+	outline: none;
+}
+input[type='range']:focus-visible::-webkit-slider-thumb {
+	background: var(--ink);
+}
+input[type='range']:focus-visible::-moz-range-thumb {
+	background: var(--ink);
+}
+
 input::placeholder,
 textarea::placeholder {
 	color: var(--muted);
