@@ -478,8 +478,15 @@
 	   column (a $KEY name is its title). */
 	/* The arrow keys in the menu list: the menu on screen takes the
 	   selected haze, as the selected row of a list does. */
+	/* Room inside the keys' hairline, without moving the row. */
+	.menus a.menu {
+		margin-inline: calc(-1 * var(--space-2));
+		padding-inline: var(--space-2);
+	}
 	.menus.active a.menu[aria-current='page'] {
 		background: var(--select);
+		outline: 1px solid var(--keys);
+		outline-offset: -1px;
 	}
 	.menus a.menu,
 	.session a.rec {

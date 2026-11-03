@@ -562,11 +562,19 @@
 	}
 	/* The arrow keys in the page list: the current page takes the selected
 	   haze, and the option the keys left keeps its diamond without it. */
+	/* Room inside the keys' hairline, without moving the row. */
+	.pages a {
+		margin-inline: calc(-1 * var(--space-2));
+		padding-inline: var(--space-2);
+	}
 	.pages.active a[aria-current='page'] {
 		background: var(--select);
+		outline: 1px solid var(--keys);
+		outline-offset: -1px;
 	}
 	.mcm.inpages .grid .opt[aria-selected='true'] {
 		background: none;
+		outline: none;
 	}
 	.pages .count {
 		margin-left: auto;
@@ -613,8 +621,12 @@
 	.grid .opt:hover:not([aria-selected='true']) {
 		background: var(--glass);
 	}
+	/* Where the arrow keys are: the haze, and a hairline of the accent
+	   around it, so the place reads at a glance. */
 	.grid .opt[aria-selected='true'] {
 		background: var(--select);
+		outline: 1px solid var(--keys);
+		outline-offset: -1px;
 	}
 	.label {
 		flex: 1 1 auto;

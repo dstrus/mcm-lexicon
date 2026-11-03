@@ -198,6 +198,11 @@
 	tr[aria-selected='true'] td {
 		background: var(--select);
 	}
+	/* Where the arrow keys are: a hairline of the accent around the row. */
+	tr[aria-selected='true'] {
+		outline: 1px solid var(--keys);
+		outline-offset: -1px;
+	}
 	/* A menu's results sit under its name, in the accent, as a list's groups do. */
 	.group th {
 		text-align: left;

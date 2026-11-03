@@ -8,7 +8,7 @@ colors:
   smoke: "#1c1c1c"
   panel: "#121212"
   glass-strong: "rgb(0 0 0 / 0.38)"
-  select: "rgb(242 239 230 / 0.07)"
+  select: "rgb(242 239 230 / 0.1)"
   ink: "#f2efe6"
   muted: "#a8a293"
   rule: "#2a2a2a"
@@ -22,7 +22,7 @@ colors:
   smoke-light: "#f3f2ef"
   panel-light: "#eceae6"
   glass-strong-light: "rgb(255 255 255 / 0.55)"
-  select-light: "rgb(27 26 23 / 0.06)"
+  select-light: "rgb(27 26 23 / 0.08)"
   ink-light: "#1b1a17"
   muted-light: "#5d5a52"
   rule-light: "#cdcbc4"
@@ -168,6 +168,7 @@ A near-monochrome palette, off-white on near-black (or near-black on pale smoke)
 - **Pane Glass** (`panel` / `panel-light`): the opaque fill of the details pane, so table content doesn't show through while the pane sticks.
 - **Smoked Field** (`glass-strong` / `glass-strong-light`): the translucent fill of inputs, selects, and text areas.
 - **Selected Row Haze** (`select` / `select-light`): the faint ink wash on the selected table row, the selected quick-find result, and the checked theme option.
+- **Keys' Place** (`keys`, the accent at 70%): a 1px hairline drawn just inside the row, page, or menu the arrow keys act on, over its haze, in every list the keys drive (the menu screen's options, its page list, the column's menus, and the Recordings, Steps, and Search tables), so the place reads at a glance; only the place the keys are in carries it.
 - **Parchment Ink** (`ink` / `ink-light`): body text, current navigation, key caps.
 - **Weathered Ink** (`muted` / `muted-light`): secondary text, column heads, definition terms, unbuilt sections, hints at rest, placeholders.
 - **Hairline** (`rule` / `rule-light`): row dividers and structural borders between shell zones.

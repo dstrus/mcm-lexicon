@@ -316,6 +316,11 @@
 	tr[aria-selected='true'] td {
 		background: var(--select);
 	}
+	/* Where the arrow keys are: a hairline of the accent around the row. */
+	tr[aria-selected='true'] {
+		outline: 1px solid var(--keys);
+		outline-offset: -1px;
+	}
 	.mark {
 		width: 1.5rem;
 		padding-right: 0;
