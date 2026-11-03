@@ -83,6 +83,15 @@ func Path() string {
 	return filepath.Join(dir, "MCM Lexicon", "settings.json")
 }
 
+// Beside is the path of another of MCM Lexicon's files, kept next to the
+// settings; "" when the settings are kept in memory only.
+func (p *Prefs) Beside(name string) string {
+	if p.path == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(p.path), name)
+}
+
 // Load reads the preferences at path. A missing or unreadable file means
 // nothing is remembered yet.
 func Load(path string) *Prefs {

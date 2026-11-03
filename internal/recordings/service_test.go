@@ -363,3 +363,65 @@ func TestSavedToANewFolderStaysListed(t *testing.T) {
 		t.Errorf("its target: %+v", ed.Target)
 	}
 }
+
+// The draft survives a restart: what it holds comes back, editing is on
+// so it's in view, and saving it removes the file it was kept in.
+func TestDraftKeptAcrossRestarts(t *testing.T) {
+	h := newHarness(t)
+	p := prefs.Load(filepath.Join(t.TempDir(), "settings.json"))
+	h.svc = NewService(h.svc.cat, p, nil)
+	h.mux = http.NewServeMux()
+	h.svc.Routes(h.mux)
+	h.svc.SetEditing(true, false)
+	var ed Editor
+	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "Fresh"}, &ed); code != 200 {
+		t.Fatalf("creating: %d", code)
+	}
+	var added AddReply
+	if code := h.call("POST", "/api/recordings/Fresh/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "off"}}, &added); code != 200 {
+		t.Fatalf("adding: %d", code)
+	}
+	file := p.Beside("draft.json")
+	if _, err := os.Stat(file); err != nil {
+		t.Fatalf("the draft file: %v", err)
+	}
+
+	restarted := NewService(h.svc.cat, p, nil)
+	if !restarted.Editing() || restarted.Pending() != 1 {
+		t.Fatalf("after a restart: editing %v, pending %d", restarted.Editing(), restarted.Pending())
+	}
+	h.svc, h.mux = restarted, http.NewServeMux()
+	restarted.Routes(h.mux)
+	if code := h.call("GET", "/api/recordings/Fresh", nil, &ed); code != 200 || ed.Recording != nil || len(ed.Draft.Steps) != 1 || ed.Draft.Steps[0].Option != "Prompts" {
+		t.Fatalf("the new recording after a restart: %d, %+v", code, ed)
+	}
+	var saved SaveReply
+	if code := h.call("POST", "/api/changes/save", nil, &saved); code != 200 || len(saved.Saved) != 1 {
+		t.Fatalf("saving after a restart: %d, %+v", code, saved)
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Errorf("the draft file after saving: %v", err)
+	}
+	if again := NewService(h.svc.cat, p, nil); again.Editing() || again.Pending() != 0 {
+		t.Errorf("after saving and a restart: editing %v, pending %d", again.Editing(), again.Pending())
+	}
+
+	// A draft that belonged to another list is dropped when this one is read.
+	h.svc.SetEditing(true, false)
+	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "Other"}, &ed); code != 200 {
+		t.Fatalf("creating again: %d", code)
+	}
+	b, _ := os.ReadFile(file)
+	os.WriteFile(file, []byte(strings.Replace(string(b), `"from": "`, `"from": "elsewhere`, 1)), 0o644)
+	moved := NewService(h.svc.cat, p, nil)
+	h.svc, h.mux = moved, http.NewServeMux()
+	moved.Routes(h.mux)
+	var list ListReply
+	h.call("GET", "/api/recordings", nil, &list)
+	if moved.Pending() != 0 {
+		t.Errorf("another list's draft: pending %d", moved.Pending())
+	}
+	if _, err := os.Stat(file); !os.IsNotExist(err) {
+		t.Errorf("another list's draft file: %v", err)
+	}
+}

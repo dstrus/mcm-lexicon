@@ -221,7 +221,9 @@ export interface DeleteReply {
 /**
  * Service serves recordings from the list the catalog service last
  * scanned, and holds the drafts: edits kept in memory, one per recording,
- * until Save. Drafts last until the program stops or the list changes.
+ * until Save. The draft is written to a file beside the settings as it
+ * changes and read back at the next start, so stopping the program loses
+ * nothing; it lasts until it's saved, discarded, or the list changes.
  */
 export interface Service {
 }

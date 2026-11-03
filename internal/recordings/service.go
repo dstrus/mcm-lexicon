@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -151,12 +152,15 @@ type DeleteReply struct {
 
 // Service serves recordings from the list the catalog service last
 // scanned, and holds the drafts: edits kept in memory, one per recording,
-// until Save. Drafts last until the program stops or the list changes.
+// until Save. The draft is written to a file beside the settings as it
+// changes and read back at the next start, so stopping the program loses
+// nothing; it lasts until it's saved, discarded, or the list changes.
 type Service struct {
 	cat     *catalog.Service
 	prefs   *prefs.Prefs
 	running func() bool
 	now     func() time.Time
+	file    string // where the draft is kept between runs; "" keeps it in memory only
 
 	mu      sync.Mutex
 	editing bool              // changes are allowed, into the draft; off, everything is read-only
@@ -172,14 +176,93 @@ func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Serv
 	if running == nil {
 		running = func() bool { return false }
 	}
-	s := &Service{cat: cat, prefs: p, running: running, now: time.Now}
+	s := &Service{cat: cat, prefs: p, running: running, now: time.Now, file: p.Beside("draft.json")}
 	s.reset()
+	s.restore()
 	return s
 }
 
 // reset forgets the draft. Callers hold s.mu, or have s to themselves.
 func (s *Service) reset() {
 	s.drafts, s.deleted, s.kept, s.saved, s.created = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}, map[string]bool{}
+}
+
+// held is the draft as its file keeps it: what it changes, and the list
+// it belongs to.
+type held struct {
+	From    string            `json:"from"`
+	Drafts  map[string]*Draft `json:"drafts"`
+	Deleted map[string]bool   `json:"deleted,omitempty"`
+	Created map[string]bool   `json:"created,omitempty"`
+}
+
+// persist writes the draft to its file, or removes the file when the draft
+// is empty. Failing to write is logged, not returned: the draft is still
+// held until the program stops. Callers hold s.mu.
+func (s *Service) persist() {
+	if s.file == "" {
+		return
+	}
+	if len(s.drafts)+len(s.deleted) == 0 {
+		if err := os.Remove(s.file); err != nil && !os.IsNotExist(err) {
+			log.Printf("Could not remove the draft file: %v", err)
+		}
+		return
+	}
+	b, _ := json.MarshalIndent(held{From: s.from, Drafts: s.drafts, Deleted: s.deleted, Created: s.created}, "", "  ")
+	err := os.MkdirAll(filepath.Dir(s.file), 0o755)
+	if err == nil {
+		err = os.WriteFile(s.file, b, 0o644)
+	}
+	if err != nil {
+		log.Printf("Could not keep the draft for next time: %v", err)
+	}
+}
+
+// restore reads the draft the last run left, if it left one. A draft with
+// changes turns editing on, so they're in view and can be saved; it's
+// dropped if another list is opened, as it would have been then.
+func (s *Service) restore() {
+	if s.file == "" {
+		return
+	}
+	b, err := os.ReadFile(s.file)
+	if err != nil {
+		return
+	}
+	var h held
+	if err := json.Unmarshal(b, &h); err != nil || h.From == "" {
+		log.Printf("Could not read the draft kept at %s; it's ignored", s.file)
+		return
+	}
+	for k, d := range h.Drafts {
+		if d == nil || d.Name == "" {
+			delete(h.Drafts, k)
+		}
+	}
+	if len(h.Drafts)+len(h.Deleted) == 0 {
+		return
+	}
+	s.from = h.From
+	for k, d := range h.Drafts {
+		s.drafts[strings.ToLower(k)] = d
+	}
+	for k, v := range h.Deleted {
+		if v {
+			s.deleted[strings.ToLower(k)] = true
+		}
+	}
+	for k, v := range h.Created {
+		if v && s.drafts[strings.ToLower(k)] != nil {
+			s.created[strings.ToLower(k)] = true
+		}
+	}
+	s.editing = true
+	if n := len(s.drafts) + len(s.deleted); n == 1 {
+		log.Print("Restored the draft from last time: changes to 1 recording, not yet saved")
+	} else {
+		log.Printf("Restored the draft from last time: changes to %d recordings, not yet saved", n)
+	}
 }
 
 // Editing reports whether changes are allowed. MCM Lexicon starts
@@ -209,6 +292,7 @@ func (s *Service) SetEditing(on, discard bool) error {
 		}
 		gone := s.dropDrafts(nil)
 		s.deleted = map[string]bool{}
+		s.persist()
 		defer s.forgetOpen(gone)
 	}
 	s.editing = on
@@ -220,6 +304,7 @@ func (s *Service) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reset()
+	s.persist()
 	s.editing = false
 }
 
@@ -260,8 +345,10 @@ func (s *Service) env(r *http.Request) (*env, error) {
 	}
 	s.mu.Lock()
 	if s.from != e.key {
+		// Another list: the draft belonged to the last one.
 		s.from = e.key
 		s.reset()
+		s.persist()
 	}
 	s.mu.Unlock()
 	s.read(e)
@@ -350,12 +437,14 @@ func (s *Service) Routes(m *http.ServeMux) {
 			return Editor{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to change it", d.Name)
 		}
 		s.drafts[key] = &d
+		s.persist()
 		s.mu.Unlock()
 		ed, err := s.editor(e, name)
 		if err == nil && !ed.Changed && ed.Recording != nil {
 			// Back to what's on disk: nothing left to save.
 			s.mu.Lock()
 			delete(s.drafts, key)
+			s.persist()
 			s.mu.Unlock()
 			return s.editor(e, name)
 		}
@@ -372,6 +461,7 @@ func (s *Service) Routes(m *http.ServeMux) {
 		name := r.PathValue("name")
 		s.mu.Lock()
 		gone := s.dropDrafts([]string{name})
+		s.persist()
 		s.mu.Unlock()
 		s.forgetOpen(gone)
 		if e.recording(name) == nil {
@@ -444,6 +534,7 @@ func (s *Service) Routes(m *http.ServeMux) {
 		s.mu.Lock()
 		gone := s.dropDrafts(nil)
 		s.deleted = map[string]bool{}
+		s.persist()
 		s.mu.Unlock()
 		s.forgetOpen(gone)
 		return s.changes(e), nil
@@ -559,6 +650,7 @@ func (s *Service) create(e *env, req CreateRequest) (Editor, error) {
 	s.mu.Lock()
 	s.drafts[strings.ToLower(name)] = d
 	s.created[strings.ToLower(name)] = true
+	s.persist()
 	s.mu.Unlock()
 	return s.editor(e, name)
 }
@@ -921,6 +1013,7 @@ func (s *Service) addAll(e *env, name string, steps []Step) (AddAllReply, error)
 	if reply.Added > 0 {
 		s.mu.Lock()
 		s.drafts[strings.ToLower(d.Name)] = &d
+		s.persist()
 		s.mu.Unlock()
 	}
 	return reply, nil
@@ -944,12 +1037,14 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 		d.Steps[i].Value, d.Steps[i].Side = step.Value, step.Side
 		s.mu.Lock()
 		s.drafts[strings.ToLower(d.Name)] = &d
+		s.persist()
 		s.mu.Unlock()
 		return AddReply{Number: i + 1, Replaced: true}, nil
 	}
 	d.Steps = append(d.Steps, step)
 	s.mu.Lock()
 	s.drafts[strings.ToLower(d.Name)] = &d
+	s.persist()
 	s.mu.Unlock()
 	return AddReply{Number: len(d.Steps)}, nil
 }
@@ -979,6 +1074,7 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 	delete(s.drafts, key)
 	delete(s.created, key) // on disk now
 	s.saved[key] = done
+	s.persist()
 	s.mu.Unlock()
 	s.prefs.Update(func(v *prefs.Values) {
 		if ed.Recording == nil {
@@ -1074,6 +1170,7 @@ func (s *Service) markDeleted(e *env, name string, on bool) (Editor, error) {
 	} else {
 		delete(s.deleted, key)
 	}
+	s.persist()
 	s.mu.Unlock()
 	return s.editor(e, rec.Name)
 }
@@ -1096,6 +1193,7 @@ func (s *Service) deleteNow(e *env, name string) (DeleteReply, error) {
 	delete(s.drafts, strings.ToLower(rec.Name))
 	delete(s.deleted, strings.ToLower(rec.Name))
 	delete(s.saved, strings.ToLower(rec.Name))
+	s.persist()
 	s.mu.Unlock()
 	e.list.Refresh("McmRecorder")
 	s.read(e)
@@ -1187,6 +1285,7 @@ func (s *Service) saveAll(e *env) (SaveReply, error) {
 			if !c.Editor.Changed {
 				s.mu.Lock()
 				delete(s.drafts, strings.ToLower(name))
+				s.persist()
 				s.mu.Unlock()
 				continue
 			}

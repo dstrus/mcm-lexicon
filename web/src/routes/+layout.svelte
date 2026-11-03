@@ -1,11 +1,11 @@
 <script lang="ts">
 	import '#lib/ui/theme.css';
-	import { invalidate, invalidateAll } from '$app/navigation';
+	import { goto, invalidate, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
 	import { live, watchStatus } from '#lib/api/live.svelte.ts';
 	import { menuHref, menusDependency } from '#lib/menus/api.ts';
-	import { recordingHref, recordingsDependency, setOpen } from '#lib/recordings/api.ts';
+	import { recordingHref, recordingsDependency, saveAll, setOpen } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
@@ -17,7 +17,7 @@
 	import ThemeSwitch from '#lib/ui/ThemeSwitch.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
-	import { handleKey } from '#lib/ui/shortcuts.svelte.ts';
+	import { handleKey, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -131,6 +131,29 @@
 		}
 	}
 
+	// Save writes the whole draft from anywhere, as the Changes page's Save
+	// does. What can't be written, that page explains, so a failure goes
+	// there. The Changes page's own ⌘⏎ takes over while it's open.
+	let saving = $state(false);
+	let saveError = $state('');
+	let savedCount = $state(0);
+	async function saveNow() {
+		if (saving || !pending) return;
+		saving = true;
+		saveError = '';
+		try {
+			savedCount = (await saveAll()).saved.length;
+			await invalidateAll();
+		} catch (e) {
+			saveError = e instanceof ApiError ? e.message : String(e);
+			await invalidateAll();
+			if (!here('/changes')) await goto('/changes');
+		} finally {
+			saving = false;
+		}
+	}
+	useShortcuts(() => (editing && pending > 0 ? [{ key: 'Enter', label: m.nav.save, command: true, disabled: saving, run: saveNow }] : []));
+
 	// When the catalog was scanned: the time today, the date before that.
 	function scannedLabel(iso: string): string {
 		const when = new Date(iso);
@@ -201,10 +224,18 @@
 						{#if chosen.unlisted}<span class="visually-hidden">{m.nav.disabledHere}</span>{/if}
 					</a>
 				{/if}
-				{#if editing}
-					<a class="changes caps" class:pending={pending > 0} href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>
+				{#if editing && pending > 0}
+					<div class="save">
+						{#key pending}<button type="button" class="button unsaved" disabled={saving} onclick={saveNow}>{m.nav.save}</button>{/key}
+						<a class="caps review" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>{m.nav.review}</a>
+					</div>
+					<p class="note" role="status">{m.nav.changesTitle({ count: pending })}</p>
+					{#if saveError}<p class="note error" role="alert">{saveError}</p>{/if}
+				{:else if editing}
+					<a class="changes caps" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>
 						{m.nav.changes}<span class="count">{pending}</span>
 					</a>
+					{#if savedCount}<p class="note" role="status">{m.nav.savedNote({ count: savedCount })}</p>{/if}
 				{/if}
 			</section>
 			<nav class="sections" aria-label={m.nav.sections}>
@@ -467,10 +498,63 @@
 		align-items: baseline;
 		justify-content: space-between;
 	}
-	/* A draft with something in it is worth noticing: full ink, not the
-	   accent, which is for selection. */
-	.changes.pending {
+	/* A draft with something in it: Save, the one amber fill in the app,
+	   since unsaved work is the one warning the player can lose something
+	   to, with the way to review it beside, and a line saying what's
+	   waiting. It rises in when the draft starts and again as each change
+	   lands, then breathes a soft amber light so it's never mistaken for
+	   settled. */
+	.save {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+	}
+	.save .button.unsaved {
+		background: var(--warn);
+		border-color: var(--warn);
+		color: var(--panel);
+		font-weight: 600;
+		box-shadow: 0 2px 14px -2px color-mix(in oklab, var(--warn) 55%, transparent);
+		animation:
+			arrive 320ms cubic-bezier(0.16, 1, 0.3, 1),
+			breathe 2.8s ease-in-out 320ms infinite;
+	}
+	.save .button.unsaved:hover:not(:disabled) {
+		border-color: var(--ink);
+		box-shadow: 0 3px 18px -2px color-mix(in oklab, var(--warn) 85%, transparent);
+	}
+	@keyframes arrive {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+	}
+	@keyframes breathe {
+		50% {
+			box-shadow: 0 2px 22px 0 color-mix(in oklab, var(--warn) 80%, transparent);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.save .button.unsaved {
+			animation: none;
+		}
+	}
+	.review {
+		font-size: var(--step-0);
+		text-decoration: none;
+		color: var(--muted);
+	}
+	.review:hover {
 		color: var(--ink);
+	}
+	.review[aria-current='page'] {
+		color: var(--accent);
+	}
+	.session .note {
+		margin: 0;
+	}
+	.note.error {
+		color: var(--danger);
 	}
 	/* A count in the link's own ink: how many menus, or how many recordings
 	   the draft changes. */

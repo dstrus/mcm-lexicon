@@ -34,7 +34,7 @@ shell:
   readOnly: Read-only
   editing: Editing
   readOnlyTitle: Nothing can be changed. Turn on editing to make and change recordings.
-  editingTitle: Every change goes to the draft. Review and save it on the Changes page.
+  editingTitle: Every change goes to the draft until you save it, here or on the Changes page.
   leaveTitle: The draft has changes
   leaveSays:
     one: The draft changes {count} recording, and none of it is saved. Review and save it first, or discard it to go back to read-only.
@@ -72,6 +72,11 @@ nav:
   recordings: Recordings
   compare: Compare
   changes: Changes
+  save: Save
+  review: Review
+  savedNote:
+    one: Saved {count} recording.
+    other: Saved {count} recordings.
   menusFilter: Filter menus
   inactiveMenus: Inactive
   openRecording: Open {name}
@@ -515,11 +520,11 @@ edit:
 # The whole draft, reviewed before Save.
 changes:
   title: Changes
-  readOnly: MCM Lexicon is read-only. Turn on editing in the top bar to make and change recordings; every change waits here until you save it.
+  readOnly: MCM Lexicon is read-only. Turn on editing at the top of the column to make and change recordings; every change waits here until you save it.
   none: The draft has no changes. Make them on any recording’s page, from a menu or a search result with A, or with New on Recordings.
   summary:
-    one: Save writes or removes {files} file for {count} recording, backing up the current ones first. Changes are kept until you save, discard them, close MCM Lexicon, or choose another list.
-    other: Save writes or removes {files} files for {count} recordings, backing up the current ones first. Changes are kept until you save, discard them, close MCM Lexicon, or choose another list.
+    one: Save writes or removes {files} file for {count} recording, backing up the current ones first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
+    other: Save writes or removes {files} files for {count} recordings, backing up the current ones first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
   saveAll: Save all
   discardAll: Discard all
   blocked: Some recordings can’t be written yet; each says why below. Nothing is written until they can be.
@@ -545,7 +550,7 @@ info:
   autorun: Autorun
   autorunNote: With autorun on, MCM Recorder plays it by itself when a new game starts.
   none: None
-  kept: Each change goes into a draft as you make it. Save the draft on the Changes page.
+  kept: Each change goes into a draft as you make it. Save, in the column or on the Changes page, writes it.
 
 # The files Save writes.
 files:
