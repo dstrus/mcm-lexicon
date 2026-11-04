@@ -2,22 +2,32 @@
 // ellipsis: when it is, resting the pointer on it, or focusing the link or
 // button it's in, shows the whole text in a tip beneath it, in the app's
 // own materials rather than the browser's, and in the text's own type, so
-// it reads as the same words continued. Text that fits shows nothing.
+// it reads as the same words continued. Text that fits shows nothing,
+// unless a note is given (a menu's raw $KEY name): the tip then shows the
+// note under the text, in the file font, whether the text is cut short or
+// not.
 
 const delay = 250; // ms before the tip appears, so passing over rows doesn't flicker
 
-export function clipped(node: HTMLElement) {
+export function clipped(node: HTMLElement, note?: string) {
 	let tip: HTMLElement | undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	function show() {
-		if (node.scrollWidth <= node.clientWidth + 1) return;
+		const cut = node.scrollWidth > node.clientWidth + 1;
+		if (!cut && !note) return;
 		const text = node.textContent?.trim();
 		if (!text) return;
 		tip = document.createElement('div');
 		tip.className = 'tip';
 		tip.setAttribute('role', 'tooltip');
 		tip.textContent = text;
+		if (note) {
+			const raw = document.createElement('span');
+			raw.className = 'tip-note';
+			raw.textContent = note;
+			tip.appendChild(raw);
+		}
 		const type = getComputedStyle(node);
 		tip.style.fontFamily = type.fontFamily;
 		tip.style.fontSize = type.fontSize;
@@ -57,6 +67,9 @@ export function clipped(node: HTMLElement) {
 	control?.addEventListener('focus', enter);
 	control?.addEventListener('blur', hide);
 	return {
+		update(next?: string) {
+			note = next;
+		},
 		destroy() {
 			hide();
 			node.removeEventListener('mouseenter', enter);

@@ -294,9 +294,9 @@
 						{#each menus as s, i (s.id)}
 							{#if i === firstInactive}<li class="group caps" aria-hidden="true">{m.nav.inactiveMenus}</li>{/if}
 							<li>
-								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} onclick={() => (column.active = false)} title={s.name !== s.nameText ? s.name : undefined} aria-current={currentMenu === s.id ? 'page' : undefined}>
+								<a class="caps menu" class:inactive={!s.active} href={menuHref(s.id)} onclick={() => (column.active = false)} aria-current={currentMenu === s.id ? 'page' : undefined}>
 									<span class="marker">{#if currentMenu === s.id}<Diamond />{/if}</span>
-									<span class="clip">{s.nameText}</span>
+									<span class="clip" use:clipped={s.name !== s.nameText ? s.name : undefined}>{s.nameText}</span>
 								</a>
 							</li>
 						{/each}

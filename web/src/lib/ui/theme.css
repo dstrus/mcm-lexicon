@@ -337,6 +337,16 @@ input[type='radio'] {
 	pointer-events: none;
 }
 
+/* A tip's note: the raw name under the text, as a file spells it. */
+.tip .tip-note {
+	display: block;
+	margin-top: 0.15em;
+	font: 400 var(--step--1) / 1.4 var(--font-mono);
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	* {
 		transition-duration: 0s !important;
