@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"lexicon/internal/catalog"
 	"lexicon/internal/gamecheck"
 	"lexicon/internal/modlist"
 	"lexicon/internal/prefs"
@@ -93,14 +94,15 @@ func main() {
 	}
 	actualPort := ln.Addr().(*net.TCPAddr).Port
 	handler, err := server.New(server.Options{
-		Source:  source,
-		Catalog: saved.CatalogFile,
-		Prefs:   remembered,
-		Running: gamecheck.Running,
-		Token:   sessionToken(),
-		Port:    actualPort,
-		Files:   web.Files(),
-		Version: version,
+		Source:   source,
+		Catalog:  saved.CatalogFile,
+		Prefs:    remembered,
+		Running:  gamecheck.Running,
+		Token:    sessionToken(),
+		Port:     actualPort,
+		Files:    web.Files(),
+		Version:  version,
+		CacheDir: catalog.DefaultCacheDir(),
 		// Under make dev, Vite serves the pages, so this program's own copy
 		// of them (built when it was) isn't the one to look at.
 		DevPages: os.Getenv("LEXICON_DEV_PAGES"),

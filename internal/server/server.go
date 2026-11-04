@@ -39,6 +39,9 @@ type Options struct {
 	Port    int
 	Files   fs.FS // the built frontend, with index.html at its root
 	Version string
+	// CacheDir is where scans keep their cache (catalog.DefaultCacheDir);
+	// "" keeps nothing.
+	CacheDir string
 	// DevPages, during development, is the Vite dev server's address: page
 	// requests go there, since the frontend built into this program may be
 	// older than the source. "" serves the built frontend.
@@ -63,6 +66,7 @@ func New(o Options) (*Server, error) {
 		return nil, fmt.Errorf("the frontend isn't built: %w", err)
 	}
 	s := &Server{Options: o, index: bytes.ReplaceAll(index, tokenPlaceholder, []byte(o.Token)), api: http.NewServeMux(), catalog: catalog.NewService(o.Version)}
+	s.catalog.UseCache(o.CacheDir)
 	switch {
 	case o.Source != nil:
 		s.source = o.Source

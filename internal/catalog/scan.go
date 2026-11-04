@@ -18,6 +18,9 @@ type Options struct {
 	Language string // translations to read, as their file names spell it; ENGLISH by default
 	Version  string // MCM Lexicon's, for the catalog's ListInfo
 	Now      time.Time
+	// CacheDir is where the scan keeps what it learns of the list's
+	// scripts for the next one (DefaultCacheDir); "" keeps nothing.
+	CacheDir string
 }
 
 // Scan reads every menu in the list. Reading a file can fail without the
@@ -45,11 +48,12 @@ func Scan(l *modlist.List, o Options) *Catalog {
 		Menus:   []Menu{},
 		Skipped: []Skipped{},
 	}
-	s := &scan{list: l, cat: c, tr: loadTranslations(l, c.List.Language), ids: map[string]bool{}}
+	s := &scan{list: l, cat: c, tr: loadTranslations(l, c.List.Language), ids: map[string]bool{}, cache: loadParents(o.CacheDir, l.Source.Path)}
 	for _, p := range l.ArchiveProblems() {
 		s.skip(p.File, SkipReasonUnreadable, p.Detail)
 	}
 	s.scripts()
+	s.cache.save()
 	s.plugins()
 	s.mcmHelper()
 	s.papyrus()
@@ -72,6 +76,7 @@ type scan struct {
 	sources  map[string][]modlist.File
 	compiled map[string]modlist.File
 	forms    map[string]*form
+	cache    *parents
 }
 
 // attachment is a quest in a plugin with a script attached, and what the

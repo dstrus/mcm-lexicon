@@ -700,3 +700,57 @@ func TestWatchDataFolderPlugins(t *testing.T) {
 		}
 	}
 }
+
+// A scan keeps each compiled script's parent for the next one, by file,
+// size, and age: the next scan finds the same menus without reading the
+// scripts again, and reads one again once it changes.
+func TestScanCache(t *testing.T) {
+	l := build(t)
+	dir := t.TempDir()
+	now := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	rescan := func(cache string) *Catalog {
+		t.Helper()
+		l, err := modlist.Read(l.Source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return Scan(l, Options{CacheDir: cache, Now: now})
+	}
+	first := rescan(dir)
+	files, _ := filepath.Glob(filepath.Join(dir, "scripts-*.json"))
+	if len(files) != 1 {
+		t.Fatalf("cache files: %v", files)
+	}
+	b, _ := json.Marshal(rescan(dir))
+	want, _ := json.Marshal(first)
+	if string(b) != string(want) {
+		t.Error("the scan from the cache differs")
+	}
+
+	// A script spoiled without changing its size or age isn't read again:
+	// its parent comes from the cache. Without the cache, it's unreadable.
+	unrelated := filepath.Join(l.Source.Path, "mods", "Classic", "Scripts", "Unrelated.pex")
+	info, _ := os.Stat(unrelated)
+	os.WriteFile(unrelated, make([]byte, info.Size()), 0o644)
+	os.Chtimes(unrelated, info.ModTime(), info.ModTime())
+	unreadable := func(c *Catalog) bool {
+		for _, s := range c.Skipped {
+			if strings.HasSuffix(s.Path, "Unrelated.pex") && s.Reason == SkipReasonUnreadable {
+				return true
+			}
+		}
+		return false
+	}
+	if unreadable(rescan(dir)) || !unreadable(rescan("")) {
+		t.Error("the cache wasn't what decided the spoiled script")
+	}
+
+	// A script that changes is read again: Classic_MCM no longer a menu.
+	classic := filepath.Join(l.Source.Path, "mods", "Classic", "Scripts", "Classic_MCM.pex")
+	os.WriteFile(classic, []byte(testcorpus.Compiled("Classic_MCM", "Quest")), 0o644)
+	for _, m := range rescan(dir).Menus {
+		if m.NameText == "Classic Menu" {
+			t.Error("Classic Menu still listed after its script changed")
+		}
+	}
+}

@@ -15,7 +15,8 @@ import (
 // background, or one read from a catalog file. While a list rescans, the
 // catalog it had stays in place until the new one is ready.
 type Service struct {
-	version string
+	version  string
+	cacheDir string // where scans keep their cache; "" for none
 
 	mu       sync.Mutex
 	cur      *Catalog
@@ -34,6 +35,14 @@ func NewService(version string) *Service {
 	done := make(chan struct{})
 	close(done)
 	return &Service{version: version, done: done}
+}
+
+// UseCache keeps what scans learn of a list's scripts in dir, so a rescan
+// reads only the scripts that changed; "" keeps nothing.
+func (s *Service) UseCache(dir string) {
+	s.mu.Lock()
+	s.cacheDir = dir
+	s.mu.Unlock()
 }
 
 // UseList makes src the list the catalog comes from, and scans it.
@@ -108,7 +117,7 @@ func (s *Service) Rescan() error {
 		var c *Catalog
 		l, err := modlist.Read(src)
 		if err == nil {
-			c = Scan(l, Options{Version: s.version})
+			c = Scan(l, Options{Version: s.version, CacheDir: s.cacheDir})
 		}
 		s.mu.Lock()
 		defer s.mu.Unlock()

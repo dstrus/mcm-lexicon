@@ -71,13 +71,29 @@ func (s *scan) base(name string) string {
 		if k == "ski_configbase" || k == "mcm_configbase" {
 			return k
 		}
-		f := s.form(k)
-		if f == nil {
+		parent, ok := s.parent(k)
+		if !ok {
 			return ""
 		}
-		k = ir.Key(f.script.Parent)
+		k = ir.Key(parent)
 	}
 	return ""
+}
+
+// parent is the script a script extends, from the cache when its compiled
+// file hasn't changed since a scan read it, else from its form; ok is
+// false for a script the list doesn't have.
+func (s *scan) parent(name string) (string, bool) {
+	if c, ok := s.compiled[name]; ok && s.cache != nil {
+		if p, ok := s.cache.get(c); ok {
+			return p, true
+		}
+	}
+	f := s.form(name)
+	if f == nil {
+		return "", false
+	}
+	return f.script.Parent, true
 }
 
 // form is a script's form, read once: the compiled script the game runs,
@@ -99,6 +115,8 @@ func (s *scan) form(name string) *form {
 		if err != nil {
 			s.skip(c, SkipReasonUnreadable, err.Error())
 			compiled = nil
+		} else if s.cache != nil {
+			s.cache.put(c, compiled.Script().Parent)
 		}
 	}
 	src, text := s.source(name, c.Mod)
@@ -396,11 +414,11 @@ func Scripts(l *modlist.List) map[string]bool {
 		}
 		for name := k; name != "" && name != "ski_configbase" && name != "mcm_configbase" && !out[name]; {
 			out[name] = true
-			f := s.form(name)
-			if f == nil {
+			parent, ok := s.parent(name)
+			if !ok {
 				break
 			}
-			name = ir.Key(f.script.Parent)
+			name = ir.Key(parent)
 		}
 	}
 	return out

@@ -55,10 +55,15 @@ func runScan(args []string) {
 	asJSON := fs.Bool("json", false, "write the list's catalog as JSON, to -o or to standard output")
 	out := fs.String("o", "", "with -json, the catalog file to write (a .json file)")
 	language := fs.String("language", "ENGLISH", "the translations to read, as their file names spell the language")
+	cache := fs.Bool("cache", true, "with -json, use and update the cache the app keeps of the list's scripts")
 	fs.Parse(args)
 	l := read()
 	if *asJSON {
-		c := catalog.Scan(l, catalog.Options{Language: *language, Version: version})
+		o := catalog.Options{Language: *language, Version: version}
+		if *cache {
+			o.CacheDir = catalog.DefaultCacheDir()
+		}
+		c := catalog.Scan(l, o)
 		if *out == "" {
 			b, err := catalog.Marshal(c)
 			if err != nil {

@@ -180,7 +180,7 @@ Mirror Hermaeus. New packages are marked ★; the rest are copied from Hermaeus 
 | ★ `internal/papyrus/mcm/` | Turns either representation into one intermediate form (§3.3), then extracts menus, pages, options, choices and ranges from it |
 | ★ `internal/mcmhelper/` | MCM Helper `config.json` → catalog, plus reading `MCM/Settings/<id>.ini` user values for display |
 | ★ `internal/translations/` | UTF-16 translation files → `$KEY` lookup per language |
-| ★ `internal/catalog/` | Orchestrates a scan: finds MCM scripts (inheritance from `SKI_ConfigBase` across the virtual file index), joins plugin VMAD data, MCM Helper configs and translations. Caches results keyed by file size+mtime so rescans are quick. Reads and writes catalog files. Routes. |
+| ★ `internal/catalog/` | Orchestrates a scan: finds MCM scripts (inheritance from `SKI_ConfigBase` across the virtual file index), joins plugin VMAD data, MCM Helper configs and translations. Caches each compiled script's parent by file, size, and modification time, so rescans read only the scripts that changed. Reads and writes catalog files. Routes. |
 | ★ `internal/recordings/` | Reading and writing MCM Recorder recordings (§2.1), validating steps against a catalog, routes |
 | ★ `internal/snapshot/` | Writing a snapshot of a list (§10), and `diff` between two catalogs |
 | ★ `internal/testcorpus/` | Test helpers: small synthetic MO2 instances built in temp dirs (like Hermaeus's `testenv`), plus the opt-in hook to real snapshots (§7) |
@@ -339,7 +339,7 @@ API routes follow Hermaeus's shape (`httpapi.JSON`, typed structs, `apperr` kind
 | `DELETE /api/changes` | Discard the whole draft |
 | `DELETE /api/recordings/{name}` | Put its deletion in the draft; only in a folder MCM Lexicon saved to (§4) |
 
-Scans can take a while on 1,800 mods. Run them in the background with progress shown in status, and serve the previous catalog until the new one is ready. Cache parsed scripts by (path, size, mtime) in the OS cache dir.
+Scans can take a while on 1,800 mods. Run them in the background with progress shown in status, and serve the previous catalog until the new one is ready. **The scan cache** (built): finding the menus means following every compiled script's Extends chain, which reads all of them, about 4,000 in each snapshot. Each scan keeps the parent each one names in `MCM Lexicon/scripts-<hash of the list's path>.json` in the system's cache folder, by the file's path (and its path in the archive, for a packed one), size, and modification time, so the next scan reads only scripts that changed. Only scripts that read cleanly are kept, so an unreadable one is read and reported every time; entries for files gone from the list are dropped; and a file of another format version is ignored. On the snapshots it takes a rescan from 1.6 s to 0.9 s (MGO); what's left is mostly the menus' own analysis, which isn't cached, since a change to the analysis would have to clear it. `lexicon scan -json` uses the same cache, or not with `-cache=false`.
 
 ### 5.2 The design language: Hermaeus's, inherited
 
