@@ -26,7 +26,7 @@ A new or updated list needs a new snapshot, not a new plan.
 - compare two versions of a list
 - save recordings in exactly the format MCM Recorder reads
 
-The name is a working title, after MCM Lexicon gro-Shub, the librarian of the College of Winterhold's Arcanaeum, who catalogs everything. Renaming means changing the module name, the program name and the copy; do it early or not at all.
+The name is MCM Lexicon, and it's settled.
 
 ### Decisions already made
 
@@ -523,7 +523,7 @@ Later, if wanted:
 
 These need the game, the author's Windows machine, or the author's decision, so Claude Code can't do them alone:
 
-1. **Copy the snapshots to the Mac** and give Claude Code the folder (`URAG_SNAPSHOTS`). After a list updates, or to cover another list, run `New-MCM-Lexicon-Snapshot.ps1` on Windows (§10) and copy the new zip over. Once Phase 2 is done, `lexicon snapshot` replaces the script and runs on any OS.
+1. **Copy the snapshots to the Mac** and give Claude Code the folder (`LEXICON_SNAPSHOTS`). After a list updates, or to cover another list, run `New-MCM-Lexicon-Snapshot.ps1` on Windows (§10) and copy the new zip over. Once Phase 2 is done, `lexicon snapshot` replaces the script and runs on any OS.
 2. **Record one MCM Helper menu in game** (for example two toggles and a slider in Physical Collision VR, and the keymap in Prisma UI AddItem Menu), save it in an MO2 mod, and take a new snapshot. That confirms what MCM Helper menus record as `mod` and `page` (display name vs. `modName`, page display names), which §2.2's mapping assumes.
 3. **Once Phase 9 works, replay one written recording in game,** ideally one with a non-ASCII label and one with an `index`, to confirm the file format end to end.
 4. **Done: snapshots carry archives.** All four were retaken with Phase 8's build, Synergy again after the fix for archives whose plugin is in another mod (§10); its Sofia Follower menu now reads from the SkyUI replacer's `SofiaFollower.bsa`. Retake a snapshot whenever its list updates.
