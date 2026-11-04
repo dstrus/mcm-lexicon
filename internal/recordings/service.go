@@ -812,8 +812,16 @@ func (s *Service) list(e *env) ListReply {
 	restoring := maps.Clone(s.fromBackups)
 	s.mu.Unlock()
 	for _, rec := range e.recs {
-		sum := summarize(rec, e.cat)
-		if d := drafts[strings.ToLower(rec.Name)]; d != nil {
+		shown := rec
+		d := drafts[strings.ToLower(rec.Name)]
+		if d != nil {
+			// As the draft has it: its steps, and what they set.
+			r := *rec
+			r.Title, r.Author, r.Version, r.Autorun, r.Steps = d.Title, d.Author, d.Version, d.Autorun, d.Steps
+			shown = &r
+		}
+		sum := summarize(shown, e.cat)
+		if d != nil {
 			sum.Drafted = true
 			delete(drafts, strings.ToLower(rec.Name))
 		}
@@ -1072,6 +1080,14 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 		ed.Changed = len(paths) > 0
 	} else if ed.Target.Dir != "" && err == nil {
 		disk := Disk(ed.Target.Dir, d.Name)
+		// A recording from another mod, which the target doesn't hold yet,
+		// is read against that mod's copy: untouched, its files are as
+		// saved there; changed, the differences shown are the change, not
+		// the whole file, though every file is new where Save writes it.
+		home := map[string]string{}
+		if len(disk) == 0 && rec != nil && rec.Mod != "" && !strings.EqualFold(rec.Mod, ed.Target.Name) {
+			home = Disk(s.target(e, Draft{Target: rec.Mod}).Dir, d.Name)
+		}
 		for _, f := range files {
 			p := PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew, Covers: cover[f.Name]}
 			if old, ok := disk[f.Path]; ok {
@@ -1079,8 +1095,15 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 				p.Change = FileChangeChanged
 				if textfile.Normalize(old) == f.Text || sameJSON(old, f.Text) {
 					p.Change = FileChangeSame
+				} else {
+					p.Old = Canonical(f.Path, old) // so the diff shows the change, not the spelling
 				}
 				delete(disk, f.Path)
+			} else if old, ok := home[f.Path]; ok && p.Covers == "" {
+				p.Old = Canonical(f.Path, old)
+				if untouched {
+					p.Change = FileChangeSame
+				}
 			}
 			ed.Files = append(ed.Files, p)
 		}

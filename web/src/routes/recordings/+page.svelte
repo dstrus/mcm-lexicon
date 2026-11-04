@@ -11,6 +11,7 @@
 	import { create, deleteRecording, recordingHref, restore, restoreFrom, setOpen } from '#lib/recordings/api.ts';
 	import { countsText } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import Path from '#lib/ui/Path.svelte';
 	import SortHeader from '#lib/ui/SortHeader.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
@@ -228,7 +229,7 @@
 					{#if current.version}<dt class="caps">{t.version}</dt><dd>{current.version}</dd>{/if}
 					<dt class="caps">{t.autorun}</dt><dd>{current.autorun ? t.on : t.off}</dd>
 					<dt class="caps">{t.in}</dt><dd>{current.mod}</dd>
-					{#if current.info}<dt class="caps">{t.info}</dt><dd class="raw">{current.info}</dd>{/if}
+					{#if current.info}<dt class="caps">{t.info}</dt><dd class="raw path"><Path text={current.info} /></dd>{/if}
 					<dt class="caps">{t.files}</dt><dd>{count(current.files)}</dd>
 					<dt class="caps">{t.steps}</dt><dd>{count(current.steps)}</dd>
 				</dl>
@@ -467,6 +468,10 @@
 	.raw {
 		font-family: var(--font-mono);
 		font-size: var(--step--1);
+	}
+	/* A path breaks after its separators (Path), not inside a name. */
+	.pane dd.path {
+		overflow-wrap: normal;
 	}
 	.summary {
 		display: grid;

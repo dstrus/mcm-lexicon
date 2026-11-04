@@ -262,3 +262,20 @@ func TestBackupsAndPut(t *testing.T) {
 		t.Error("the info file stayed")
 	}
 }
+
+// A file in its canonical form reads as Save writes it, so a diff against
+// it shows what changed, not how the file was spelled; text that doesn't
+// parse is left alone.
+func TestCanonical(t *testing.T) {
+	info := Canonical("McmRecorder/MGO.json", `{"name": "MGO", "Author": "Moyce", "autorun": "True", "version": "1.0.0"}`)
+	if info != "{\n  \"author\": \"Moyce\",\n  \"autorun\": \"true\",\n  \"name\": \"MGO\",\n  \"version\": \"1.0.0\"\n}" {
+		t.Errorf("info:\n%s", info)
+	}
+	steps := Canonical("McmRecorder/MGO/0001_Be Seated.json", `[{"Mod": "Be Seated", "option": "Prompts", "toggle": "off"}]`)
+	if steps != "[\n  {\n    \"mod\": \"Be Seated\",\n    \"option\": \"Prompts\",\n    \"toggle\": \"off\"\n  }\n]" {
+		t.Errorf("steps:\n%s", steps)
+	}
+	if Canonical("McmRecorder/MGO/0001_X.json", "not json") != "not json" {
+		t.Error("unparsable text changed")
+	}
+}

@@ -103,7 +103,7 @@
 				{d.deletes({ count: writes, folder })}
 				<button type="button" class="textbutton" disabled={working} onclick={undelete}>{d.restore}</button>
 			{:else if ed.changed && target.kind !== 'none'}
-				{ed.files.some((f) => f.old) ? d.notSavedBackup({ count: writes, folder }) : d.notSaved({ count: writes, folder })}
+				{ed.files.some((f) => f.change === 'changed' || f.change === 'removed') ? d.notSavedBackup({ count: writes, folder }) : d.notSaved({ count: writes, folder })}
 				<a class="textbutton" href="/changes">{d.review}</a>
 				{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
 			{:else if ed.saved}

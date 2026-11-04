@@ -610,6 +610,8 @@ backups:
 
 files:
   inFolder: Written to {folder}.
+  asIn: As saved in {mod}. A change saves a copy elsewhere, leaving these as they are.
+  against: The differences shown are from the copy in {mod}.
   covers: Empty, in place of {mod}’s step file of the same name. The game sees one folder made of every mod’s, so without it the game would play that file too.
   changesTo: Changes to {file}
   # Typing a file: the text is read as MCM Recorder reads it, into the draft.

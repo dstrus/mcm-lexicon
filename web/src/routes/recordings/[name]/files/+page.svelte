@@ -20,6 +20,9 @@
 	const t = m.files;
 	let ed = $derived(data.editor);
 	let canEdit = $derived((page.data.status as Status).editing && !ed.deleted);
+	// The mod the recording is in now, when Save writes elsewhere: a
+	// recording from another mod, whose files here are read against its.
+	let home = $derived(ed.recording?.mod && ed.target.kind !== 'data' && ed.recording.mod.toLowerCase() !== ed.target.name.toLowerCase() ? ed.recording.mod : '');
 	// The files Save writes, in order: the info file, then the step files,
 	// which is how the server numbers them.
 	// The files that can be typed: the recording's own, not those Save
@@ -85,7 +88,8 @@
 {#if !ed.files.length}
 	<p class="empty">{m.recording.noFiles}</p>
 {:else}
-	{#if ed.target.dir}<p class="muted where">{t.inFolder({ folder: ed.target.dir })}</p>{/if}
+	{#if home && !ed.drafted}<p class="muted where">{t.asIn({ mod: home })}</p>
+	{:else if ed.target.dir}<p class="muted where">{t.inFolder({ folder: ed.target.dir })}{#if home}{' '}{t.against({ mod: home })}{/if}</p>{/if}
 	{#each ed.files as f (f.path)}
 		{@const i = written.indexOf(f)}
 		<section>

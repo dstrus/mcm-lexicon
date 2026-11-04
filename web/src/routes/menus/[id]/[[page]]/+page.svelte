@@ -20,6 +20,7 @@
 	import type { Step } from '#lib/api/types/recordings.ts';
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import Path from '#lib/ui/Path.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -519,7 +520,7 @@
 						<span class="sep">·</span> {allowed(o)}
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
-						<span class="sep">·</span> <span class="caps">{m.option.definedIn}</span> <span class="raw">{o.source.path}</span>{#if o.source.line}:{o.source.line}{/if}{#if o.source.archive} {m.common.inArchive({ archive: o.source.archive })}{/if}
+						<span class="sep">·</span> <span class="caps">{m.option.definedIn}</span> <span class="raw"><Path text={o.source.path} />{#if o.source.line}:{o.source.line}{/if}</span>{#if o.source.archive} {m.common.inArchive({ archive: o.source.archive })}{/if}
 						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{/if}
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}

@@ -242,6 +242,45 @@ func Cover(files []OutFile, name string, cover map[string]string) []OutFile {
 	return files
 }
 
+// Canonical is a recording's file as Save would write what it says: the
+// same keys, order, spacing, and spelling of what MCM Recorder reads
+// alike ("Mod" and "mod", "True" and "true"), so a diff against it shows
+// what changed, not how the file was spelled. Text that doesn't parse is
+// returned as it is.
+func Canonical(path, text string) string {
+	if strings.Count(path, "/") == 1 {
+		info, err := ParseInfo(text)
+		if err != nil {
+			return text
+		}
+		autorun := "false"
+		if info.Autorun {
+			autorun = "true"
+		}
+		out, err := encode([]pair{{"author", info.Author}, {"autorun", autorun}, {"name", info.Title}, {"version", info.Version}})
+		if err != nil {
+			return text
+		}
+		return out
+	}
+	steps, err := ParseSteps(text)
+	if err != nil {
+		return text
+	}
+	var actions []string
+	for _, s := range steps {
+		a, err := action(s)
+		if err != nil {
+			return text
+		}
+		actions = append(actions, indent(a))
+	}
+	if len(actions) == 0 {
+		return "[]"
+	}
+	return "[\n" + strings.Join(actions, ",\n") + "\n]"
+}
+
 // Disk is what a target folder holds now of a recording: its info file
 // and step files, by path relative to the folder.
 func Disk(dir, name string) map[string]string {
