@@ -52,7 +52,7 @@ Terminology: menu (an MCM, as SkyUI lists it), page, option, selector (the raw l
 
 - Name: MCM Lexicon, settled.
 - Voice: Hermaeus's: plain and precise, with a dry, slightly wry edge. It says exactly what is saved, where, and when, and what isn't possible and why.
-- Visual identity: Hermaeus's design system, inherited whole (`DESIGN.md`). The mark isn't chosen yet; a plain wordmark stands in.
+- Visual identity: Hermaeus's design system, inherited whole (`DESIGN.md`). The mark is the face of a Dwemer lexicon with the game's diamond at the center of its dial.
 - American English spelling and the serial comma.
 
 ## Evidence on Hand

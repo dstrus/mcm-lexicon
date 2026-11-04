@@ -9,6 +9,7 @@
 	import { recordingHref, recordingsDependency, redo, saveAll, setOpen, undo } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import Mark from '#lib/ui/Mark.svelte';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import { setEditing, setSource } from '#lib/api/status.ts';
 	import Segmented from '#lib/ui/Segmented.svelte';
@@ -205,7 +206,7 @@
 
 <div class="app" class:withsections={open}>
 	<header class="top">
-		<a class="name caps" href="/">{m.shell.name}</a>
+		<a class="name caps" href="/"><Mark size="1.35em" /> {m.shell.name}</a>
 		<div class="state">
 			{#if source?.kind === 'mo2'}
 				<label class="source">

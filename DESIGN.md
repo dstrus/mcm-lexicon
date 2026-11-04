@@ -144,7 +144,7 @@ The world is dense and quiet. Text is Jost at a compact 15px with tabular figure
 
 The signature is the bottom button-hint strip: every hint is a real keyboard shortcut, and clicking the hint does the same thing. The SVG diamond marks the selected row, as it does in the game.
 
-The mark isn't chosen yet; the top bar carries the wordmark alone, and the icon is the game's diamond on near-black as a stand-in (`assets/`). When drawn, the mark follows Hermaeus's in every way but subject: in the top bar before the wordmark in the text color, with its central shape cut out so the ground shows through; as the app icon and favicon in verdigris on the game's near-black, in a rounded square, with a simpler drawing at 16 pixels.
+The mark is the face of a Dwemer lexicon (`assets/`): a square plate bound at its corners, with a round dial whose center is the game's selection diamond, so the device that holds the Dwemer's knowledge holds the game's own marker. It follows Hermaeus's in every way but subject: in the top bar before the wordmark in the text color, with the plate's face and the dial's inside cut out so the ground shows through; as the app icon and favicon in verdigris on the game's near-black, in a rounded square, with a simpler drawing at 16 pixels, where the dial's ring and the plate's edges turn to mush: the corner brackets and the diamond alone.
 
 **Key Characteristics:**
 - Smoked-glass ground: a fixed radial gradient from a lighter smoke heart to the ground color.

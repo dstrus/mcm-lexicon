@@ -528,7 +528,7 @@ These need the game, the author's Windows machine, or the author's decision, so 
 3. **Once Phase 9 works, replay one written recording in game,** ideally one with a non-ASCII label and one with an `index`, to confirm the file format end to end.
 4. **Done: snapshots carry archives.** All four were retaken with Phase 8's build, Synergy again after the fix for archives whose plugin is in another mod (§10); its Sofia Follower menu now reads from the SkyUI replacer's `SofiaFollower.bsa`. Retake a snapshot whenever its list updates.
 5. Decide the name (MCM Lexicon is a placeholder) and whether the save target should default to a new mod folder or the author's existing `[NoDelete] Davey's MCM Recordings`.
-6. **Choose the mark.** Hermaeus's is the eye of Hermaeus Mora among his tentacles; MCM Lexicon needs its own subject drawn the same way (§6): a single shape that survives 16 pixels, with one cut-out. The librarian's book or a card from a catalog are the obvious subjects; Claude Code can draft candidates as SVG for the author to choose from or redraw, and the shell ships with a plain wordmark until one is chosen.
+6. **Choose the mark.** Chosen: the face of a Dwemer lexicon, a square plate bound at its corners with a round dial and the game's diamond at its center (`assets/`, DESIGN.md). Drawn as Hermaeus's is (§6): one shape that survives 16 pixels, with the face cut out.
 
 ---
 
