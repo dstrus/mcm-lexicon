@@ -728,3 +728,67 @@ func TestEarlyReturnIsOneOption(t *testing.T) {
 		}
 	}
 }
+
+// A function that returns from inside an If's arms returns one of those
+// values or the one it falls through to: unknown when they differ, so a
+// condition on it doesn't drop the arms that depend on it.
+const armReturns = `Scriptname Returns_MCM extends SKI_ConfigBase
+int colorOID
+int otherOID
+string Function NameOf(int option)
+	if option == colorOID
+		Return "color"
+	elseif option == otherOID
+		Return "other"
+	endif
+	Return ""
+EndFunction
+bool Function Enabled()
+	if Game.GetPlayer().GetLevel() > 10
+		Return true
+	endif
+	Return false
+EndFunction
+string Function Always()
+	Return "same"
+EndFunction
+Event OnPageReset(string page)
+	colorOID = AddTextOption("Color", "Red")
+	otherOID = AddToggleOption("Other", true)
+	if !Enabled()
+		AddTextOption("Note", "Off")
+	endif
+	if Always() == "same"
+		AddToggleOption("Known", true)
+	else
+		AddToggleOption("Never", true)
+	endif
+EndEvent
+Event OnOptionSelect(int option)
+	string name = NameOf(option)
+	if name == "color"
+		int v = Utility.RandomInt(0, 2)
+		if v == 0
+			SetTextOptionValue(option, "Red")
+		elseif v == 1
+			SetTextOptionValue(option, "Green")
+		else
+			SetTextOptionValue(option, "Blue")
+		endif
+	endif
+EndEvent`
+
+func TestFunctionReturnsFromArms(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, armReturns)}, nil)
+	p := m.Pages[0]
+	if got := opt(t, p, "Color").Cycle; !slices.Equal(got, []string{"Red", "Green", "Blue"}) {
+		t.Errorf("cycle behind a name the handler works out: %q", got)
+	}
+	labels := map[string]bool{}
+	for _, o := range p.Options {
+		labels[o.Label] = true
+	}
+	if !labels["Note"] || !labels["Known"] || labels["Never"] {
+		t.Errorf("options: %v", labels)
+	}
+}

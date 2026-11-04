@@ -36,8 +36,9 @@ type machine struct {
 	// arms, when set, hears of each If the run takes more than one way
 	// through: the page's cursor follows each arm from where the If began.
 	arms     armHooks
-	skipped  bool // the last If's: whether no arm may have run
-	returned bool // the last If's: whether an arm returned, so what follows runs only when it didn't
+	rets     [][]Value // per call running, what its arms that returned returned
+	skipped  bool      // the last If's: whether no arm may have run
+	returned bool      // the last If's: whether an arm returned, so what follows runs only when it didn't
 }
 
 // armHooks hear of an If's arms as the machine runs them: enter as it
@@ -137,7 +138,14 @@ func (m *machine) invoke(f *ir.Function, args []Value) Value {
 	}
 	m.depth++
 	m.frames = append(m.frames, frame)
+	m.rets = append(m.rets, nil)
 	_, ret := m.exec(f.Body)
+	// The function returns whatever one of its ways through returns: the
+	// value its arms that returned agree on with the last, or unknown.
+	for _, r := range m.rets[len(m.rets)-1] {
+		ret = join(ret, &r)
+	}
+	m.rets = m.rets[:len(m.rets)-1]
 	m.frames = m.frames[:len(m.frames)-1]
 	m.depth--
 	return ret
@@ -250,6 +258,9 @@ func (m *machine) ifArms(s *ir.If) (bool, Value) {
 		}
 		if r {
 			anyReturned = true
+			if n := len(m.rets); n > 0 {
+				m.rets[n-1] = append(m.rets[n-1], v)
+			}
 		}
 		if scope != nil {
 			m.scope = m.scope[:len(m.scope)-1]
