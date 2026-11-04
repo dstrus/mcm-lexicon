@@ -29,7 +29,7 @@ const (
 	WhyRange    Why = "range"    // a slider value outside its range
 	WhyChoice   Why = "choice"   // a menu entry the menu doesn't have
 	WhyValue    Why = "value"    // a right-side click: no text option on the page shows this value
-	WhyDisabled Why = "disabled" // the menu draws the option greyed out, so it can't be selected
+	WhyDisabled Why = "disabled" // the menu grays the option out; MCM Recorder plays it anyway, calling the mod's handler
 )
 
 // Check is a step's check.
@@ -202,11 +202,19 @@ func matches(s Step, label string) bool {
 }
 
 // allowed checks a step's value against what its option allows, where
-// the catalog knows it.
+// the catalog knows it. A step on an option the menu grays out matches,
+// with that said: MCM Recorder doesn't look at an option's flags, so it
+// plays the step, calling the mod's handler as a click would, though a
+// player couldn't select it.
 func allowed(s Step, o *catalog.Option) (Status, Why) {
-	if o.Disabled == catalog.DisabledAlways {
-		return StatusNotAllowed, WhyDisabled
+	st, why := allowedValue(s, o)
+	if st == StatusMatched && o.Disabled == catalog.DisabledAlways {
+		return StatusMatched, WhyDisabled
 	}
+	return st, why
+}
+
+func allowedValue(s Step, o *catalog.Option) (Status, Why) {
 	switch s.Kind {
 	case KindSlider:
 		if o.Slider == nil {

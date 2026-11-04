@@ -87,8 +87,9 @@ type Option struct {
 	Line      int  // where it's added
 	Position  int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
 	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
-	// Disabled is whether SkyUI draws the option greyed out, so neither the
-	// player nor a recording can select it: "always" when it's added with
+	// Disabled is whether SkyUI draws the option grayed out, so a player
+	// can't select it (MCM Recorder can: it calls the mod's handler without
+	// looking at the flags): "always" when it's added with
 	// OPTION_FLAG_DISABLED and nothing changes that, "sometimes" when its
 	// flags come from a value the game decides or SetOptionFlags changes
 	// them, "" when it's never disabled.

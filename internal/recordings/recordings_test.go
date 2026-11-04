@@ -318,3 +318,26 @@ func TestWaits(t *testing.T) {
 		}
 	}
 }
+
+// MCM Recorder plays a step on an option the menu grays out, since it
+// calls the mod's handler without looking at the option's flags: the step
+// matches, saying so, unless its value is one the option can't take.
+func TestGrayedOutStepPlays(t *testing.T) {
+	c := &catalog.Catalog{Menus: []catalog.Menu{{
+		Name: "Experience", NameText: "Experience", Active: true, Certainty: catalog.CertaintyExact,
+		Pages: []catalog.Page{{Name: "$EXP_General", Text: "General", Options: []catalog.Option{
+			{Type: catalog.OptionTypeText, Label: "$EXP_PluginVersion", Certainty: catalog.CertaintyExact, Disabled: catalog.DisabledAlways},
+			{Type: catalog.OptionTypeSlider, Label: "Level", Certainty: catalog.CertaintyExact, Disabled: catalog.DisabledAlways, Slider: &catalog.Range{Min: 1, Max: 10, Step: 1}},
+		}}},
+	}}}
+	checks := Validate(&Recording{Steps: []Step{
+		{Mod: "Experience", Page: "$EXP_General", Option: "$EXP_PluginVersion", Kind: KindClick, Value: "$EXP_PluginVersion"},
+		{Mod: "Experience", Page: "$EXP_General", Option: "Level", Kind: KindSlider, Value: "20"},
+	}}, c)
+	if checks[0].Status != StatusMatched || checks[0].Why != WhyDisabled {
+		t.Errorf("a click on a grayed-out option: %s, %s", checks[0].Status, checks[0].Why)
+	}
+	if checks[1].Status != StatusNotAllowed || checks[1].Why != WhyRange {
+		t.Errorf("a grayed-out slider out of range: %s, %s", checks[1].Status, checks[1].Why)
+	}
+}

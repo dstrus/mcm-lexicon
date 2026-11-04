@@ -136,8 +136,9 @@ type Option struct {
 	// Position is SkyUI's cursor position when the option is added: where
 	// the game draws it; -1 when the script decides it at runtime.
 	Position int `json:"position"`
-	// Disabled is whether SkyUI draws the option greyed out, so neither the
-	// player nor a recording can select it: always, or at times.
+	// Disabled is whether SkyUI draws the option grayed out, so a player
+	// can't select it, always or at times. MCM Recorder still plays a step
+	// on it: it calls the mod's handler without looking at the flags.
 	Disabled Disabled `json:"disabled,omitempty"`
 	// A text option's value, shown on its right, which a click on that side
 	// matches: raw (exact, or a *pattern*), translated, and how certain.

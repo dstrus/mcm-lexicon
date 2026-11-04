@@ -368,7 +368,7 @@
 
 {#snippet value(o: Option, i: number)}
 	{#if recording && o.disabled === 'always'}
-		<!-- Greyed out in the game: for reading only. -->
+		<!-- Grayed out in the game: for reading only. -->
 		<span class="val readonly" title={m.adding.readOnly}>{@render shown(o)}</span>
 	{:else if recording}
 		{@const rec = recorded(o)}
@@ -722,7 +722,7 @@
 		margin: 0 var(--space-2) 0 0;
 		color: var(--ink);
 	}
-	/* Greyed out in the game, so here: the label and its value muted, and
+	/* Grayed out in the game, so here: the label and its value muted, and
 	   nothing to edit. */
 	.grid .opt.disabled .label,
 	.val.readonly {

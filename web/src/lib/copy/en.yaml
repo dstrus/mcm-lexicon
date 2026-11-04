@@ -236,8 +236,8 @@ option:
   range: Range
   shownAs: Shown as {example}
   value: Value
-  disabledAlways: The menu shows this option greyed out, for reading only. Nothing can select it, so a recording can’t set it.
-  disabledSometimes: The menu greys this option out at times, depending on other settings or the game. While it is, a step on it does nothing.
+  disabledAlways: The menu grays this option out, so a player can’t select it, and MCM Lexicon leaves it out of recordings. MCM Recorder would still play a step on it, doing what the mod does when it’s clicked, so a step written by hand still runs.
+  disabledSometimes: The menu grays this option out at times, depending on other settings or the game. While it is, a step on it does nothing.
   valueChanges: The menu changes this value as it’s used, so a step that finds this option by its value can’t be checked against it.
   choices: Choices
   default: Default
@@ -477,11 +477,12 @@ steps:
     notAllowed: Not allowed
     modMissing: Mod missing
     unchecked: Unchecked
+    grayedOut: Grayed out
   says:
     matched: The catalog has this option, and the value is one it allows.
     range: The option is there, but {value} is outside its range.
     choice: The option is there, but “{value}” isn’t one of its entries.
-    disabled: The menu shows this option greyed out, so MCM Recorder can’t select it, and the step does nothing.
+    disabled: The menu grays this option out, so a player can’t select it, but MCM Recorder plays the step anyway, doing what the mod does when the option is clicked. For a line like a version number that’s nothing; for a setting the mod grays out on purpose, the step changes it regardless.
     modMissing: There’s no menu named “{mod}” in this list, so MCM Recorder skips the step.
     inactive: The menu “{mod}” is in the list, but its plugin isn’t active, so the game won’t show it.
     unchecked: The catalog doesn’t know all of this menu’s options, so a miss here proves nothing.
@@ -605,7 +606,7 @@ adding:
   notYetTitle: Not in {recording} yet. Change it here to record it.
   recordThis: Record {option}
   cantRecord: Its label is built at runtime, so a recording can’t name it exactly.
-  readOnly: For reading only. The menu shows it greyed out, so a recording can’t set it.
+  readOnly: Grayed out in the menu, so MCM Lexicon leaves it out of recordings.
   clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.
   clickRecorded: "{recording} clicks this option"
   # A stepper: clicked as many times as it takes to reach a value.
