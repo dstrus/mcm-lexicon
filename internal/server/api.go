@@ -35,6 +35,18 @@ type Status struct {
 	// Undo and Redo are how many changes to the draft each can step through.
 	Undo int `json:"undo"`
 	Redo int `json:"redo"`
+	// SaveFolder is the mod folder recordings are saved to in an MO2
+	// instance, as the settings name it.
+	SaveFolder SaveFolder `json:"saveFolder"`
+}
+
+// SaveFolder is the save folder's settings: the name the player gave it,
+// and whether "[NoDelete] " goes before it, which keeps it through a
+// Wabbajack update. Folder is the two together, as a reply.
+type SaveFolder struct {
+	Name     string `json:"name"`
+	NoDelete bool   `json:"noDelete"`
+	Folder   string `json:"folder,omitempty"`
 }
 
 // EditingRequest turns editing on or off. Off with changes in the draft
@@ -74,5 +86,7 @@ func (s *Server) status() Status {
 		Changes:       s.recordings.Pending(),
 	}
 	st.Undo, st.Redo = s.recordings.History()
+	v := s.Prefs.Get()
+	st.SaveFolder = SaveFolder{Name: v.SaveNameOf(), NoDelete: v.NoDeleteOf(), Folder: v.SaveMod()}
 	return st
 }

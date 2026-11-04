@@ -71,6 +71,7 @@ nav:
   search: Search
   recordings: Recordings
   compare: Compare
+  settings: Settings
   changes: Changes
   save: Save
   review: Review
@@ -514,6 +515,7 @@ draft:
     other: Not saved. Save writes {count} files to {folder}, backing up the current ones first.
   saved: Saved to {folder} at {time}.
   upToDate: The draft matches the files in {folder}. Nothing to save.
+  elsewhere: Nothing to save. A change saves the recording to {folder}, leaving {mod} as it came.
   savedBackup: Saved to {folder} at {time}. The previous files are in {backup}.
   discard: Discard changes
   discardNew: Discard the recording
@@ -616,6 +618,7 @@ backups:
 
 files:
   inFolder: Written to {folder}.
+  covers: Empty, in place of {mod}’s step file of the same name. The game sees one folder made of every mod’s, so without it the game would play that file too.
   changesTo: Changes to {file}
   # Typing a file: the text is read as MCM Recorder reads it, into the draft.
   editText: Edit as text
@@ -737,3 +740,16 @@ compare:
   pageAdded: Page added
   pageRemoved: Page removed
   wholeMenu: The whole menu
+
+# MCM Lexicon's own settings.
+settings:
+  title: Settings
+  saveFolder: Save folder
+  name: Mod folder name
+  noDelete: "[NoDelete] prefix"
+  noDeleteNote: Puts [NoDelete] before the name. When a Wabbajack list updates, it removes mod folders it didn’t install, unless [NoDelete] is in their name.
+  folder: Recordings save to {folder} in the MO2 instance’s mods folder.
+  otherMods: Changes to recordings from other mods save here too, so those mods stay as they came. The copy here takes the original’s place in the game while this folder loads after the original’s mod, as a new mod folder does when MO2 adds it.
+  moved: Recordings already saved stay where they are. A recording can still be saved to another folder from its own page.
+  dataFolder: With a Data folder open, recordings save into the Data folder. This applies to an MO2 instance.
+  catalogFile: With a catalog file open, each recording is saved to a folder chosen on its page. This applies to an MO2 instance.

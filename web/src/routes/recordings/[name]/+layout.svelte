@@ -24,13 +24,17 @@
 	let draft = $derived(ed.draft);
 	let target = $derived(ed.target);
 	let editing = $derived((page.data.status as Status).editing);
-	let stepFiles = $derived(ed.files.filter((f) => f.change !== 'removed').length - 1); // without the info file
+	let stepFiles = $derived(ed.files.filter((f) => f.change !== 'removed' && !f.covers).length - 1); // without the info file or covers
 	let writes = $derived(ed.files.filter((f) => f.change !== 'same').length);
 	let working = $state(false);
 	let error = $state('');
 
 	// Where Save writes, as a reader names it.
 	let folder = $derived(target.kind === 'overwrite' ? d.overwrite : target.kind === 'data' ? d.data : target.name);
+	// Where the recording is now, when that's a mod folder other than the
+	// one Save writes to: a recording from another mod, which a change saves
+	// to the save folder.
+	let home = $derived(ed.recording?.mod && target.kind !== 'data' && ed.recording.mod.toLowerCase() !== target.name.toLowerCase() ? ed.recording.mod : '');
 	const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 
 	async function run(job: () => Promise<unknown>) {
@@ -83,7 +87,7 @@
 <Up href="/recordings?item={encodeURIComponent(draft.name)}" label={t.up} />
 <h1 class="caps">{draft.name}</h1>
 <p class="muted sub">
-	{#if draft.title && draft.title !== draft.name}{draft.title}{' · '}{/if}{#if target.kind !== 'none'}{folder}{' · '}{/if}{t.stepsInFiles({ steps: t.stepCount({ count: draft.steps.length }), files: t.fileCount({ count: Math.max(0, stepFiles) }) })}
+	{#if draft.title && draft.title !== draft.name}{draft.title}{' · '}{/if}{#if home}{home}{' · '}{:else if target.kind !== 'none'}{folder}{' · '}{/if}{t.stepsInFiles({ steps: t.stepCount({ count: draft.steps.length }), files: t.fileCount({ count: Math.max(0, stepFiles) }) })}
 </p>
 
 {#if editing}
@@ -104,6 +108,8 @@
 				{#if ed.drafted}<button type="button" class="textbutton" disabled={working} onclick={discard}>{ed.recording ? d.discard : d.discardNew}</button>{/if}
 			{:else if ed.saved}
 				{ed.saved.backup ? d.savedBackup({ folder, time: time(ed.saved.at), backup: ed.saved.backup }) : d.saved({ folder, time: time(ed.saved.at) })}
+			{:else if home && !ed.drafted}
+				{d.elsewhere({ folder, mod: home })}
 			{:else if target.kind !== 'none'}
 				{d.upToDate({ folder })}
 			{/if}

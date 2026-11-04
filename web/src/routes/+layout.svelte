@@ -283,6 +283,7 @@
 					<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
 					<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
 					<li><a class="caps" href="/recordings" aria-current={here('/recordings') ? 'page' : undefined}>{m.nav.recordings}</a></li>
+					<li><a class="caps" href="/settings" aria-current={here('/settings') ? 'page' : undefined}>{m.nav.settings}</a></li>
 				</ul>
 			</nav>
 			<nav class="menus" class:active={column.active} aria-label={m.nav.menus}>

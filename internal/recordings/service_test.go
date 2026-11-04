@@ -23,7 +23,22 @@ type harness struct {
 	svc     *Service
 	running bool
 	inst    *testcorpus.Instance
+	list    string // the list's path, as the settings key what's saved by list
 }
+
+// ours marks mod as a folder MCM Lexicon saved recordings to, as if from
+// an earlier session, so its recordings save back in place.
+func (h *harness) ours(mod string) {
+	h.svc.prefs.Update(func(v *prefs.Values) {
+		if v.WroteTo == nil {
+			v.WroteTo = map[string][]string{}
+		}
+		v.WroteTo[h.list] = append(v.WroteTo[h.list], mod)
+	})
+}
+
+// defaultMod is the save folder with the settings left as they start.
+const defaultMod = prefs.NoDeletePrefix + prefs.DefaultSaveName
 
 func newHarness(t *testing.T) *harness {
 	inst := testcorpus.New(t, "MGO", "Default")
@@ -42,7 +57,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	cat := catalog.NewService("test")
 	cat.UseList(src)
-	h := &harness{t: t, mux: http.NewServeMux(), inst: inst}
+	h := &harness{t: t, mux: http.NewServeMux(), inst: inst, list: src.Path}
 	h.svc = NewService(cat, prefs.Load(""), func() bool { return h.running })
 	h.svc.now = func() time.Time { return time.Date(2026, 11, 2, 23, 4, 0, 0, time.Local) }
 	h.svc.Routes(h.mux)
@@ -82,7 +97,7 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "My/Settings", Author: "Me"}, &ed); code != 200 {
 		t.Fatalf("create: %d", code)
 	}
-	if ed.Draft.Name != "My_Settings" || ed.Draft.Title != "My/Settings" || ed.Target.Kind != TargetKindNewMod || ed.Target.Name != DefaultTarget || ed.Recording != nil {
+	if ed.Draft.Name != "My_Settings" || ed.Draft.Title != "My/Settings" || ed.Target.Kind != TargetKindNewMod || ed.Target.Name != defaultMod || ed.Recording != nil {
 		t.Errorf("created = %+v", ed)
 	}
 	if code := h.call("POST", "/api/recordings", CreateRequest{Name: "MGO"}, nil); code == 200 {
@@ -128,7 +143,7 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 		t.Fatalf("save: %d, %+v", code, saved)
 	}
 	h.call("GET", "/api/recordings/My_Settings", nil, &ed)
-	dir := filepath.Join(h.inst.Dir, "mods", DefaultTarget)
+	dir := filepath.Join(h.inst.Dir, "mods", defaultMod)
 	if b, err := os.ReadFile(filepath.Join(dir, "McmRecorder", "My_Settings", "0001_Be Seated.json")); err != nil || !strings.Contains(string(b), `"slider": 4.0`) {
 		t.Errorf("written: %s, %v", b, err)
 	}
@@ -138,10 +153,11 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 		t.Errorf("after saving = %+v", ed)
 	}
 
-	// The list's own recording: edited and saved in place, backed up first,
-	// and never deleted.
+	// A recording in a folder saved to before: edited and saved in place,
+	// backed up first.
+	h.ours("MGO Recordings")
 	h.call("GET", "/api/recordings/MGO", nil, &ed)
-	if ed.Target.Name != "MGO Recordings" || ed.Target.Kind != TargetKindMod || ed.Changed || ed.Deletes != "not-ours" {
+	if ed.Target.Name != "MGO Recordings" || ed.Target.Kind != TargetKindMod || ed.Changed || ed.Deletes != "" {
 		t.Fatalf("MGO = %+v", ed.Target)
 	}
 	d := ed.Draft
@@ -161,8 +177,8 @@ func TestNewRecordingAddSaveDelete(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(h.inst.Dir, "lexicon-backups", "MGO")); err != nil {
 		t.Errorf("no backup beside the list: %v", err)
 	}
-	// Saved there now, so it's MCM Lexicon's to delete: in the draft first,
-	// where it can be restored, then by Save.
+	// MCM Lexicon's to delete: in the draft first, where it can be
+	// restored, then by Save.
 	if code := h.call("DELETE", "/api/recordings/MGO", nil, &ed); code != 200 || !ed.Deleted || ed.Files[0].Change != FileChangeRemoved {
 		t.Fatalf("delete: %d, %+v", code, ed)
 	}
@@ -288,6 +304,7 @@ func TestRecordAllKeepsWhatsRecorded(t *testing.T) {
 // a change, autorun's True for true isn't.
 func TestEditingTheInfo(t *testing.T) {
 	h := newHarness(t)
+	h.ours("MGO Recordings")
 	h.svc.SetEditing(true, false)
 	var ed Editor
 	h.call("GET", "/api/recordings/MGO", nil, &ed)
@@ -331,7 +348,7 @@ func TestSavedToANewFolderStaysListed(t *testing.T) {
 		}
 		return nil
 	}
-	if r := listed(h.svc); r == nil || !r.Unlisted || r.New || r.Drafted || r.Steps != 1 || r.Mod != DefaultTarget {
+	if r := listed(h.svc); r == nil || !r.Unlisted || r.New || r.Drafted || r.Steps != 1 || r.Mod != defaultMod {
 		t.Fatalf("after saving: %+v", r)
 	}
 	// A restart: the draft is gone, the folder's still read.
@@ -343,7 +360,7 @@ func TestSavedToANewFolderStaysListed(t *testing.T) {
 		t.Fatalf("after a restart: %+v", r)
 	}
 	// MO2 lists the folder, disabled; it's still shown, and can be added to.
-	h.inst.Mod(DefaultTarget, false, nil)
+	h.inst.Mod(defaultMod, false, nil)
 	src, _ := modlist.Check(h.inst.Dir, "")
 	cat := catalog.NewService("test")
 	cat.UseList(src)
@@ -360,7 +377,7 @@ func TestSavedToANewFolderStaysListed(t *testing.T) {
 	}
 	var ed Editor
 	h.call("GET", "/api/recordings/Fresh", nil, &ed)
-	if ed.Target.Kind != TargetKindMod || ed.Target.Enabled || ed.Target.Name != DefaultTarget {
+	if ed.Target.Kind != TargetKindMod || ed.Target.Enabled || ed.Target.Name != defaultMod {
 		t.Errorf("its target: %+v", ed.Target)
 	}
 }
@@ -431,6 +448,7 @@ func TestDraftKeptAcrossRestarts(t *testing.T) {
 // in the draft, and the info file's text sets the recording's info.
 func TestPutFileText(t *testing.T) {
 	h := newHarness(t)
+	h.ours("MGO Recordings")
 	h.svc.SetEditing(true, false)
 	var ed Editor
 	h.call("GET", "/api/recordings/MGO", nil, &ed)
@@ -579,6 +597,7 @@ func TestUndoRedo(t *testing.T) {
 // backup its deletion made.
 func TestRestoreFromBackup(t *testing.T) {
 	h := newHarness(t)
+	h.ours("MGO Recordings")
 	h.svc.SetEditing(true, false)
 	dir := filepath.Join(h.inst.Dir, "mods", "MGO Recordings")
 	original := Disk(dir, "MGO")
@@ -666,5 +685,60 @@ func TestRestoreFromBackup(t *testing.T) {
 	h.call("POST", "/api/changes/save", nil, &SaveReply{})
 	if disk := Disk(dir, "MGO"); !maps.Equal(disk, original) {
 		t.Errorf("after restoring a deleted recording: %v", disk)
+	}
+}
+
+// A recording from another mod saves to the save folder, leaving the mod's files
+// as they came. Its step file that the copy doesn't replace by name gets
+// an empty one over it, so the game, seeing one folder made of both,
+// doesn't play it. The save folder's name follows the settings.
+func TestRecordingFromAnotherModSavesToTheSaveFolder(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	var ed Editor
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if ed.Target.Name != defaultMod || ed.Target.Kind != TargetKindNewMod || ed.Target.LosesTo != "" || ed.Changed || ed.Drafted || ed.Deletes != "not-ours" {
+		t.Fatalf("untouched: %+v, changed %v", ed.Target, ed.Changed)
+	}
+	// Its one step moved to another menu: the mod's 0001_Be Seated.json
+	// isn't replaced, so it's covered.
+	d := ed.Draft
+	d.Steps[0].Mod = "Other"
+	h.call("PUT", "/api/recordings/MGO/draft", d, &ed)
+	var names []string
+	cover := ""
+	for _, f := range ed.Files {
+		names = append(names, f.Name)
+		if f.Covers != "" {
+			cover = f.Name + " over " + f.Covers + ": " + f.Text
+		}
+	}
+	if strings.Join(names, ", ") != "MGO.json, 0001_Other.json, 0001_Be Seated.json" || cover != "0001_Be Seated.json over MGO Recordings: []" {
+		t.Fatalf("files: %v, %s", names, cover)
+	}
+	// Put back as it was: nothing to save, though the save folder doesn't
+	// hold it.
+	d.Steps[0].Mod = "Be Seated"
+	h.call("PUT", "/api/recordings/MGO/draft", d, &ed)
+	if ed.Drafted || ed.Changed || h.svc.Pending() != 0 {
+		t.Fatalf("put back: drafted %v, changed %v, pending %d", ed.Drafted, ed.Changed, h.svc.Pending())
+	}
+	d.Steps[0].Mod = "Other"
+	h.call("PUT", "/api/recordings/MGO/draft", d, &ed)
+	if code := h.call("POST", "/api/changes/save", nil, &SaveReply{}); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+	mine := Disk(filepath.Join(h.inst.Dir, "mods", defaultMod), "MGO")
+	theirs := Disk(filepath.Join(h.inst.Dir, "mods", "MGO Recordings"), "MGO")
+	if mine["McmRecorder/MGO/0001_Be Seated.json"] != "[]" || mine["McmRecorder/MGO/0001_Other.json"] == "" || len(theirs) != 2 || !strings.Contains(theirs["McmRecorder/MGO/0001_Be Seated.json"], "Be Seated") {
+		t.Errorf("mine %v, theirs %v", mine, theirs)
+	}
+
+	// Named in the settings, without the prefix.
+	off := false
+	h.svc.prefs.Update(func(v *prefs.Values) { v.SaveName, v.NoDelete = "My Recordings", &off })
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if ed.Target.Name != "My Recordings" {
+		t.Errorf("renamed: %+v", ed.Target)
 	}
 }

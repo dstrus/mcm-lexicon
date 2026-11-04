@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -20,9 +21,13 @@ type Values struct {
 	OpenRecording string `json:"openRecording,omitempty"`
 	// The author new recordings are written with.
 	Author string `json:"author,omitempty"`
-	// Where new recordings are saved: a mod folder's name, or, with a
-	// catalog file open, a folder's path.
+	// Where new recordings are saved with a catalog file open: a folder's
+	// path.
 	SaveTarget string `json:"saveTarget,omitempty"`
+	// The mod folder recordings are saved to in an MO2 instance: its name,
+	// and whether NoDeletePrefix goes before it (nil means it does).
+	SaveName string `json:"saveName,omitempty"`
+	NoDelete *bool  `json:"noDelete,omitempty"`
 	// The folders MCM Lexicon has saved recordings into, by list, so it
 	// deletes only recordings in those, never a mod list's own.
 	WroteTo map[string][]string `json:"wroteTo,omitempty"`
@@ -30,7 +35,7 @@ type Values struct {
 
 // keys are the names Values writes, so an omitted value is cleared from
 // the file rather than kept from last time.
-var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording", "author", "saveTarget", "wroteTo"}
+var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording", "author", "saveTarget", "saveName", "noDelete", "wroteTo"}
 
 // Themes are the themes MCM Lexicon has. "system" follows the operating
 // system's dark or light setting.
@@ -44,6 +49,36 @@ func (v Values) ThemeOf() string {
 		}
 	}
 	return "system"
+}
+
+// DefaultSaveName is the save folder's name until the player names it.
+const DefaultSaveName = "MCM Lexicon Recordings"
+
+// NoDeletePrefix keeps a mod folder through a Wabbajack update, which
+// removes the folders it didn't install unless their names say to keep them.
+const NoDeletePrefix = "[NoDelete] "
+
+// SaveNameOf is the save folder's name as the player gave it, without the
+// prefix, or DefaultSaveName when none is saved.
+func (v Values) SaveNameOf() string {
+	if n := strings.TrimSpace(v.SaveName); n != "" {
+		return n
+	}
+	return DefaultSaveName
+}
+
+// NoDeleteOf is whether the save folder's name starts with NoDeletePrefix:
+// it does unless the player turned it off.
+func (v Values) NoDeleteOf() bool {
+	return v.NoDelete == nil || *v.NoDelete
+}
+
+// SaveMod is the mod folder recordings are saved to in an MO2 instance.
+func (v Values) SaveMod() string {
+	if v.NoDeleteOf() {
+		return NoDeletePrefix + v.SaveNameOf()
+	}
+	return v.SaveNameOf()
 }
 
 // Prefs holds the remembered values and saves every change to its file.

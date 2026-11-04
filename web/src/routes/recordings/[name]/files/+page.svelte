@@ -7,6 +7,7 @@
 	import type { Status } from '#lib/api/types/api.ts';
 	import { ApiError } from '#lib/api/client.ts';
 	import type { PlannedFile } from '#lib/api/types/recordings.ts';
+	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import { putFileText, recordingsDependency } from '#lib/recordings/api.ts';
 	import LineDiff from '#lib/ui/LineDiff.svelte';
@@ -20,7 +21,9 @@
 	let canEdit = $derived((page.data.status as Status).editing && !ed.deleted);
 	// The files Save writes, in order: the info file, then the step files,
 	// which is how the server numbers them.
-	let written = $derived(ed.files.filter((f) => f.change !== 'removed'));
+	// The files that can be typed: the recording's own, not those Save
+	// removes, nor the empty ones covering another mod's.
+	let written = $derived(ed.files.filter((f) => f.change !== 'removed' && !f.covers));
 
 	const changeWord = (f: PlannedFile) => t.changes[f.change];
 
@@ -90,7 +93,8 @@
 				{#if canEdit && i >= 0 && typing !== i}<button type="button" class="textbutton edit" disabled={working} onclick={() => startTyping(i)}>{t.editText}</button>{/if}
 			</h2>
 			<p class="muted path"><span class="raw">{f.path}</span></p>
-			{#if typing === i}
+			{#if f.covers}<p class="note"><Fill text={t.covers.text}>{#snippet mod()}<span class="raw">{f.covers}</span>{/snippet}</Fill></p>{/if}
+			{#if i >= 0 && typing === i}
 				<!-- The file as text, in the file font, read into the draft on Apply. -->
 				<textarea bind:this={box} bind:value={text} aria-label={t.editing({ file: f.name })} rows={Math.min(40, Math.max(6, text.split('\n').length + 1))} spellcheck="false" autocomplete="off" onkeydown={keys}></textarea>
 				<div class="actions">
@@ -166,6 +170,12 @@
 	.path {
 		margin: var(--space-2) 0;
 		font-size: var(--step--1);
+	}
+	.note {
+		margin: 0 0 var(--space-2);
+		max-width: 70ch;
+		font-size: var(--step--1);
+		color: var(--muted);
 	}
 	.raw {
 		font-family: var(--font-mono);

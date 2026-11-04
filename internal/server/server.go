@@ -91,6 +91,29 @@ func (s *Server) routes() {
 		s.Prefs.Update(func(v *prefs.Values) { v.Theme = req.Theme })
 		return s.status(), nil
 	}))
+	m.Handle("PUT /api/settings/save-folder", httpapi.JSON(func(_ *http.Request, req SaveFolder) (Status, error) {
+		// The prefix is a switch of its own, so a name typed with it loses it.
+		name := strings.TrimSpace(req.Name)
+		if len(name) >= len(prefs.NoDeletePrefix)-1 && strings.EqualFold(name[:len(prefs.NoDeletePrefix)-1], strings.TrimSpace(prefs.NoDeletePrefix)) {
+			name = strings.TrimSpace(name[len(prefs.NoDeletePrefix)-1:])
+		}
+		if name == prefs.DefaultSaveName {
+			name = ""
+		}
+		v := prefs.Values{SaveName: name, NoDelete: &req.NoDelete}
+		if folder := v.SaveMod(); !recordings.ModName(folder) || strings.EqualFold(folder, "overwrite") {
+			return Status{}, apperr.New(apperr.Invalid, "%q can't be a mod folder's name", folder)
+		}
+		s.Prefs.Update(func(p *prefs.Values) {
+			p.SaveName = name
+			if req.NoDelete {
+				p.NoDelete = nil // the default
+			} else {
+				p.NoDelete = &req.NoDelete
+			}
+		})
+		return s.status(), nil
+	}))
 	m.Handle("PUT /api/source", httpapi.JSON(func(_ *http.Request, req SourceRequest) (Status, error) {
 		switch {
 		case req.Catalog != "" && req.Path != "":

@@ -225,6 +225,23 @@ func indent(s string) string {
 	return "  " + strings.ReplaceAll(s, "\n", "\n  ")
 }
 
+// Cover adds to files an empty step file for each name in cover, for a
+// recording's folder in which another mod has a step file the recording
+// doesn't replace: the game sees one folder made of every mod's, and an
+// empty file of the same name, loaded after, plays nothing in its place.
+// They come after the recording's own, in name order.
+func Cover(files []OutFile, name string, cover map[string]string) []OutFile {
+	var names []string
+	for n := range cover {
+		names = append(names, n)
+	}
+	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
+	for _, n := range names {
+		files = append(files, OutFile{Name: n, Path: "McmRecorder/" + PathPart(name) + "/" + n, Text: "[]"})
+	}
+	return files
+}
+
 // Disk is what a target folder holds now of a recording: its info file
 // and step files, by path relative to the folder.
 func Disk(dir, name string) map[string]string {
@@ -255,15 +272,17 @@ type Saved struct {
 }
 
 // Save writes d into dir: the info file McmRecorder/<Name>.json and the
-// step files in McmRecorder/<Name>/, replacing what was there. The previous
+// step files in McmRecorder/<Name>/, replacing what was there, with an
+// empty file over each of other mods' step files named in cover. The previous
 // files are copied to backups/<Name>/<time>/ first. The step files are
 // written to a folder beside the recording's and swapped in, so the game
 // never finds half a recording.
-func Save(dir string, d Draft, backups string, now time.Time) (Saved, error) {
+func Save(dir string, d Draft, cover map[string]string, backups string, now time.Time) (Saved, error) {
 	files, err := Plan(&d)
 	if err != nil {
 		return Saved{}, err
 	}
+	files = Cover(files, d.Name, cover)
 	name := PathPart(d.Name)
 	root := filepath.Join(dir, "McmRecorder")
 	if err := os.MkdirAll(root, 0o755); err != nil {

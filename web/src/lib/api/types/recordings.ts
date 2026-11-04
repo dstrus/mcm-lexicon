@@ -154,11 +154,6 @@ export interface Info {
 // source: service.go
 
 /**
- * DefaultTarget is the mod folder new recordings are saved to until the
- * player chooses another.
- */
-export const DefaultTarget = "MCM Lexicon Recordings";
-/**
  * Summary is a recording without its steps, for the list of recordings.
  */
 export interface Summary {
@@ -201,6 +196,11 @@ export interface PlannedFile {
   text: string; // "" for one Save removes
   old: string; // what's on disk now; "" when it's new
   change: FileChange;
+  /**
+   * Covers is the other mod whose step file of the same name this empty
+   * one hides, so the game doesn't play it; "" for the recording's own.
+   */
+  covers?: string;
 }
 export const FileChangeSame = "same";
 export const FileChangeChanged = "changed";

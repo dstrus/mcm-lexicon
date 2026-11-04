@@ -111,7 +111,7 @@ func TestRealRecordingsRoundTrip(t *testing.T) {
 			}
 			for _, r := range recs {
 				dir := t.TempDir()
-				if _, err := Save(dir, DraftOf(r, ""), filepath.Join(dir, "backups"), time.Now()); err != nil {
+				if _, err := Save(dir, DraftOf(r, ""), nil, filepath.Join(dir, "backups"), time.Now()); err != nil {
 					t.Errorf("%s: %v", r.Name, err)
 					continue
 				}
@@ -150,7 +150,7 @@ func TestSaveBacksUpAndSwaps(t *testing.T) {
 	backups := filepath.Join(t.TempDir(), "lexicon-backups")
 	first := Draft{Name: "Mine", Steps: []Step{{Mod: "A", Option: "x", Kind: KindToggle, Value: "on"}, {Mod: "B", Option: "y", Kind: KindToggle, Value: "on"}}}
 	at := time.Date(2026, 11, 2, 23, 4, 0, 0, time.Local)
-	s, err := Save(dir, first, backups, at)
+	s, err := Save(dir, first, nil, backups, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestSaveBacksUpAndSwaps(t *testing.T) {
 		t.Errorf("first save = %+v", s)
 	}
 	second := Draft{Name: "Mine", Steps: []Step{{Mod: "C", Option: "z", Kind: KindToggle, Value: "off"}}}
-	s, err = Save(dir, second, backups, at.Add(time.Minute))
+	s, err = Save(dir, second, nil, backups, at.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestBackupsAndPut(t *testing.T) {
 		os.MkdirAll(filepath.Dir(full), 0o755)
 		os.WriteFile(full, []byte(text), 0o644)
 	}
-	if _, err := Save(dir, Draft{Name: "Mine", Steps: []Step{{Mod: "C", Option: "z", Kind: KindToggle, Value: "off"}}}, backups, at); err != nil {
+	if _, err := Save(dir, Draft{Name: "Mine", Steps: []Step{{Mod: "C", Option: "z", Kind: KindToggle, Value: "off"}}}, nil, backups, at); err != nil {
 		t.Fatal(err)
 	}
 	list := Backups(backups, "Mine")

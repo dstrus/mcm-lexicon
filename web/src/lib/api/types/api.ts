@@ -42,6 +42,21 @@ export interface Status {
    */
   undo: number /* int */;
   redo: number /* int */;
+  /**
+   * SaveFolder is the mod folder recordings are saved to in an MO2
+   * instance, as the settings name it.
+   */
+  saveFolder: SaveFolder;
+}
+/**
+ * SaveFolder is the save folder's settings: the name the player gave it,
+ * and whether "[NoDelete] " goes before it, which keeps it through a
+ * Wabbajack update. Folder is the two together, as a reply.
+ */
+export interface SaveFolder {
+  name: string;
+  noDelete: boolean;
+  folder?: string;
 }
 /**
  * EditingRequest turns editing on or off. Off with changes in the draft

@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -23,10 +24,6 @@ import (
 	"lexicon/internal/prefs"
 	"lexicon/internal/textfile"
 )
-
-// DefaultTarget is the mod folder new recordings are saved to until the
-// player chooses another.
-const DefaultTarget = "MCM Lexicon Recordings"
 
 // Summary is a recording without its steps, for the list of recordings.
 type Summary struct {
@@ -67,6 +64,9 @@ type PlannedFile struct {
 	Text   string     `json:"text"` // "" for one Save removes
 	Old    string     `json:"old"`  // what's on disk now; "" when it's new
 	Change FileChange `json:"change"`
+	// Covers is the other mod whose step file of the same name this empty
+	// one hides, so the game doesn't play it; "" for the recording's own.
+	Covers string `json:"covers,omitempty"`
 }
 
 type FileChange string
@@ -880,17 +880,14 @@ func (s *Service) create(e *env, req CreateRequest) (Editor, error) {
 	return s.editor(e, name)
 }
 
-// defaultTarget is where a new recording saves: the folder chosen last
-// time, or MCM Lexicon's own mod folder.
+// defaultTarget is where a new recording saves: the save folder the
+// settings name, or with a catalog file open, the folder chosen last time.
 func (s *Service) defaultTarget(e *env) string {
 	switch {
 	case e.list != nil && e.list.Source.Kind == modlist.Data:
 		return ""
 	case e.list != nil:
-		if t := s.prefs.Get().SaveTarget; t != "" && !filepath.IsAbs(t) {
-			return t
-		}
-		return DefaultTarget
+		return s.prefs.Get().SaveMod()
 	default:
 		if t := s.prefs.Get().SaveTarget; filepath.IsAbs(t) {
 			return t
@@ -909,9 +906,9 @@ func (s *Service) checkTarget(e *env, t string) (string, error) {
 		return "", nil
 	case e.list != nil:
 		if t == "" {
-			return DefaultTarget, nil
+			return s.prefs.Get().SaveMod(), nil
 		}
-		if strings.ContainsAny(t, `/\:*?"<>|`) || strings.Trim(t, ". ") == "" {
+		if !ModName(t) {
 			return "", apperr.New(apperr.Invalid, "%q isn't a mod folder's name", t)
 		}
 		if m, ok := e.list.Mod(t); ok {
@@ -947,7 +944,13 @@ func (s *Service) target(e *env, d Draft) Target {
 			t.Kind = TargetKindNewMod
 			t.Dir = filepath.Join(e.list.Source.Path, "mods", d.Target)
 		}
-		// Another copy of the info file that the game sees instead.
+		// Another copy of the info file that the game sees instead. Not for
+		// a new mod folder: MO2 adds it at the bottom of the list, where it
+		// loads last and wins.
+		if t.Kind == TargetKindNewMod {
+			t.Exists = isDir(t.Dir)
+			return t
+		}
 		rank := map[string]int{}
 		for i, m := range e.list.Mods {
 			rank[strings.ToLower(m.Name)] = i
@@ -1016,7 +1019,11 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 		}
 		return Editor{}, apperr.New(apperr.NotFound, "There's no recording %q in this list", name)
 	}
-	if held == nil {
+	// Untouched, a recording has nothing to save, though the folder it would
+	// save to (the save folder, for a recording from another mod) may not
+	// hold it yet.
+	untouched := held == nil
+	if untouched {
 		d = DraftOf(rec, s.homeOf(e, rec))
 	}
 	ed := Editor{Recording: rec, Drafted: drafted, Deleted: deleted, Problems: []string{}, Targets: s.targets(e, d.Target)}
@@ -1028,6 +1035,11 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	ed.Checks = Validate(&Recording{Steps: d.Steps}, e.cat)
 	ed.Counts = Count(ed.Checks)
 	ed.Target = s.target(e, d)
+	cover := map[string]string{}
+	if err == nil && !deleted {
+		cover = s.covers(e, d, ed.Target, files)
+		files = Cover(files, d.Name, cover)
+	}
 	ed.Files = []PlannedFile{}
 	if deleted {
 		// Save removes every file the recording has in its folder.
@@ -1044,7 +1056,7 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	} else if ed.Target.Dir != "" && err == nil {
 		disk := Disk(ed.Target.Dir, d.Name)
 		for _, f := range files {
-			p := PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew}
+			p := PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew, Covers: cover[f.Name]}
 			if old, ok := disk[f.Path]; ok {
 				p.Old = old
 				p.Change = FileChangeChanged
@@ -1070,9 +1082,12 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 		}
 	} else if err == nil {
 		for _, f := range files {
-			ed.Files = append(ed.Files, PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew})
+			ed.Files = append(ed.Files, PlannedFile{Name: f.Name, Path: f.Path, Text: f.Text, Change: FileChangeNew, Covers: cover[f.Name]})
 		}
 		ed.Changed = true
+	}
+	if untouched && !deleted {
+		ed.Changed = false
 	}
 	switch {
 	case s.running():
@@ -1153,16 +1168,65 @@ func sameValue(a, b any, key string) bool {
 }
 
 // homeOf is the folder a saved recording saves back to: the mod holding
-// the copy of its info file the game reads.
+// the copy of its info file the game reads, when MCM Lexicon saved it
+// there, else the save folder, so recordings from other mods are left as
+// they came and the copy in the save folder, loaded after, takes their
+// place.
 func (s *Service) homeOf(e *env, r *Recording) string {
 	switch {
 	case e.list != nil && e.list.Source.Kind == modlist.Data:
 		return ""
+	case e.list != nil && r.Mod != "" && s.wrote(e, r.Mod):
+		return r.Mod
+	case e.list != nil:
+		return s.defaultTarget(e)
 	case r.Mod != "":
 		return r.Mod
 	default:
 		return s.defaultTarget(e)
 	}
+}
+
+// wrote reports whether MCM Lexicon has saved recordings into mod.
+func (s *Service) wrote(e *env, mod string) bool {
+	return slices.ContainsFunc(s.prefs.Get().WroteTo[e.key], func(m string) bool { return strings.EqualFold(m, mod) })
+}
+
+// ModName reports whether name can be a mod folder's: no character
+// Windows refuses in a file name, and more than dots and spaces.
+func ModName(name string) bool {
+	return !strings.ContainsAny(name, `/\:*?"<>|`) && strings.Trim(name, ". ") != ""
+}
+
+// covers is the step files other mods put in the recording's folder that
+// Save doesn't replace by name, each with the mod it's from: the game sees
+// one folder made of every mod's, so it would play them beside the
+// recording's own. A mod's files can't be removed from under it, so Save
+// writes an empty file of the same name over each, which plays nothing.
+// That holds while the target loads after them (Target.LosesTo says when
+// it doesn't).
+func (s *Service) covers(e *env, d Draft, t Target, files []OutFile) map[string]string {
+	if e.list == nil || e.list.Source.Kind == modlist.Data || t.Name == "" {
+		return nil
+	}
+	planned := map[string]bool{}
+	for _, f := range files {
+		planned[strings.ToLower(f.Name)] = true
+	}
+	out := map[string]string{}
+	for _, f := range e.list.Files("McmRecorder/" + PathPart(d.Name)) {
+		name := path.Base(f.Path)
+		if strings.Count(f.Path, "/") != 2 || !strings.EqualFold(path.Ext(name), ".json") || strings.HasPrefix(name, ".") || planned[strings.ToLower(name)] {
+			continue
+		}
+		for _, c := range e.list.Copies(f.Path) {
+			if !strings.EqualFold(c.Mod, t.Name) {
+				out[name] = c.Mod
+				break
+			}
+		}
+	}
+	return out
 }
 
 // targets is the mod folders offered for saving: those holding recordings,
@@ -1182,7 +1246,7 @@ func (s *Service) targets(e *env, current string) []string {
 	for _, f := range e.list.Files("McmRecorder") {
 		addIf(f.Mod)
 	}
-	addIf(DefaultTarget)
+	addIf(s.prefs.Get().SaveMod())
 	addIf(current)
 	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i]) < strings.ToLower(out[j]) })
 	return out
@@ -1196,7 +1260,7 @@ func (s *Service) deletes(e *env, r *Recording) string {
 	if e.list == nil {
 		return "no-list"
 	}
-	if !slices.ContainsFunc(s.prefs.Get().WroteTo[e.key], func(m string) bool { return strings.EqualFold(m, r.Mod) }) {
+	if !s.wrote(e, r.Mod) {
 		return "not-ours"
 	}
 	return ""
@@ -1240,7 +1304,7 @@ func (s *Service) replaceDraft(e *env, name string, d Draft) (Editor, error) {
 	s.persist()
 	s.mu.Unlock()
 	ed, err := s.editor(e, name)
-	if err == nil && !ed.Changed && ed.Recording != nil {
+	if err == nil && s.settled(e, ed) {
 		// Back to what's on disk: nothing left to save. Part of the same
 		// change, as undo sees it.
 		s.mu.Lock()
@@ -1415,13 +1479,50 @@ func (s *Service) add(e *env, name string, step Step) (AddReply, error) {
 // part of the change that brought it there.
 func (s *Service) settle(e *env, name string) {
 	ed, err := s.editor(e, name)
-	if err != nil || ed.Changed || ed.Recording == nil {
+	if err != nil || !s.settled(e, ed) {
 		return
 	}
 	s.mu.Lock()
 	delete(s.drafts, strings.ToLower(ed.Draft.Name))
 	s.amend()
 	s.mu.Unlock()
+}
+
+// settled reports whether a saved recording's draft has nothing left to
+// save: a deletion or a backup that changes no file, or changes that say
+// only what the recording does.
+func (s *Service) settled(e *env, ed Editor) bool {
+	switch {
+	case ed.Recording == nil:
+		return false
+	case ed.Deleted || ed.FromBackup != nil:
+		return !ed.Changed
+	}
+	return s.unchanged(e, ed)
+}
+
+// unchanged reports whether a draft of a saved recording says only what
+// the recording does, and saves where an untouched one would: the files
+// Save would write are the ones it writes from the recording as read.
+func (s *Service) unchanged(e *env, ed Editor) bool {
+	d, was := ed.Draft, DraftOf(ed.Recording, s.homeOf(e, ed.Recording))
+	if !strings.EqualFold(d.Target, was.Target) {
+		return false
+	}
+	a, err := Plan(&d)
+	if err != nil {
+		return false
+	}
+	b, err := Plan(&was)
+	if err != nil || len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Path != b[i].Path || (a[i].Text != b[i].Text && !sameJSON(a[i].Text, b[i].Text)) {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Service) save(e *env, name string) (Editor, error) {
@@ -1451,7 +1552,13 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 		}
 		done, err = Put(ed.Target.Dir, ed.Draft.Name, files, e.backups(ed.Target), s.now())
 	} else {
-		done, err = Save(ed.Target.Dir, ed.Draft, e.backups(ed.Target), s.now())
+		cover := map[string]string{}
+		for _, f := range ed.Files {
+			if f.Covers != "" {
+				cover[f.Name] = f.Covers
+			}
+		}
+		done, err = Save(ed.Target.Dir, ed.Draft, cover, e.backups(ed.Target), s.now())
 	}
 	if err != nil {
 		return Editor{}, err
