@@ -441,6 +441,15 @@ recording:
   files: Files
   infoTab: Info
   backupsTab: Backups
+  # Pulling recordings together: every step here added to the open recording.
+  addAllTo: Add all steps to {recording}
+  addedTo:
+    one: Added {count} step to {recording}.
+    other: Added {count} steps to {recording}.
+  addedKept:
+    one: "{count} was there already and kept its value."
+    other: "{count} were there already and kept their values."
+  allIn: Every step here is in {recording} already.
   stepCount:
     one: "{count} step"
     other: "{count} steps"

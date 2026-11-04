@@ -14,7 +14,10 @@
 	import { menuHref } from '#lib/menus/api.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { hex } from '#lib/menus/values.ts';
+	import { invalidate } from '$app/navigation';
+	import { addFrom, recordingsDependency } from '#lib/recordings/api.ts';
 	import { change, move } from '#lib/recordings/draft.ts';
+	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { changed, failing, fileHeading, kindType, sentence, value, word } from '#lib/recordings/steps.ts';
 	import InlineValue from '#lib/recordings/InlineValue.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -68,6 +71,28 @@
 	let working = $state(false);
 	let error = $state('');
 	let inline = $state<InlineValue>();
+
+	// Another recording's steps can all go to the open one, to pull
+	// recordings together; once every one is there, the page says so.
+	const open = new OpenRecording();
+	let gathering = $derived(canEdit && !!open.name && open.name.toLowerCase() !== ed.draft.name.toLowerCase());
+	let allIn = $derived(gathering && rows.every((r) => open.find(r.step)));
+	let note = $state('');
+	async function addAllTo() {
+		if (working || !gathering) return;
+		working = true;
+		error = '';
+		note = '';
+		try {
+			const r = await addFrom(open.name, ed.draft.name);
+			note = [t.addedTo({ count: r.added, recording: open.name }), r.kept ? t.addedKept({ count: r.kept }) : ''].filter(Boolean).join(' ');
+			await invalidate(recordingsDependency);
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : String(err);
+		} finally {
+			working = false;
+		}
+	}
 
 	async function apply(edit: (s: Step[]) => void, select?: number) {
 		working = true;
@@ -161,6 +186,7 @@
 	<p class="empty">{e.noSteps}</p>
 {:else}
 	<div class="split">
+		<div class="steps">
 		<table>
 			<thead>
 				<tr>
@@ -205,6 +231,18 @@
 				{/each}
 			</tbody>
 		</table>
+		{#if gathering}
+			<div class="tools">
+				{#if allIn}
+					<p class="muted" role="status">{t.allIn({ recording: open.name })}</p>
+				{:else}
+					<button type="button" class="button" disabled={working} onclick={addAllTo}>{t.addAllTo({ recording: open.name })}</button>
+				{/if}
+				{#if note}<p class="muted" role="status">{note}</p>{/if}
+				{#if error && !current}<p class="notice error" role="alert">{error}</p>{/if}
+			</div>
+		{/if}
+		</div>
 		<aside class="pane" aria-label={t.pane} use:fitToViewport>
 			{#if current}
 				{@const s = current.step}
@@ -271,9 +309,22 @@
 		align-items: start;
 		margin-top: var(--space-4);
 	}
+	.steps {
+		min-width: 0;
+	}
 	table {
 		width: 100%;
 		border-collapse: collapse;
+	}
+	.tools {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--space-3);
+		margin-top: var(--space-4);
+	}
+	.tools p {
+		margin: 0;
 	}
 	thead th {
 		text-align: left;

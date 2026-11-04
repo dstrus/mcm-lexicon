@@ -156,6 +156,13 @@ type AddAllReply struct {
 	Kept  int `json:"kept"`  // options the recording had already, left as they were
 }
 
+// AddFromRequest adds every step of another recording, in order, to pull
+// recordings together: as AddAllRequest, the options this one has already
+// keep their steps.
+type AddFromRequest struct {
+	From string `json:"from"` // the other recording's name
+}
+
 type AddReply struct {
 	Number   int  `json:"number"`   // the step's position in the recording, from 1
 	Replaced bool `json:"replaced"` // the option was in the recording already, and its step now has this value
@@ -651,6 +658,16 @@ func (s *Service) Routes(m *http.ServeMux) {
 			return AddAllReply{}, err
 		}
 		return s.addAll(e, r.PathValue("name"), req.Steps)
+	}))
+	m.Handle("POST /api/recordings/{name}/steps/from", httpapi.JSON(func(r *http.Request, req AddFromRequest) (AddAllReply, error) {
+		if err := s.mustEdit(); err != nil {
+			return AddAllReply{}, err
+		}
+		e, err := s.env(r)
+		if err != nil {
+			return AddAllReply{}, err
+		}
+		return s.addFrom(e, r.PathValue("name"), req.From)
 	}))
 	m.Handle("DELETE /api/recordings/{name}", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
 		if err := s.mustEdit(); err != nil {
@@ -1422,24 +1439,54 @@ func (s *Service) addAll(e *env, name string, steps []Step) (AddAllReply, error)
 		return AddAllReply{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to add to it", ed.Draft.Name)
 	}
 	d := ed.Draft
-	var reply AddAllReply
-	for i, step := range steps {
-		step, err := prepare(step)
-		if err != nil {
-			return AddAllReply{}, fmt.Errorf("setting %d (%s): %w; nothing was recorded", i+1, step.Option, err)
-		}
-		if Find(d.Steps, step) >= 0 {
-			reply.Kept++
-			continue
-		}
-		d.Steps = append(d.Steps, step)
-		reply.Added++
+	reply, err := merge(&d, steps)
+	if err != nil {
+		return AddAllReply{}, err
 	}
 	if reply.Added > 0 {
 		s.mu.Lock()
 		s.drafts[strings.ToLower(d.Name)] = &d
 		s.persist()
 		s.mu.Unlock()
+	}
+	return reply, nil
+}
+
+// addFrom adds every step of the recording from to name's draft, as
+// addAll does: the steps from's draft holds, when it has one.
+func (s *Service) addFrom(e *env, name, from string) (AddAllReply, error) {
+	if strings.EqualFold(name, from) {
+		return AddAllReply{}, apperr.New(apperr.Invalid, "A recording can't add its own steps to itself")
+	}
+	src, err := s.editor(e, from)
+	if err != nil {
+		return AddAllReply{}, err
+	}
+	if src.Deleted {
+		return AddAllReply{}, apperr.New(apperr.Conflict, "The draft deletes %s. Restore it to add its steps", src.Draft.Name)
+	}
+	return s.addAll(e, name, src.Draft.Steps)
+}
+
+// merge appends to d the steps for options it doesn't have, in order. An
+// option it has keeps its step; a run of identical clicks (a stepper
+// clicked that many times) for one it doesn't is appended whole.
+func merge(d *Draft, steps []Step) (AddAllReply, error) {
+	var reply AddAllReply
+	added := map[string]bool{}
+	for i, step := range steps {
+		step, err := prepare(step)
+		if err != nil {
+			return AddAllReply{}, fmt.Errorf("setting %d (%s): %w; nothing was recorded", i+1, step.Option, err)
+		}
+		k := strings.ToLower(step.Mod+"\x00"+step.Page+"\x00"+step.Option+"\x00"+string(step.Kind)) + fmt.Sprint(step.Index)
+		if !added[k] && Find(d.Steps, step) >= 0 {
+			reply.Kept++
+			continue
+		}
+		added[k] = true
+		d.Steps = append(d.Steps, step)
+		reply.Added++
 	}
 	return reply, nil
 }

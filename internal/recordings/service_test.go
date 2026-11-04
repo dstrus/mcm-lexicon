@@ -742,3 +742,53 @@ func TestRecordingFromAnotherModSavesToTheSaveFolder(t *testing.T) {
 		t.Errorf("renamed: %+v", ed.Target)
 	}
 }
+
+// Another recording's steps are added to one in order, the options it has
+// already keeping their steps, and a stepper's run of clicks whole, so
+// recordings can be pulled together. The other recording is left as it is.
+func TestAddStepsFromAnotherRecording(t *testing.T) {
+	h := newHarness(t)
+	h.inst.Mod("Theirs", true, map[string]string{
+		"McmRecorder/Theirs.json":                `{"name": "Theirs"}`,
+		"McmRecorder/Theirs/0001_Be Seated.json": `[{"mod": "Be Seated", "option": "Prompts", "toggle": "on"}, {"mod": "Be Seated", "option": "Height", "slider": 7.0}]`,
+		"McmRecorder/Theirs/0002_Other.json":     `[{"mod": "Other", "option": "Next", "click": "Next"}, {"mod": "Other", "option": "Next", "click": "Next"}]`,
+	})
+	src, _ := modlist.Check(h.inst.Dir, "")
+	cat := catalog.NewService("test")
+	cat.UseList(src)
+	h.svc = NewService(cat, prefs.Load(""), nil)
+	h.svc.SetEditing(true, false)
+	h.mux = http.NewServeMux()
+	h.svc.Routes(h.mux)
+	h.call("POST", "/api/recordings", CreateRequest{Name: "Mine"}, nil)
+	h.call("POST", "/api/recordings/Mine/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "off"}}, nil)
+	var r AddAllReply
+	if code := h.call("POST", "/api/recordings/Mine/steps/from", AddFromRequest{From: "Theirs"}, &r); code != 200 || r.Added != 3 || r.Kept != 1 {
+		t.Fatalf("from Theirs: %d, %+v", code, r)
+	}
+	var ed Editor
+	h.call("GET", "/api/recordings/Mine", nil, &ed)
+	var got []string
+	for _, s := range ed.Draft.Steps {
+		got = append(got, s.Option+"="+s.Value)
+	}
+	if strings.Join(got, ", ") != "Prompts=off, Height=7.0, Next=Next, Next=Next" {
+		t.Errorf("steps: %v", got)
+	}
+	h.call("GET", "/api/recordings/Theirs", nil, &ed)
+	if ed.Drafted || len(ed.Draft.Steps) != 4 {
+		t.Errorf("Theirs changed: drafted %v, %d steps", ed.Drafted, len(ed.Draft.Steps))
+	}
+	if code := h.call("POST", "/api/recordings/Mine/steps/from", AddFromRequest{From: "Mine"}, nil); code == 200 {
+		t.Error("added to itself")
+	}
+	if code := h.call("POST", "/api/recordings/Mine/steps/from", AddFromRequest{From: "Nope"}, nil); code != 404 {
+		t.Errorf("a missing recording: %d", code)
+	}
+	// One undo takes the lot back.
+	h.call("POST", "/api/changes/undo", nil, &Changes{})
+	h.call("GET", "/api/recordings/Mine", nil, &ed)
+	if len(ed.Draft.Steps) != 1 {
+		t.Errorf("after undo: %d steps", len(ed.Draft.Steps))
+	}
+}

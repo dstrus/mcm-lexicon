@@ -292,6 +292,14 @@ export interface AddAllReply {
   added: number /* int */; // new steps
   kept: number /* int */; // options the recording had already, left as they were
 }
+/**
+ * AddFromRequest adds every step of another recording, in order, to pull
+ * recordings together: as AddAllRequest, the options this one has already
+ * keep their steps.
+ */
+export interface AddFromRequest {
+  from: string; // the other recording's name
+}
 export interface AddReply {
   number: number /* int */; // the step's position in the recording, from 1
   replaced: boolean; // the option was in the recording already, and its step now has this value
