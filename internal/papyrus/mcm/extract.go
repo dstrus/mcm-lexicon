@@ -122,6 +122,13 @@ type shown struct {
 // top If, and the arm as a key. A compiled script's ElseIf is an Else
 // holding an If, so the chain is followed up through those.
 func chainOf(path []step) (*ir.If, string) {
+	var ifs []step
+	for _, s := range path {
+		if s.at != nil {
+			ifs = append(ifs, s)
+		}
+	}
+	path = ifs
 	if len(path) == 0 {
 		return nil, ""
 	}
@@ -353,6 +360,10 @@ func walk(m *machine, page string) Page {
 		return at
 	}
 	m.globals["currentpage"] = &Value{k: kString, s: page}
+	// Each arm of an If the analysis runs starts the cursor where the If
+	// began, as the game runs only one; after it, the cursor is where the
+	// furthest arm left it, or, when no arm may run, where it began too.
+	m.arms = &cursorArms{cursor: &cursor, fill: &fill, known: &known}
 	m.call = func(site *ir.Call, args []Value) (Value, bool) {
 		name, line := site.Method, site.Line
 		k := strings.ToLower(name)
@@ -446,6 +457,7 @@ func walk(m *machine, page string) Page {
 	}
 	m.budget = budget
 	m.invoke(m.function("", "OnPageReset"), []Value{str(page)})
+	m.arms = nil
 
 	// The option events: dialog calls in a branch scoped to options apply
 	// to those options. A literal a click handler shows a text option is
@@ -690,6 +702,92 @@ func cycles(opts []*found, shows []shown) {
 	}
 }
 
+// cursorArms keeps the page's cursor across an If's arms: each arm starts
+// from the cursor as the If found it, and the If leaves it as its furthest
+// arm that carries on did. An arm that returns leaves the cursor for its
+// function's caller, not for the code after the If, which runs only when
+// it didn't: the call ends at the furthest of those. An arm that loses
+// track of the cursor loses it for the rest.
+type cursorArms struct {
+	cursor, fill *int
+	known        *bool
+	stack        []cursorIf
+	calls        [][]cursorEnd // per call in progress, the ends of its arms that returned
+}
+
+type cursorIf struct {
+	cursor, fill int
+	known        bool
+	ends         []cursorEnd
+}
+
+type cursorEnd struct {
+	cursor, fill int
+	known        bool
+}
+
+func (c *cursorArms) enter() {
+	c.stack = append(c.stack, cursorIf{cursor: *c.cursor, fill: *c.fill, known: *c.known})
+}
+
+func (c *cursorArms) arm() {
+	top := &c.stack[len(c.stack)-1]
+	*c.cursor, *c.fill, *c.known = top.cursor, top.fill, top.known
+}
+
+func (c *cursorArms) done(returned bool) {
+	end := cursorEnd{*c.cursor, *c.fill, *c.known}
+	if returned {
+		// Where the function's caller carries on from; returning from the
+		// page's own OnPageReset ends the page.
+		if len(c.calls) > 0 {
+			c.calls[len(c.calls)-1] = append(c.calls[len(c.calls)-1], end)
+		}
+		return
+	}
+	top := &c.stack[len(c.stack)-1]
+	top.ends = append(top.ends, end)
+}
+
+func (c *cursorArms) call() {
+	c.calls = append(c.calls, nil)
+}
+
+func (c *cursorArms) ret() {
+	ends := append(c.calls[len(c.calls)-1], cursorEnd{*c.cursor, *c.fill, *c.known})
+	c.calls = c.calls[:len(c.calls)-1]
+	*c.cursor, *c.fill, *c.known = furthest(ends)
+}
+
+// furthest is where the cursor is after one of several ways through: the
+// furthest along, or lost when they leave it moving different ways.
+func furthest(ends []cursorEnd) (int, int, bool) {
+	out := ends[0]
+	for _, e := range ends[1:] {
+		switch {
+		case !e.known || !out.known:
+			out.known = false
+		case e.fill != out.fill:
+			out.known = false
+		case e.cursor < 0 || (out.cursor >= 0 && e.cursor > out.cursor):
+			out.cursor = e.cursor // -1 is past the end
+		}
+	}
+	return out.cursor, out.fill, out.known
+}
+
+func (c *cursorArms) exit(skipped bool) {
+	top := c.stack[len(c.stack)-1]
+	c.stack = c.stack[:len(c.stack)-1]
+	ends := top.ends
+	if skipped || len(ends) == 0 {
+		// No arm may run, or every one returned: what follows starts where
+		// the If began.
+		ends = append(ends, cursorEnd{top.cursor, top.fill, top.known})
+	}
+	*c.cursor, *c.fill, *c.known = furthest(ends)
+}
+
 // merge drops an option that's the same as an earlier one (type and exact
 // label) when the two are in opposite arms of an If, since only one of them
 // is ever shown; what the dropped one knows fills what the kept one lacks.
@@ -699,8 +797,10 @@ func merge(opts []*found) []Option {
 		dup := false
 		for _, k := range kept {
 			// One call adding the same label again (a loop over what the
-			// game holds): one option, which repeats at runtime.
-			if k.site == o.site && k.Type == o.Type && k.Label == o.Label && k.Certainty == o.Certainty {
+			// game holds): one option, which repeats at runtime. The same
+			// call reached from another call site (a helper the page calls
+			// for each of several slots) is another option.
+			if k.site == o.site && sameCalls(k.path, o.path) && k.Type == o.Type && k.Label == o.Label && k.Certainty == o.Certainty {
 				fill(&k.Option, o.Option)
 				k.Repeats = true
 				dup = true
@@ -723,12 +823,29 @@ func merge(opts []*found) []Option {
 	return out
 }
 
+// sameCalls reports whether two paths went through the same calls into the
+// script's own functions.
+func sameCalls(a, b []step) bool {
+	var ca, cb []*ir.Call
+	for _, s := range a {
+		if s.call != nil {
+			ca = append(ca, s.call)
+		}
+	}
+	for _, s := range b {
+		if s.call != nil {
+			cb = append(cb, s.call)
+		}
+	}
+	return slices.Equal(ca, cb)
+}
+
 // exclusive reports whether two paths part at the same If, in different
 // arms: no run takes both.
 func exclusive(a, b []step) bool {
 	for i := 0; i < len(a) && i < len(b); i++ {
-		if a[i].at != b[i].at {
-			return false
+		if a[i].at != b[i].at || a[i].call != b[i].call {
+			return false // different Ifs, or the same function called from two places: both may run
 		}
 		if a[i].arm != b[i].arm {
 			return true

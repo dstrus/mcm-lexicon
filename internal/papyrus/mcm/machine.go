@@ -7,9 +7,13 @@ import (
 )
 
 // step is one choice on the way to a statement: which arm of which If.
+// step is one way a run went: an arm of an If, or a call into one of the
+// script's own functions (at nil), so that the same If in a function run
+// from two call sites is two Ifs, as each call runs it afresh.
 type step struct {
-	at  *ir.If
-	arm int
+	at   *ir.If
+	arm  int
+	call *ir.Call
 }
 
 // machine runs a script's functions over Values. Where a condition depends
@@ -28,6 +32,26 @@ type machine struct {
 	// call handles calls to SKI_ConfigBase's functions; ok=false for any
 	// other function.
 	call func(site *ir.Call, args []Value) (Value, bool)
+
+	// arms, when set, hears of each If the run takes more than one way
+	// through: the page's cursor follows each arm from where the If began.
+	arms     armHooks
+	skipped  bool // the last If's: whether no arm may have run
+	returned bool // the last If's: whether an arm returned, so what follows runs only when it didn't
+}
+
+// armHooks hear of an If's arms as the machine runs them: enter as it
+// starts, arm before each arm it runs, done after each (returned when the
+// arm returns from its function), and exit as it ends, with skipped true
+// when no arm may run at all; and call and ret around each call into one
+// of the script's own functions.
+type armHooks interface {
+	enter()
+	arm()
+	done(returned bool)
+	exit(skipped bool)
+	call()
+	ret()
 }
 
 const maxDepth = 10
@@ -141,6 +165,10 @@ func evalConst(e ir.Expr) Value {
 
 // exec runs statements; returned is true when a Return was certainly met.
 func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
+	// After an If whose arm returned, the rest of the block runs only when
+	// that arm didn't: its fall-through, which the path records as an arm
+	// of its own until the block ends.
+	defer func(n int) { m.path = m.path[:n] }(len(m.path))
 	for _, s := range body {
 		if m.budget--; m.budget <= 0 {
 			return true, unknown
@@ -164,6 +192,9 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 			if r, v := m.ifStmt(s); r {
 				return true, v
 			}
+			if m.returned {
+				m.path = append(m.path, step{at: s, arm: fallThrough})
+			}
 		case *ir.While:
 			m.loop(s)
 		}
@@ -179,9 +210,23 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 // leave a variable differently, it depends on the game, so it's unknown
 // afterward (option IDs are pooled): Accuracy's "If found / Status = True /
 // Else / Status = False".
-var dbgIf func(line, arm int, c Value, known, t bool)
-
 func (m *machine) ifStmt(s *ir.If) (bool, Value) {
+	if m.arms == nil {
+		return m.ifArms(s)
+	}
+	m.arms.enter()
+	r, v := m.ifArms(s)
+	m.arms.exit(m.skipped)
+	return r, v
+}
+
+// fallThrough is the arm a path takes past an If whose arms returned.
+const fallThrough = -1
+
+func (m *machine) ifArms(s *ir.If) (bool, Value) {
+	m.skipped = false
+	anyReturned := false
+	defer func() { m.returned = anyReturned }()
 	names := ifAssigned(s)
 	// What the variables hold if no arm runs: a local with a value (a
 	// counter being wrapped, "If n > 2 / n = 0 / EndIf") is joined with
@@ -192,11 +237,20 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 	var outcomes [][]*Value // the variables' values after each arm that carries on
 	skipped := false        // whether no arm may run
 	run := func(arm int, body []ir.Stmt, scope *Value) (bool, Value) {
-		m.path = append(m.path, step{s, arm})
+		m.path = append(m.path, step{at: s, arm: arm})
 		if scope != nil {
 			m.scope = append(m.scope, scope.ids)
 		}
+		if m.arms != nil {
+			m.arms.arm()
+		}
 		r, v := m.exec(body)
+		if m.arms != nil {
+			m.arms.done(r)
+		}
+		if r {
+			anyReturned = true
+		}
 		if scope != nil {
 			m.scope = m.scope[:len(m.scope)-1]
 		}
@@ -210,9 +264,6 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 	for i, b := range s.Branches {
 		c := m.eval(b.Cond)
 		t, known := c.truth()
-		if dbgIf != nil {
-			dbgIf(s.Line, i, c, known, t)
-		}
 		if known && !t {
 			continue
 		}
@@ -237,6 +288,7 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 			skipped = true
 		}
 	}
+	m.skipped = skipped && !certain
 	if len(outcomes) < 2 && !skipped {
 		return false, unknown
 	}
@@ -558,7 +610,16 @@ func (m *machine) callExpr(c *ir.Call) Value {
 	if c.Names != nil && f != nil {
 		args = byName(f, args, c.Names)
 	}
-	return m.invoke(f, args)
+	m.path = append(m.path, step{call: c})
+	if m.arms != nil {
+		m.arms.call()
+	}
+	v := m.invoke(f, args)
+	if m.arms != nil {
+		m.arms.ret()
+	}
+	m.path = m.path[:len(m.path)-1]
+	return v
 }
 
 // byName puts a call's arguments in the function's parameter order: the

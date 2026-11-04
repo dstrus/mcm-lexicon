@@ -647,3 +647,84 @@ func TestClickCycles(t *testing.T) {
 		}
 	}
 }
+
+// A helper that adds an option in one of an If's arms, called for several
+// slots, adds an option per call: the arms of one call exclude each other,
+// not the arms of two calls.
+const helperArms = `Scriptname Helper_MCM extends SKI_ConfigBase
+GlobalVariable property Setting auto
+int Function AddHand(string text)
+	if Setting.GetValueInt() == 0
+		Return AddTextOption(text, "Both Hands")
+	elseif Setting.GetValueInt() == 1
+		Return AddTextOption(text, "Left Hand Only")
+	else
+		Return AddTextOption(text, "Right Hand Only")
+	endif
+EndFunction
+Event OnPageReset(string page)
+	SetCursorFillMode(TOP_TO_BOTTOM)
+	AddHeaderOption("Left Hip")
+	AddHand("Permit Hands")
+	AddHeaderOption("Left Shoulder")
+	AddHand("Permit Hands")
+	SetCursorPosition(1)
+	AddHeaderOption("Right Hip")
+	AddHand("Permit Hands")
+EndEvent`
+
+func TestHelperCallsAreSeparate(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, helperArms)}, nil)
+	var positions []int
+	for _, o := range m.Pages[0].Options {
+		if o.Label == "Permit Hands" {
+			positions = append(positions, o.Position)
+		}
+	}
+	if !slices.Equal(positions, []int{2, 6, 3}) {
+		t.Errorf("Permit Hands at %v, want one per call at 2, 6, 3", positions)
+	}
+}
+
+// A helper that returns an option from one of an If's arms, or adds one
+// after it when no arm returned, adds one option a call, in one slot.
+const earlyReturn = `Scriptname Early_MCM extends SKI_ConfigBase
+GlobalVariable property Setting auto
+int Function AddHand(string text)
+	int v = Setting.GetValueInt()
+	if v == 0
+		Return AddTextOption(text, "Both Hands")
+	elseif v == 1
+		Return AddTextOption(text, "Left Hand Only")
+	endif
+	Return AddTextOption(text, "Right Hand Only")
+EndFunction
+Event OnPageReset(string page)
+	SetCursorFillMode(TOP_TO_BOTTOM)
+	AddHeaderOption("Left Hip")
+	AddToggleOption("Visible", true)
+	AddHand("Permit Hands")
+	AddToggleOption("Allow Daggers", true)
+	AddHeaderOption("Left Shoulder")
+	AddToggleOption("Visible", true)
+	AddHand("Permit Hands")
+	SetCursorPosition(1)
+	AddHeaderOption("Right Hip")
+	AddHand("Permit Hands")
+EndEvent`
+
+func TestEarlyReturnIsOneOption(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, earlyReturn)}, nil)
+	got := map[string][]int{}
+	for _, o := range m.Pages[0].Options {
+		got[o.Label] = append(got[o.Label], o.Position)
+	}
+	if !slices.Equal(got["Permit Hands"], []int{4, 12, 3}) || !slices.Equal(got["Visible"], []int{2, 10}) || !slices.Equal(got["Allow Daggers"], []int{6}) {
+		t.Errorf("positions: %v", got)
+	}
+	for _, o := range m.Pages[0].Options {
+		if o.Label == "Permit Hands" && !slices.Equal(o.Cycle, nil) && len(o.Cycle) != 3 {
+			t.Errorf("cycle: %v", o.Cycle)
+		}
+	}
+}
