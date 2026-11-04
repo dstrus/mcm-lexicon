@@ -341,3 +341,26 @@ func TestGrayedOutStepPlays(t *testing.T) {
 		t.Errorf("a grayed-out slider out of range: %s, %s", checks[1].Status, checks[1].Why)
 	}
 }
+
+// A click on a text option the menu doesn't respond to matches, saying it
+// does nothing, grayed out or not.
+func TestInertClickDoesNothing(t *testing.T) {
+	c := &catalog.Catalog{Menus: []catalog.Menu{{
+		Name: "Wet", NameText: "Wet", Active: true, Certainty: catalog.CertaintyExact,
+		Pages: []catalog.Page{{Name: "Misc", Text: "Misc", Options: []catalog.Option{
+			{Type: catalog.OptionTypeText, Label: "Version", Certainty: catalog.CertaintyExact, Inert: true},
+			{Type: catalog.OptionTypeText, Label: "Should Run", Certainty: catalog.CertaintyExact, Inert: true, Disabled: catalog.DisabledAlways},
+			{Type: catalog.OptionTypeText, Label: "Export", Certainty: catalog.CertaintyExact},
+		}}},
+	}}}
+	checks := Validate(&Recording{Steps: []Step{
+		{Mod: "Wet", Page: "Misc", Option: "Version", Kind: KindClick, Value: "Version"},
+		{Mod: "Wet", Page: "Misc", Option: "Should Run", Kind: KindClick, Value: "Should Run"},
+		{Mod: "Wet", Page: "Misc", Option: "Export", Kind: KindClick, Value: "Export"},
+	}}, c)
+	for i, want := range []Why{WhyInert, WhyInert, ""} {
+		if checks[i].Status != StatusMatched || checks[i].Why != want {
+			t.Errorf("step %d: %s, %q, want matched, %q", i+1, checks[i].Status, checks[i].Why, want)
+		}
+	}
+}

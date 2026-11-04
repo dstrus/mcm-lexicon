@@ -75,7 +75,7 @@ export function word(c: Check): string {
 		case 'unchecked':
 			return t.words.unchecked;
 		case 'matched':
-			return c.why === 'disabled' ? t.words.grayedOut : '';
+			return c.why === 'disabled' ? t.words.grayedOut : c.why === 'inert' ? t.words.inert : '';
 	}
 	return '';
 }
@@ -89,7 +89,7 @@ export function failing(c: Check): boolean {
 export function sentence(c: Check, s: Step): string {
 	switch (c.status) {
 		case 'matched':
-			return c.why === 'disabled' ? t.says.disabled : t.says.matched;
+			return c.why === 'disabled' ? t.says.disabled : c.why === 'inert' ? t.says.inert : t.says.matched;
 		case 'not-allowed':
 			return c.why === 'range' ? t.says.range({ value: s.value }) : t.says.choice({ value: s.value });
 		case 'mod-missing':
@@ -148,6 +148,7 @@ export function known(o: Option): Option['default'] {
 // to be known instead.
 export function recordable(o: Option): boolean {
 	if (o.disabled === 'always') return false; // grayed out: the mod means it not to be set
+	if (o.inert) return false; // a click on it does nothing
 	if (o.type === 'text' && !o.label) return !!o.value && o.valueCertainty === 'exact';
 	return o.certainty === 'exact';
 }

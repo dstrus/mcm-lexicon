@@ -201,6 +201,11 @@ export interface Option {
    */
   disabled?: Disabled;
   /**
+   * Inert is true for a text option a click does nothing to: its menu has
+   * no response to it, so a recording's click on it changes nothing.
+   */
+  inert?: boolean;
+  /**
    * A text option's value, shown on its right, which a click on that side
    * matches: raw (exact, or a *pattern*), translated, and how certain.
    * ValueChanges is true when the menu shows other values at times.

@@ -140,6 +140,9 @@ type Option struct {
 	// can't select it, always or at times. MCM Recorder still plays a step
 	// on it: it calls the mod's handler without looking at the flags.
 	Disabled Disabled `json:"disabled,omitempty"`
+	// Inert is true for a text option a click does nothing to: its menu has
+	// no response to it, so a recording's click on it changes nothing.
+	Inert bool `json:"inert,omitempty"`
 	// A text option's value, shown on its right, which a click on that side
 	// matches: raw (exact, or a *pattern*), translated, and how certain.
 	// ValueChanges is true when the menu shows other values at times.

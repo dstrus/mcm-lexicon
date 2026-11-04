@@ -400,7 +400,8 @@ export const WhyRange = "range"; // a slider value outside its range
 export const WhyChoice = "choice"; // a menu entry the menu doesn't have
 export const WhyValue = "value"; // a right-side click: no text option on the page shows this value
 export const WhyDisabled = "disabled"; // the menu grays the option out; MCM Recorder plays it anyway, calling the mod's handler
-export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice | typeof WhyValue | typeof WhyDisabled;
+export const WhyInert = "inert"; // a click on a text option the menu doesn't respond to: it plays, and nothing happens
+export type Why = typeof WhyPage | typeof WhyOption | typeof WhyIndex | typeof WhyInactive | typeof WhyRange | typeof WhyChoice | typeof WhyValue | typeof WhyDisabled | typeof WhyInert;
 /**
  * Check is a step's check.
  */

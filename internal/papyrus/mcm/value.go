@@ -21,6 +21,7 @@ const (
 	kOption  // the ID an Add…Option call returned
 	kParam   // the option an option event was called for
 	kScoped  // a condition true for some options only: option == X
+	kOthers  // a condition true for all options but some: option != X
 )
 
 // Value is a value as far as the analysis can tell.
@@ -46,8 +47,9 @@ func integer(n float64) Value { return Value{k: kInt, n: float64(int64(n))} }
 func boolean(b bool) Value    { return Value{k: kBool, n: b2f(b)} }
 func option(id int) Value     { return Value{k: kOption, ids: []int{id}} }
 func scoped(ids []int) Value  { return Value{k: kScoped, ids: ids} }
+func others(ids []int) Value  { return Value{k: kOthers, ids: ids} }
 func (v Value) known() bool {
-	return v.k != kUnknown && v.k != kPattern && v.k != kScoped && v.k != kParam
+	return v.k != kUnknown && v.k != kPattern && v.k != kScoped && v.k != kOthers && v.k != kParam
 }
 func (v Value) numeric() bool  { return v.k == kInt || v.k == kFloat || v.k == kBool }
 func (v Value) isString() bool { return v.k == kString }
@@ -268,7 +270,10 @@ func binary(op string, a, b Value) Value {
 		return unknown
 	case "==", "!=":
 		eq, ok := equal(a, b)
-		if s, isScope := scopeOf(a, b); isScope && op == "==" {
+		if s, isScope := scopeOf(a, b); isScope {
+			if op == "!=" {
+				return others(s.ids)
+			}
 			return s
 		}
 		if !ok {
@@ -388,7 +393,7 @@ func cast(v Value, typ string) Value {
 		if t, ok := v.truth(); ok {
 			return boolean(t)
 		}
-		if v.k == kScoped {
+		if v.k == kScoped || v.k == kOthers {
 			return v // the compiler casts each test of option == X to Bool
 		}
 	default:

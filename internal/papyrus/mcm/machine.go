@@ -26,6 +26,7 @@ type machine struct {
 	frames  []map[string]*Value
 	path    []step
 	scope   [][]int // the options a scoped condition limits the current statements to
+	state   string  // the script's state, as GoToState with a known name last left it
 	depth   int
 	budget  int // statements left before the run gives up
 
@@ -35,10 +36,16 @@ type machine struct {
 
 	// arms, when set, hears of each If the run takes more than one way
 	// through: the page's cursor follows each arm from where the If began.
-	arms     armHooks
-	rets     [][]Value // per call running, what its arms that returned returned
-	skipped  bool      // the last If's: whether no arm may have run
-	returned bool      // the last If's: whether an arm returned, so what follows runs only when it didn't
+	arms armHooks
+	rets [][]Value // per call running, what its arms that returned returned
+	// effect, when set, hears of each thing a run does that might show: a
+	// call it doesn't follow into (but a log trace), or a change to a script
+	// variable. A compiled script keeps every call's result in a temporary,
+	// so a call counts wherever it is, which errs toward something happening.
+	effect   func()
+	guard    []int // the last If's, when it returns for every option but these: "If option != X / Return"
+	skipped  bool  // the last If's: whether no arm may have run
+	returned bool  // the last If's: whether an arm returned, so what follows runs only when it didn't
 }
 
 // armHooks hear of an If's arms as the machine runs them: enter as it
@@ -97,6 +104,27 @@ func (m *machine) isLocal(name string) bool {
 	if n := len(m.frames); n > 0 {
 		_, ok := m.frames[n-1][ir.Key(name)]
 		return ok
+	}
+	return false
+}
+
+// localTarget reports whether an assignment's target is a local of the
+// running function (or an element of one): no effect outside it.
+func (m *machine) localTarget(target ir.Expr) bool {
+	switch t := target.(type) {
+	case *ir.Ident:
+		return m.isLocal(t.Name) || strings.HasPrefix(t.Name, "::")
+	case *ir.Index:
+		return m.localTarget(t.X)
+	}
+	return false
+}
+
+// traceOnly reports whether a call only writes to the Papyrus log, which
+// a player never sees.
+func traceOnly(c *ir.Call) bool {
+	if id, ok := c.Object.(*ir.Ident); ok && strings.EqualFold(id.Name, "Debug") {
+		return strings.EqualFold(c.Method, "Trace") || strings.EqualFold(c.Method, "TraceStack")
 	}
 	return false
 }
@@ -177,12 +205,17 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 	// that arm didn't: its fall-through, which the path records as an arm
 	// of its own until the block ends.
 	defer func(n int) { m.path = m.path[:n] }(len(m.path))
+	// Past a guard, the rest of the block is about the options it let by.
+	defer func(n int) { m.scope = m.scope[:n] }(len(m.scope))
 	for _, s := range body {
 		if m.budget--; m.budget <= 0 {
 			return true, unknown
 		}
 		switch s := s.(type) {
 		case *ir.Assign:
+			if m.effect != nil && !s.Declare && !m.localTarget(s.Target) {
+				m.effect()
+			}
 			if id, ok := s.Target.(*ir.Ident); ok && s.Declare {
 				m.declare(id.Name, m.eval(s.Value))
 			} else {
@@ -202,6 +235,9 @@ func (m *machine) exec(body []ir.Stmt) (returned bool, value Value) {
 			}
 			if m.returned {
 				m.path = append(m.path, step{at: s, arm: fallThrough})
+			}
+			if m.guard != nil {
+				m.scope, m.guard = append(m.scope, m.guard), nil
 			}
 		case *ir.While:
 			m.loop(s)
@@ -232,7 +268,7 @@ func (m *machine) ifStmt(s *ir.If) (bool, Value) {
 const fallThrough = -1
 
 func (m *machine) ifArms(s *ir.If) (bool, Value) {
-	m.skipped = false
+	m.skipped, m.guard = false, nil
 	anyReturned := false
 	defer func() { m.returned = anyReturned }()
 	names := ifAssigned(s)
@@ -283,6 +319,9 @@ func (m *machine) ifArms(s *ir.If) (bool, Value) {
 			scope = &c
 		}
 		r, v := run(i, b.Body, scope)
+		if r && c.k == kOthers && len(s.Branches) == 1 && s.Else == nil {
+			defer func() { m.guard = c.ids }()
+		}
 		if known {
 			certain = true
 			if r && len(outcomes) == 0 {
@@ -586,6 +625,12 @@ func (m *machine) eval(e ir.Expr) Value {
 			if t, ok := x.truth(); ok {
 				return boolean(!t)
 			}
+			switch x.k {
+			case kScoped:
+				return others(x.ids)
+			case kOthers:
+				return scoped(x.ids)
+			}
 			return unknown
 		}
 		if x.numeric() {
@@ -612,14 +657,22 @@ func (m *machine) callExpr(c *ir.Call) Value {
 		args[i] = m.eval(a)
 	}
 	if c.Object != nil || c.Parent {
+		m.affect(c)
 		return unknown // another object's function, or SKI_ConfigBase's own
+	}
+	if strings.EqualFold(c.Method, "GoToState") && len(args) > 0 && args[0].k == kString {
+		m.state = ir.Key(args[0].s)
 	}
 	if m.call != nil {
 		if v, ok := m.call(c, args); ok {
+			m.affect(c)
 			return v
 		}
 	}
-	f := m.function("", c.Method)
+	f := m.function(m.state, c.Method)
+	if f == nil || m.depth >= maxDepth {
+		m.affect(c) // a native function, or one too deep to follow
+	}
 	if c.Names != nil && f != nil {
 		args = byName(f, args, c.Names)
 	}
@@ -633,6 +686,13 @@ func (m *machine) callExpr(c *ir.Call) Value {
 	}
 	m.path = m.path[:len(m.path)-1]
 	return v
+}
+
+// affect tells effect of a call the run doesn't follow into.
+func (m *machine) affect(c *ir.Call) {
+	if m.effect != nil && !traceOnly(c) {
+		m.effect()
+	}
 }
 
 // byName puts a call's arguments in the function's parameter order: the

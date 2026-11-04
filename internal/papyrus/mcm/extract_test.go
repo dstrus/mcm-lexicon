@@ -792,3 +792,89 @@ func TestFunctionReturnsFromArms(t *testing.T) {
 		t.Errorf("options: %v", labels)
 	}
 }
+
+// A text option a click does nothing to is inert: no handler responds to
+// it, in the empty state, in the state its page enters (Simply Balanced),
+// or in its own option state. A guard ("If option != X / Return") scopes
+// what follows to X, for help text as for clicks.
+const inertSrc = `Scriptname Inert_MCM extends SKI_ConfigBase
+string CurrentFile = ""
+int saveOID
+int loadOID
+int unusedOID
+Event OnConfigInit()
+	Pages = new string[2]
+	Pages[0] = "Main"
+	Pages[1] = "Files"
+EndEvent
+Event OnPageReset(string page)
+	if page == "Files"
+		GoToState("FilesPage")
+		loadOID = AddTextOption("Load", "")
+		unusedOID = AddTextOption("Unused", "")
+	else
+		GoToState("")
+		saveOID = AddTextOption("Save", "")
+		AddTextOption("Version", "1.0")
+		AddTextOptionST("ResetST", "Reset", "")
+		AddTextOptionST("AboutST", "About", "")
+	endif
+EndEvent
+Event OnOptionSelect(int option)
+	if option == saveOID
+		if CurrentFile != ""
+			Debug.Notification("Saved")
+		endif
+	endif
+EndEvent
+State ResetST
+	Event OnSelectST()
+		CurrentFile = ""
+	EndEvent
+EndState
+State AboutST
+	Event OnHighlightST()
+		SetInfoText("About this mod")
+	EndEvent
+EndState
+State FilesPage
+	Event OnOptionSelect(int option)
+		CheckLoad("select", option)
+	EndEvent
+	Event OnOptionHighlight(int option)
+		CheckLoad("highlight", option)
+	EndEvent
+EndState
+Function CheckLoad(string what, int option)
+	if option != loadOID
+		return
+	endif
+	if what == "select"
+		Debug.Notification("Loaded")
+	else
+		SetInfoText("Load the chosen file")
+	endif
+EndFunction`
+
+func TestInertTextOptions(t *testing.T) {
+	m := Extract([]*ir.Script{parse(t, inertSrc)}, nil)
+	main, files := page(t, m, "Main"), page(t, m, "Files")
+	for _, c := range []struct {
+		p     Page
+		label string
+		want  bool
+	}{
+		{main, "Save", false}, {main, "Version", true}, {main, "Reset", false}, {main, "About", true},
+		{files, "Load", false}, {files, "Unused", true},
+	} {
+		if got := opt(t, c.p, c.label).Inert; got != c.want {
+			t.Errorf("%s: inert %v, want %v", c.label, got, c.want)
+		}
+	}
+	if got := opt(t, files, "Load").Help; got != "Load the chosen file" {
+		t.Errorf("Load: help %q", got)
+	}
+	if got := opt(t, files, "Unused").Help; got != "" {
+		t.Errorf("Unused: help %q, want none", got)
+	}
+}

@@ -359,6 +359,9 @@ func describe(m mcm.Menu) string {
 			if o.Disabled != "" {
 				b.WriteString(" disabled=" + o.Disabled)
 			}
+			if o.Inert {
+				b.WriteString(" inert")
+			}
 			if len(o.Cycle) > 0 {
 				b.WriteString(" cycle=" + strings.Join(o.Cycle, "|"))
 			}

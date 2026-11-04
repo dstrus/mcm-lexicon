@@ -30,6 +30,7 @@ const (
 	WhyChoice   Why = "choice"   // a menu entry the menu doesn't have
 	WhyValue    Why = "value"    // a right-side click: no text option on the page shows this value
 	WhyDisabled Why = "disabled" // the menu grays the option out; MCM Recorder plays it anyway, calling the mod's handler
+	WhyInert    Why = "inert"    // a click on a text option the menu doesn't respond to: it plays, and nothing happens
 )
 
 // Check is a step's check.
@@ -205,9 +206,13 @@ func matches(s Step, label string) bool {
 // the catalog knows it. A step on an option the menu grays out matches,
 // with that said: MCM Recorder doesn't look at an option's flags, so it
 // plays the step, calling the mod's handler as a click would, though a
-// player couldn't select it.
+// player couldn't select it. A click on a text option the menu doesn't
+// respond to matches too, though it does nothing.
 func allowed(s Step, o *catalog.Option) (Status, Why) {
 	st, why := allowedValue(s, o)
+	if st == StatusMatched && s.Kind == KindClick && o.Inert {
+		return StatusMatched, WhyInert
+	}
 	if st == StatusMatched && o.Disabled == catalog.DisabledAlways {
 		return StatusMatched, WhyDisabled
 	}

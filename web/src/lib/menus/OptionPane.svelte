@@ -72,7 +72,9 @@
 {#if o.certainty !== 'exact'}
 	<p class="notice warn">{o.certainty === 'pattern' ? t.pattern : t.unknown}</p>
 {/if}
-{#if o.disabled}
+{#if o.inert}
+	<p class="notice">{t.inert}</p>
+{:else if o.disabled}
 	<p class="notice">{o.disabled === 'always' ? t.disabledAlways : t.disabledSometimes}</p>
 {/if}
 {#if o.type === 'text' && o.valueChanges}

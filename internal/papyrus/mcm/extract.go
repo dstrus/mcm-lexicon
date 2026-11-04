@@ -87,6 +87,10 @@ type Option struct {
 	Line      int  // where it's added
 	Position  int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
 	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
+	// Inert is true for a text option nothing happens to when it's clicked:
+	// the script's click handler has no effect in any branch for it, nor
+	// one for every option. A recording's click on it does nothing.
+	Inert bool
 	// Disabled is whether SkyUI draws the option grayed out, so a player
 	// can't select it (MCM Recorder can: it calls the mod's handler without
 	// looking at the flags): "always" when it's added with
@@ -273,7 +277,7 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 		m.budget = budget
 		m.invoke(f, nil)
 	}
-	initial := m.snapshot()
+	initial, initialState := m.snapshot(), m.state
 	menu := Menu{}
 	if p := m.globals["modname"]; p != nil && p.k == kString {
 		menu.ModName = p.s
@@ -297,6 +301,7 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 	pageList := append([]string{""}, names...)
 	for _, name := range pageList {
 		m.restore(initial)
+		m.state = initialState
 		page := walk(m, name)
 		if name == "" && len(names) > 0 && len(page.Options) == 0 {
 			continue // the splash page of a menu with pages
@@ -457,8 +462,11 @@ func walk(m *machine, page string) Page {
 		return option(f.id), true
 	}
 	m.budget = budget
-	m.invoke(m.function("", "OnPageReset"), []Value{str(page)})
+	m.invoke(m.function(m.state, "OnPageReset"), []Value{str(page)})
 	m.arms = nil
+	// The state the page left the script in, where its option events are
+	// looked for: Simply Balanced keeps each page's in a state of its own.
+	pageState := m.state
 
 	// The option events: dialog calls in a branch scoped to options apply
 	// to those options. A literal a click handler shows a text option is
@@ -555,12 +563,17 @@ func walk(m *machine, page string) Page {
 		}
 	}
 	after := m.snapshot()
+	// What a click reaches: each effect the click handler has, for the
+	// options its branch is about, or for every option outside one.
+	responds := map[int]bool{}
+	everyOption := false
 	for _, e := range optionEvents {
-		f := m.function("", e)
+		f := m.function(pageState, e)
 		if f == nil {
 			continue
 		}
 		m.restore(after)
+		m.state = pageState
 		m.call = dialog(nil)
 		m.budget = budget
 		m.invoke(f, []Value{{k: kParam}, {k: kParam}})
@@ -573,9 +586,76 @@ func walk(m *machine, page string) Page {
 				continue
 			}
 			m.restore(after)
+			m.state = state
 			m.call = dialog(ids)
 			m.budget = budget
 			m.invoke(f, nil)
+		}
+	}
+	// A pass of its own for what a click reaches, with the script's own
+	// variables unknown but those holding options: whether a branch might
+	// run decides it, not the value a variable starts with (SunHelm's Save
+	// runs only once a profile is chosen, which "" says it never is).
+	blurred := map[string]Value{}
+	for k, v := range after {
+		if v.k == kOption || v.k == kArray {
+			blurred[k] = v
+		} else {
+			blurred[k] = unknown
+		}
+	}
+	quiet := func(site *ir.Call, args []Value) (Value, bool) {
+		if isSKIFunction(site.Method) {
+			return unknown, true
+		}
+		return Value{}, false
+	}
+	if f := m.function(pageState, "OnOptionSelect"); f != nil {
+		m.restore(blurred)
+		m.state = pageState
+		m.call = quiet
+		m.budget = budget
+		m.effect = func() {
+			if len(m.scope) == 0 {
+				everyOption = true
+				return
+			}
+			for _, id := range m.scope[len(m.scope)-1] {
+				responds[id] = true
+			}
+		}
+		m.invoke(f, []Value{{k: kParam}, {k: kParam}})
+		m.effect = nil
+		if m.budget <= 0 {
+			everyOption = true // cut short: what's left might do anything
+		}
+	}
+	for _, state := range sortedKeys(byState) {
+		f := m.function(state, "OnSelectST")
+		if f == nil || !inState(m.chain, state, f) {
+			continue
+		}
+		ids := byState[state]
+		m.restore(blurred)
+		m.state = state
+		m.call = quiet
+		m.budget = budget
+		m.effect = func() {
+			for _, id := range ids {
+				responds[id] = true
+			}
+		}
+		m.invoke(f, nil)
+		m.effect = nil
+		if m.budget <= 0 {
+			for _, id := range ids {
+				responds[id] = true
+			}
+		}
+	}
+	for _, o := range opts {
+		if o.Type == "text" && !everyOption && !responds[o.id] {
+			o.Inert = true
 		}
 	}
 	cycles(opts, shows)
@@ -875,6 +955,8 @@ func fill(k *Option, o Option) {
 	if k.Type == "text" && (k.Value != o.Value || k.ValueCertainty != o.ValueCertainty || o.ValueChanges) {
 		k.ValueChanges = true
 	}
+	// Inert only if no copy responds to a click.
+	k.Inert = k.Inert && o.Inert
 	// Disabled in one arm and not the other: sometimes.
 	if k.Disabled != o.Disabled {
 		k.Disabled = "sometimes"

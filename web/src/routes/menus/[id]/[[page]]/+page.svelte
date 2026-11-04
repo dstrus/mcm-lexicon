@@ -367,9 +367,10 @@
 {/snippet}
 
 {#snippet value(o: Option, i: number)}
-	{#if recording && o.disabled === 'always'}
-		<!-- Grayed out in the game: for reading only. -->
-		<span class="val readonly" title={m.adding.readOnly}>{@render shown(o)}</span>
+	{#if recording && (o.disabled === 'always' || o.inert)}
+		<!-- Grayed out in the game, or a line a click does nothing to: for
+		     reading only. -->
+		<span class="val readonly" title={o.inert ? m.adding.inert : m.adding.readOnly}>{@render shown(o)}</span>
 	{:else if recording}
 		{@const rec = recorded(o)}
 		<span class="val" class:changed={!!rec && stepChanged(rec.step, o)}>
@@ -495,10 +496,12 @@
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
-					{#if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
+					<!-- A click on an inert option does nothing, grayed out or not. -->
+					{#if o.inert}<p class="notice">{m.option.inert}</p>
+					{:else if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
 					{#if recording && stepper(o) && canEdit(o)}<p class="notice">{m.adding.stepperNote({ start: cycled(o, 0) })}</p>
 					{:else if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>{/if}
-					{#if recording && !canEdit(o) && o.disabled !== 'always'}<p class="notice">{m.adding.cantRecord}</p>{/if}
+					{#if recording && !canEdit(o) && o.disabled !== 'always' && !o.inert}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}
 		{:else if options.length}

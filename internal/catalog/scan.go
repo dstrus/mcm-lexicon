@@ -249,6 +249,8 @@ func (s *scan) helperOption(c mcmhelper.Control, defaults, saved mcmhelper.INI, 
 		o.Notes = append(o.Notes, Note{Kind: NoteKindStepper})
 	case "text":
 		o.Type = OptionTypeText
+		// A text control does something on a click only through its action.
+		o.Inert = c.Action == ""
 		// A fixed value is the config's; one read from a setting shows
 		// whatever the setting holds, which changes.
 		o.ValueCertainty = CertaintyExact
