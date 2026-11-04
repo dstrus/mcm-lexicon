@@ -30,7 +30,6 @@ shell:
   recordingReadOnlyTitle: The recording to look at; turn on editing to add to it
   mode: Read-only or editing
   session: Editing session
-  readOnlyNote: Nothing can be changed until you turn on editing.
   readOnly: Read-only
   editing: Editing
   readOnlyTitle: Nothing can be changed. Turn on editing to make and change recordings.
@@ -87,9 +86,6 @@ nav:
   changesTitle:
     one: "{count} recording with changes not yet saved"
     other: "{count} recordings with changes not yet saved"
-  notBuiltYet: Not built yet
-  recordingsGroup: Recordings
-  addingHere: New steps go here
   unsavedHere: Has unsaved changes
   disabledHere: Its mod is disabled, so the game won’t play it
 
@@ -164,17 +160,7 @@ menus:
     one: "{count} file couldn’t be read:"
     other: "{count} files couldn’t be read:"
 
-  # The pane.
-  plugin: Plugin
-  config: Config
-  script: Script
-  definedIn: Defined in
-  certainty: Certainty
-  allExact:
-    one: Its option is exact.
-    other: All {count} options are exact.
-  someUncertain: "{uncertain} of {count} options are built at runtime."
-  noOptions: It has no options a recording can set.
+  # Under a menu's name: what's known about how it was read.
   inactive: "Its plugin, {plugin}, isn’t active in this profile, so the game won’t show this menu."
   noPlugin: Its mod has no plugin, so whether the game loads this menu isn’t known.
   pluginGuessed: No quest with this menu’s script was found, so its plugin is the one in its mod named most like it.
@@ -225,8 +211,6 @@ mcm:
   noHelp: This option has no help text.
   pick: Select an option to see its help and where it's defined.
   stepOf: Step {n} of {recording}
-  leftColumn: Options, left column
-  rightColumn: Options, right column
 
 # One option, in the pane.
 option:
@@ -558,7 +542,6 @@ edit:
   moveDown: Move down
   remove: Remove
   useIt: Use it
-  keptInDraft: Kept in the draft until you save the recording.
   turnOn: Turn on
   turnOff: Turn off
   toggleLabel: "{option}: on or off"

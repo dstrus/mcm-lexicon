@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { goto, invalidate } from '$app/navigation';
 	import { ApiError } from '#lib/api/client.ts';
-	import type { Fixture, Option } from '#lib/api/types/catalog.ts';
+	import type { Fixture, Note, Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
 	import { column } from '#lib/menus/column.svelte.ts';
@@ -30,6 +30,28 @@
 
 	let { data }: PageProps = $props();
 	const t = m.menu;
+
+	// A menu's note as a sentence, or "" for one that's said elsewhere.
+	function menuNote(n: Note): string {
+		const w = m.menus;
+		switch (n.kind) {
+			case 'no-plugin':
+				return w.noPlugin;
+			case 'plugin-guessed':
+				return w.pluginGuessed;
+			case 'name-from-script':
+				return w.nameFromScript;
+			case 'pages-guessed':
+				return w.pagesGuessed;
+			case 'framework':
+				return w.framework({ script: n.detail });
+			case 'source-stale':
+				return w.sourceStale;
+			case 'overridden':
+				return w.overridden({ mod: n.detail });
+		}
+		return '';
+	}
 	const s = m.mcm;
 
 	let menu = $derived(data.menu);
@@ -349,6 +371,12 @@
 <h1 class="caps">{menu.nameText}</h1>
 <p class="muted sub">{menu.mod}{#if menu.plugin}{' · '}{menu.plugin}{/if}{' · '}{m.menus.kinds[menu.kind]}</p>
 {#if !menu.active}<p class="notice warn">{m.menus.inactive({ plugin: menu.plugin })}</p>{/if}
+<!-- How the menu was read, where that's worth knowing: a guess, another
+     copy, or a framework read along with it. -->
+{#each menu.notes as n, i (i)}
+	{@const text = menuNote(n)}
+	{#if text}<p class="notice">{text}</p>{/if}
+{/each}
 {#if error}<p class="notice error" role="alert">{error}</p>{/if}
 
 <!-- A value as the menu shows it, for reading: a toggle's switch, at rest,
