@@ -1,6 +1,6 @@
 import { request } from '#lib/api/client.ts';
 import type { OpenRequest, Status } from '#lib/api/types/api.ts';
-import type { AddAllReply, AddReply, Changes, CompareReply, CompareRequest, CreateRequest, Draft, Editor, ListReply, SaveReply, Step } from '#lib/api/types/recordings.ts';
+import type { AddAllReply, AddReply, BackupsReply, Changes, CompareReply, CompareRequest, CreateRequest, DeletedReply, Draft, Editor, ListReply, SaveReply, Step } from '#lib/api/types/recordings.ts';
 
 export const recordingsDependency = 'app:recordings';
 
@@ -29,6 +29,23 @@ export function putDraft(name: string, draft: Draft): Promise<Editor> {
 // file 0 is the info file, and file n the nth step file Save would write.
 export function putFileText(name: string, file: number, text: string): Promise<Editor> {
 	return request<Editor>('PUT', `${at(name)}/files/${file}`, { text });
+}
+
+// getBackups is every backup of a recording, newest first, each with its
+// files against what's on disk.
+export function getBackups(name: string, fetchFn?: typeof fetch): Promise<BackupsReply> {
+	return request<BackupsReply>('GET', `${at(name)}/backups`, undefined, fetchFn);
+}
+
+// restoreFrom puts a backup in the draft: Save writes its files exactly.
+export function restoreFrom(name: string, id: string): Promise<Editor> {
+	return request<Editor>('PUT', `${at(name)}/backups/${encodeURIComponent(id)}`);
+}
+
+// getDeletedBackups is each recording the list no longer has that has a
+// backup.
+export function getDeletedBackups(fetchFn?: typeof fetch): Promise<DeletedReply> {
+	return request<DeletedReply>('GET', '/api/backups', undefined, fetchFn);
 }
 
 export function discardDraft(name: string): Promise<Editor> {

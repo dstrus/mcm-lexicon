@@ -297,6 +297,9 @@ A name-and-count list under a label-caps heading in the accent. Each row carries
 ### Quick Find
 A dialog (28rem max, 18vh from the top) on the smoke surface with a strong hairline, 3px radius and the modal lift, opened with `/` from any page; it lists menus by display text, with the diamond on the selected one, and Enter opens the menu. The dialog that asks which recording a step goes to, when none is open, is the same surface.
 
+### Backups
+A recording's Backups tab is a plain table, newest first (WHEN, MADE BY in label caps, STEPS, FILES), the selected row with the diamond, haze, and keys' hairline. Under it, a primary RESTORE (only while editing, and not for the backup already being restored or one that matches the disk), the folder it came from in muted text, and each file as the Files tab draws it, its diff against the disk. A pending restore is a muted RESTORED after its time. Deleted recordings with a backup sit below the Recordings table under an accent group heading, each a row with its name, the newest backup's time and count in muted text, and RESTORE as a text button.
+
 ### The Draft Rule
 Nothing is written until Save. A recording with unsaved changes says so in a muted line under its title, naming the folder Save will write to, and the hint strip's Save hint is enabled only then. Every notice passes Hermaeus's test: name the file, the backup, and the consequence.
 

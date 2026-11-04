@@ -30,24 +30,25 @@ const DefaultTarget = "MCM Lexicon Recordings"
 
 // Summary is a recording without its steps, for the list of recordings.
 type Summary struct {
-	Name     string    `json:"name"`
-	Title    string    `json:"title"`
-	Version  string    `json:"version"`
-	Author   string    `json:"author"`
-	Autorun  bool      `json:"autorun"`
-	Mod      string    `json:"mod"`
-	Info     string    `json:"info"`
-	Losing   []string  `json:"losing"`
-	Steps    int       `json:"steps"`
-	Files    int       `json:"files"`
-	Menus    int       `json:"menus"` // the menus its steps name
-	Counts   Counts    `json:"counts"`
-	Problems []Problem `json:"problems"`
-	Drafted  bool      `json:"drafted"`  // it has changes not yet saved
-	Deleted  bool      `json:"deleted"`  // the draft deletes it
-	New      bool      `json:"new"`      // it's only a draft, never saved
-	Deletes  string    `json:"deletes"`  // why it can't be deleted; "" when it can
-	Unlisted bool      `json:"unlisted"` // in a folder MCM Lexicon saved to that the profile doesn't enable
+	Name      string    `json:"name"`
+	Title     string    `json:"title"`
+	Version   string    `json:"version"`
+	Author    string    `json:"author"`
+	Autorun   bool      `json:"autorun"`
+	Mod       string    `json:"mod"`
+	Info      string    `json:"info"`
+	Losing    []string  `json:"losing"`
+	Steps     int       `json:"steps"`
+	Files     int       `json:"files"`
+	Menus     int       `json:"menus"` // the menus its steps name
+	Counts    Counts    `json:"counts"`
+	Problems  []Problem `json:"problems"`
+	Drafted   bool      `json:"drafted"`   // it has changes not yet saved
+	Deleted   bool      `json:"deleted"`   // the draft deletes it
+	New       bool      `json:"new"`       // it's only a draft, never saved
+	Deletes   string    `json:"deletes"`   // why it can't be deleted; "" when it can
+	Unlisted  bool      `json:"unlisted"`  // in a folder MCM Lexicon saved to that the profile doesn't enable
+	Restoring bool      `json:"restoring"` // the draft puts it back from a backup
 }
 
 type ListReply struct {
@@ -117,6 +118,9 @@ type Editor struct {
 	Targets   []string      `json:"targets"`  // mod folders to choose from: those with recordings, and the default
 	Problems  []string      `json:"problems"` // what's wrong with the draft, so Save can't write it
 	Deleted   bool          `json:"deleted"`  // the draft deletes it: Save removes its files
+	// FromBackup is the backup the draft puts back: Save writes its files
+	// exactly, after backing up what's there.
+	FromBackup *Backup `json:"fromBackup,omitempty"`
 }
 
 // CreateRequest makes a new recording, as a draft.
@@ -182,6 +186,9 @@ type Service struct {
 	kept    map[string]*Draft // saved where this list doesn't see them (a new mod folder), shown as saved
 	created map[string]bool   // the draft's new recordings, never saved, by lowercase name
 	saved   map[string]Saved  // the last save of each, by lowercase name
+	// fromBackups are the recordings the draft puts back from a backup, by
+	// lowercase name: Save writes the backup's files exactly.
+	fromBackups map[string]fromBackup
 
 	// The draft's history, for undo and redo: the state it was in before
 	// each change, and the changes undone. Kept in memory only; a Save,
@@ -192,9 +199,22 @@ type Service struct {
 
 // snapshot is the draft at one moment: what undo puts back.
 type snapshot struct {
-	drafts  map[string]Draft
-	deleted map[string]bool
-	created map[string]bool
+	drafts      map[string]Draft
+	deleted     map[string]bool
+	created     map[string]bool
+	fromBackups map[string]fromBackup
+}
+
+// fromBackup is a recording the draft puts back from one of its backups.
+type fromBackup struct {
+	Name string `json:"name"` // the recording, as it's spelled
+	ID   string `json:"id"`   // the backup
+	Mod  string `json:"mod"`  // the folder it goes back into
+}
+
+// pending is how many recordings the draft changes. Callers hold s.mu.
+func (s *Service) pending() int {
+	return len(s.drafts) + len(s.deleted) + len(s.fromBackups)
 }
 
 // historyLimit is the most changes undo goes back through.
@@ -213,12 +233,13 @@ func NewService(cat *catalog.Service, p *prefs.Prefs, running func() bool) *Serv
 // reset forgets the draft. Callers hold s.mu, or have s to themselves.
 func (s *Service) reset() {
 	s.drafts, s.deleted, s.kept, s.saved, s.created = map[string]*Draft{}, map[string]bool{}, map[string]*Draft{}, map[string]Saved{}, map[string]bool{}
+	s.fromBackups = map[string]fromBackup{}
 	s.forget()
 }
 
 // snap is the draft now, copied.
 func (s *Service) snap() snapshot {
-	out := snapshot{drafts: map[string]Draft{}, deleted: maps.Clone(s.deleted), created: maps.Clone(s.created)}
+	out := snapshot{drafts: map[string]Draft{}, deleted: maps.Clone(s.deleted), created: maps.Clone(s.created), fromBackups: maps.Clone(s.fromBackups)}
 	for k, d := range s.drafts {
 		c := *d
 		c.Steps = slices.Clone(d.Steps)
@@ -242,11 +263,15 @@ func (s *Service) put(n snapshot) {
 	if s.created == nil {
 		s.created = map[string]bool{}
 	}
+	s.fromBackups = maps.Clone(n.fromBackups)
+	if s.fromBackups == nil {
+		s.fromBackups = map[string]fromBackup{}
+	}
 }
 
 func (a snapshot) same(b snapshot) bool {
-	x, _ := json.Marshal([]any{a.drafts, a.deleted, a.created})
-	y, _ := json.Marshal([]any{b.drafts, b.deleted, b.created})
+	x, _ := json.Marshal([]any{a.drafts, a.deleted, a.created, a.fromBackups})
+	y, _ := json.Marshal([]any{b.drafts, b.deleted, b.created, b.fromBackups})
 	return string(x) == string(y)
 }
 
@@ -315,15 +340,23 @@ func (s *Service) step(back bool) error {
 // held is the draft as its file keeps it: what it changes, and the list
 // it belongs to.
 type held struct {
-	From    string            `json:"from"`
-	Drafts  map[string]*Draft `json:"drafts"`
-	Deleted map[string]bool   `json:"deleted,omitempty"`
-	Created map[string]bool   `json:"created,omitempty"`
+	From        string                `json:"from"`
+	Drafts      map[string]*Draft     `json:"drafts"`
+	Deleted     map[string]bool       `json:"deleted,omitempty"`
+	Created     map[string]bool       `json:"created,omitempty"`
+	FromBackups map[string]fromBackup `json:"fromBackups,omitempty"`
 }
 
 // persist records a change to the draft: on the undo history, and in its
 // file. Callers hold s.mu.
 func (s *Service) persist() {
+	// Changing a recording, or deleting it, replaces putting it back from a
+	// backup.
+	for k := range s.fromBackups {
+		if s.drafts[k] != nil || s.deleted[k] {
+			delete(s.fromBackups, k)
+		}
+	}
 	s.remember()
 	s.write()
 }
@@ -335,13 +368,13 @@ func (s *Service) write() {
 	if s.file == "" {
 		return
 	}
-	if len(s.drafts)+len(s.deleted) == 0 {
+	if s.pending() == 0 {
 		if err := os.Remove(s.file); err != nil && !os.IsNotExist(err) {
 			log.Printf("Could not remove the draft file: %v", err)
 		}
 		return
 	}
-	b, _ := json.MarshalIndent(held{From: s.from, Drafts: s.drafts, Deleted: s.deleted, Created: s.created}, "", "  ")
+	b, _ := json.MarshalIndent(held{From: s.from, Drafts: s.drafts, Deleted: s.deleted, Created: s.created, FromBackups: s.fromBackups}, "", "  ")
 	err := os.MkdirAll(filepath.Dir(s.file), 0o755)
 	if err == nil {
 		err = os.WriteFile(s.file, b, 0o644)
@@ -372,7 +405,7 @@ func (s *Service) restore() {
 			delete(h.Drafts, k)
 		}
 	}
-	if len(h.Drafts)+len(h.Deleted) == 0 {
+	if len(h.Drafts)+len(h.Deleted)+len(h.FromBackups) == 0 {
 		return
 	}
 	s.from = h.From
@@ -389,9 +422,14 @@ func (s *Service) restore() {
 			s.created[strings.ToLower(k)] = true
 		}
 	}
+	for k, b := range h.FromBackups {
+		if b.ID != "" {
+			s.fromBackups[strings.ToLower(k)] = b
+		}
+	}
 	s.editing = true
 	s.forget()
-	if n := len(s.drafts) + len(s.deleted); n == 1 {
+	if n := s.pending(); n == 1 {
 		log.Print("Restored the draft from last time: changes to 1 recording, not yet saved")
 	} else {
 		log.Printf("Restored the draft from last time: changes to %d recordings, not yet saved", n)
@@ -411,7 +449,7 @@ func (s *Service) Editing() bool {
 func (s *Service) Pending() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return len(s.drafts) + len(s.deleted)
+	return s.pending()
 }
 
 // SetEditing turns editing on or off. Turning it off with changes pending
@@ -419,12 +457,13 @@ func (s *Service) Pending() int {
 func (s *Service) SetEditing(on, discard bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !on && len(s.drafts)+len(s.deleted) > 0 {
+	if !on && s.pending() > 0 {
 		if !discard {
-			return apperr.New(apperr.Conflict, "The draft has changes to %d recordings. Save them or discard them first", len(s.drafts)+len(s.deleted))
+			return apperr.New(apperr.Conflict, "The draft has changes to %d recordings. Save them or discard them first", s.pending())
 		}
 		gone := s.dropDrafts(nil)
 		s.deleted = map[string]bool{}
+		s.fromBackups = map[string]fromBackup{}
 		s.persist()
 		s.forget() // leaving editing: nothing to undo while read-only
 		defer s.forgetOpen(gone)
@@ -650,6 +689,31 @@ func (s *Service) Routes(m *http.ServeMux) {
 		}
 		return s.saveAll(e)
 	}))
+	// A recording's backups, and putting one back.
+	m.Handle("GET /api/recordings/{name}/backups", httpapi.JSON(func(r *http.Request, _ httpapi.None) (BackupsReply, error) {
+		e, err := s.env(r)
+		if err != nil {
+			return BackupsReply{}, err
+		}
+		return s.backupsOf(e, r.PathValue("name")), nil
+	}))
+	m.Handle("PUT /api/recordings/{name}/backups/{id}", httpapi.JSON(func(r *http.Request, _ httpapi.None) (Editor, error) {
+		if err := s.mustEdit(); err != nil {
+			return Editor{}, err
+		}
+		e, err := s.env(r)
+		if err != nil {
+			return Editor{}, err
+		}
+		return s.restoreFrom(e, r.PathValue("name"), r.PathValue("id"))
+	}))
+	m.Handle("GET /api/backups", httpapi.JSON(func(r *http.Request, _ httpapi.None) (DeletedReply, error) {
+		e, err := s.env(r)
+		if err != nil {
+			return DeletedReply{}, err
+		}
+		return s.deletedWithBackups(e), nil
+	}))
 	// Undo and redo step through the draft's history of changes.
 	for path, back := range map[string]bool{"POST /api/changes/undo": true, "POST /api/changes/redo": false} {
 		m.Handle(path, httpapi.JSON(func(r *http.Request, _ httpapi.None) (Changes, error) {
@@ -674,6 +738,7 @@ func (s *Service) Routes(m *http.ServeMux) {
 		s.mu.Lock()
 		gone := s.dropDrafts(nil)
 		s.deleted = map[string]bool{}
+		s.fromBackups = map[string]fromBackup{}
 		s.persist()
 		s.mu.Unlock()
 		s.forgetOpen(gone)
@@ -685,9 +750,10 @@ func (s *Service) Routes(m *http.ServeMux) {
 type ChangeKind string
 
 const (
-	ChangeKindNew     ChangeKind = "new"
-	ChangeKindChanged ChangeKind = "changed"
-	ChangeKindDeleted ChangeKind = "deleted"
+	ChangeKindNew      ChangeKind = "new"
+	ChangeKindChanged  ChangeKind = "changed"
+	ChangeKindDeleted  ChangeKind = "deleted"
+	ChangeKindRestored ChangeKind = "restored" // put back from a backup
 )
 
 // Change is one recording the draft changes, as its editor shows it.
@@ -726,6 +792,7 @@ func (s *Service) list(e *env) ListReply {
 	for k, d := range s.drafts {
 		drafts[k] = d
 	}
+	restoring := maps.Clone(s.fromBackups)
 	s.mu.Unlock()
 	for _, rec := range e.recs {
 		sum := summarize(rec, e.cat)
@@ -736,7 +803,25 @@ func (s *Service) list(e *env) ListReply {
 		s.mu.Lock()
 		sum.Deleted = s.deleted[strings.ToLower(rec.Name)]
 		s.mu.Unlock()
+		if _, ok := restoring[strings.ToLower(rec.Name)]; ok && !sum.Drafted && !sum.Deleted {
+			sum.Drafted, sum.Restoring = true, true
+		}
+		delete(restoring, strings.ToLower(rec.Name))
 		sum.Deletes = s.deletes(e, rec)
+		reply.Recordings = append(reply.Recordings, sum)
+	}
+	// A deleted recording the draft puts back from a backup.
+	for k, fb := range restoring {
+		if drafts[k] != nil {
+			continue
+		}
+		ed, err := s.editor(e, fb.Name)
+		if err != nil {
+			continue
+		}
+		rec := &Recording{Name: ed.Draft.Name, Title: ed.Draft.Title, Author: ed.Draft.Author, Version: ed.Draft.Version, Autorun: ed.Draft.Autorun, Steps: ed.Draft.Steps, Losing: []string{}, Problems: []Problem{}, Files: []File{}}
+		sum := summarize(rec, e.cat)
+		sum.Drafted, sum.Restoring, sum.Mod, sum.Deletes = true, true, ed.Draft.Target, "new"
 		reply.Recordings = append(reply.Recordings, sum)
 	}
 	for _, d := range drafts {
@@ -920,7 +1005,11 @@ func (s *Service) editor(e *env, name string) (Editor, error) {
 	}
 	saved, wasSaved := s.saved[strings.ToLower(name)]
 	deleted := s.deleted[strings.ToLower(name)]
+	fb, restoring := s.fromBackups[strings.ToLower(name)]
 	s.mu.Unlock()
+	if restoring && !drafted && !deleted {
+		return s.editorFromBackup(e, rec, fb, saved, wasSaved)
+	}
 	if rec == nil && held == nil {
 		if e.list == nil {
 			return Editor{}, apperr.New(apperr.NotFound, "There's no new recording %q. With a catalog file open, recordings are made here and saved to a folder", name)
@@ -1351,13 +1440,26 @@ func (s *Service) save(e *env, name string) (Editor, error) {
 	if err := os.MkdirAll(ed.Target.Dir, 0o755); err != nil {
 		return Editor{}, err
 	}
-	done, err := Save(ed.Target.Dir, ed.Draft, e.backups(ed.Target), s.now())
+	var done Saved
+	if ed.FromBackup != nil {
+		// The backup's files, exactly, in place of what's there.
+		files := map[string]string{}
+		for _, f := range ed.Files {
+			if f.Change != FileChangeRemoved {
+				files[f.Path] = f.Text
+			}
+		}
+		done, err = Put(ed.Target.Dir, ed.Draft.Name, files, e.backups(ed.Target), s.now())
+	} else {
+		done, err = Save(ed.Target.Dir, ed.Draft, e.backups(ed.Target), s.now())
+	}
 	if err != nil {
 		return Editor{}, err
 	}
 	key := strings.ToLower(ed.Draft.Name)
 	s.mu.Lock()
 	delete(s.drafts, key)
+	delete(s.fromBackups, key)
 	delete(s.created, key) // on disk now
 	s.saved[key] = done
 	s.persist()
@@ -1430,6 +1532,11 @@ func (s *Service) dropDrafts(names []string) []string {
 			delete(s.created, k)
 		}
 		delete(s.drafts, k)
+	}
+	for k := range s.fromBackups {
+		if names == nil || slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, k) }) {
+			delete(s.fromBackups, k)
+		}
 	}
 	return gone
 }
@@ -1505,6 +1612,11 @@ func (s *Service) changes(e *env) Changes {
 			names = append(names, r.Name)
 		}
 	}
+	for k, b := range s.fromBackups {
+		if s.drafts[k] == nil && !s.deleted[k] {
+			names = append(names, b.Name)
+		}
+	}
 	s.mu.Unlock()
 	sort.Slice(names, func(i, j int) bool { return strings.ToLower(names[i]) < strings.ToLower(names[j]) })
 	out := Changes{Recordings: []Change{}}
@@ -1515,6 +1627,8 @@ func (s *Service) changes(e *env) Changes {
 		}
 		kind := ChangeKindChanged
 		switch {
+		case ed.FromBackup != nil:
+			kind = ChangeKindRestored
 		case ed.Deleted:
 			kind = ChangeKindDeleted
 		case ed.Recording == nil:
@@ -1573,6 +1687,7 @@ func (s *Service) saveAll(e *env) (SaveReply, error) {
 			if !c.Editor.Changed {
 				s.mu.Lock()
 				delete(s.drafts, strings.ToLower(name))
+				delete(s.fromBackups, strings.ToLower(name))
 				s.persist()
 				s.forget() // a write can't be undone
 				s.mu.Unlock()

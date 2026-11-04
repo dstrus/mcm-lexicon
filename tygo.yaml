@@ -33,7 +33,7 @@ packages:
       catalog.State: catalog.State
       modlist.Source: modlist.Source
   - path: lexicon/internal/recordings
-    include_files: [recordings.go, validate.go, service.go, write.go]
+    include_files: [recordings.go, validate.go, service.go, write.go, backup.go]
     output_path: web/src/lib/api/types/recordings.ts
     fallback_type: unknown
     enum_style: union

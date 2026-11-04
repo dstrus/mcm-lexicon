@@ -292,6 +292,11 @@ func TestRealSnapshotsRoundTrip(t *testing.T) {
 				if strings.HasPrefix(p, "profiles/") || p == "ModOrganizer.ini" {
 					continue
 				}
+				// MCM Lexicon's own backups, from saving into the snapshot:
+				// not the list's, so not copied.
+				if strings.HasPrefix(p, "lexicon-backups/") {
+					continue
+				}
 				// The script copied files from some mods it then left out of
 				// modlist.txt; those don't exist as far as the list says.
 				if parts := strings.Split(p, "/"); parts[0] == "mods" {

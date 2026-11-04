@@ -270,7 +270,7 @@ func Save(dir string, d Draft, backups string, now time.Time) (Saved, error) {
 		return Saved{}, err
 	}
 	saved := Saved{At: now, Dir: dir}
-	backup, err := backUp(dir, name, backups, now)
+	backup, err := backUp(dir, name, backups, now, BackupSave)
 	if err != nil {
 		return Saved{}, fmt.Errorf("backing up %s: %w", name, err)
 	}
@@ -316,7 +316,7 @@ func Save(dir string, d Draft, backups string, now time.Time) (Saved, error) {
 // backups as Save does, and returns the backup's folder.
 func Delete(dir, name, backups string, now time.Time) (string, error) {
 	name = PathPart(name)
-	backup, err := backUp(dir, name, backups, now)
+	backup, err := backUp(dir, name, backups, now, BackupDelete)
 	if err != nil {
 		return "", fmt.Errorf("backing up %s: %w", name, err)
 	}
@@ -334,9 +334,9 @@ func Delete(dir, name, backups string, now time.Time) (string, error) {
 }
 
 // backUp copies a recording's files in dir to backups/<name>/<time>/, as
-// they sit under McmRecorder, and returns that folder; "" when the
-// recording has no files there.
-func backUp(dir, name, backups string, now time.Time) (string, error) {
+// they sit under McmRecorder, with a note saying where they came from and
+// why, and returns that folder; "" when the recording has no files there.
+func backUp(dir, name, backups string, now time.Time, reason BackupReason) (string, error) {
 	files := Disk(dir, name)
 	if len(files) == 0 {
 		return "", nil
@@ -356,6 +356,10 @@ func backUp(dir, name, backups string, now time.Time) (string, error) {
 		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
 			return "", err
 		}
+	}
+	note, _ := json.MarshalIndent(backupNote{Reason: reason, Mod: filepath.Base(dir), Dir: dir, At: now}, "", "  ")
+	if err := os.WriteFile(filepath.Join(dest, backupNoteName), note, 0o644); err != nil {
+		return "", err
 	}
 	return dest, nil
 }

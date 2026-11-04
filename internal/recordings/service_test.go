@@ -2,6 +2,7 @@ package recordings
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -570,5 +571,100 @@ func TestUndoRedo(t *testing.T) {
 	}
 	if u, r := history(); u != 0 || r != 0 {
 		t.Errorf("after saving: %d, %d", u, r)
+	}
+}
+
+// A backup goes back through the draft: chosen, it's a change Save writes
+// exactly, which undo takes back; a deleted recording comes back from the
+// backup its deletion made.
+func TestRestoreFromBackup(t *testing.T) {
+	h := newHarness(t)
+	h.svc.SetEditing(true, false)
+	dir := filepath.Join(h.inst.Dir, "mods", "MGO Recordings")
+	original := Disk(dir, "MGO")
+	// A change, saved: the save backs the original up.
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: Step{Mod: "Be Seated", Option: "Prompts", Kind: KindToggle, Value: "on"}}, &AddReply{})
+	if code := h.call("POST", "/api/changes/save", nil, &SaveReply{}); code != 200 {
+		t.Fatalf("save: %d", code)
+	}
+	if maps.Equal(Disk(dir, "MGO"), original) {
+		t.Fatal("the save changed nothing")
+	}
+	var list BackupsReply
+	h.call("GET", "/api/recordings/MGO/backups", nil, &list)
+	if len(list.Backups) != 1 || list.Backups[0].Reason != BackupSave || list.Backups[0].Mod != "MGO Recordings" || list.Restoring != "" {
+		t.Fatalf("backups: %+v", list)
+	}
+	changed := 0
+	for _, f := range list.Backups[0].Planned {
+		if f.Change != FileChangeSame {
+			changed++
+		}
+	}
+	if changed == 0 {
+		t.Errorf("the backup's files show no change from disk: %+v", list.Backups[0].Planned)
+	}
+	id := list.Backups[0].ID
+	// Chosen: a change in the draft, with the backup's steps.
+	var ed Editor
+	if code := h.call("PUT", "/api/recordings/MGO/backups/"+id, nil, &ed); code != 200 || ed.FromBackup == nil || !ed.Changed || ed.Draft.Steps[0].Value != "off" {
+		t.Fatalf("restoring: %d, %+v", code, ed.FromBackup)
+	}
+	var ch Changes
+	h.call("GET", "/api/changes", nil, &ch)
+	if h.svc.Pending() != 1 || len(ch.Recordings) != 1 || ch.Recordings[0].Kind != ChangeKindRestored {
+		t.Fatalf("changes: pending %d, %+v", h.svc.Pending(), ch.Recordings)
+	}
+	h.call("GET", "/api/recordings/MGO/backups", nil, &list)
+	if list.Restoring != id {
+		t.Errorf("restoring: %q", list.Restoring)
+	}
+	// Undone and redone.
+	h.call("POST", "/api/changes/undo", nil, &ch)
+	if h.svc.Pending() != 0 {
+		t.Fatalf("after undo: pending %d", h.svc.Pending())
+	}
+	h.call("POST", "/api/changes/redo", nil, &ch)
+	// Saved: the original files, exactly, and a backup of what they replaced.
+	if code := h.call("POST", "/api/changes/save", nil, &SaveReply{}); code != 200 {
+		t.Fatalf("save the restore: %d", code)
+	}
+	if disk := Disk(dir, "MGO"); !maps.Equal(disk, original) {
+		t.Errorf("after restoring: %v", disk)
+	}
+	h.call("GET", "/api/recordings/MGO/backups", nil, &list)
+	if len(list.Backups) != 2 || list.Backups[0].Reason != BackupRestore {
+		t.Errorf("after restoring, backups: %+v", list.Backups)
+	}
+	// Deleted (MCM Lexicon saved to its folder, so it may), then back.
+	if code := h.call("DELETE", "/api/recordings/MGO", nil, &ed); code != 200 {
+		t.Fatalf("delete: %d", code)
+	}
+	h.call("POST", "/api/changes/save", nil, &SaveReply{})
+	if len(Disk(dir, "MGO")) != 0 {
+		t.Fatal("still on disk after deleting")
+	}
+	var gone DeletedReply
+	h.call("GET", "/api/backups", nil, &gone)
+	if len(gone.Recordings) != 1 || gone.Recordings[0].Name != "MGO" || gone.Recordings[0].Latest.Reason != BackupDelete || gone.Recordings[0].Count != 3 {
+		t.Fatalf("deleted with backups: %+v", gone)
+	}
+	if code := h.call("PUT", "/api/recordings/MGO/backups/"+gone.Recordings[0].Latest.ID, nil, &ed); code != 200 || ed.Recording != nil || ed.Target.Name != "MGO Recordings" {
+		t.Fatalf("restoring a deleted recording: %d, %+v", code, ed.Target)
+	}
+	var recs ListReply
+	h.call("GET", "/api/recordings", nil, &recs)
+	found := false
+	for _, r := range recs.Recordings {
+		if r.Name == "MGO" && r.Restoring {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the list doesn't show MGO being restored: %+v", recs.Recordings)
+	}
+	h.call("POST", "/api/changes/save", nil, &SaveReply{})
+	if disk := Disk(dir, "MGO"); !maps.Equal(disk, original) {
+		t.Errorf("after restoring a deleted recording: %v", disk)
 	}
 }

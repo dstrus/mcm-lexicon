@@ -7,8 +7,8 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Summary } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { count } from '#lib/format.ts';
-	import { create, deleteRecording, recordingHref, restore, setOpen } from '#lib/recordings/api.ts';
+	import { count, realTime } from '#lib/format.ts';
+	import { create, deleteRecording, recordingHref, restore, restoreFrom, setOpen } from '#lib/recordings/api.ts';
 	import { countsText } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import SortHeader from '#lib/ui/SortHeader.svelte';
@@ -63,6 +63,22 @@
 	let working = $state(false);
 	// Read-only unless editing is on.
 	let editing = $derived(data.status.editing);
+
+	// Bringing back a deleted recording: its newest backup goes in the
+	// draft, and its page opens, where Save writes it back.
+	let restoring = $state(false);
+	async function bringBack(name: string, id: string) {
+		restoring = true;
+		error = '';
+		try {
+			await restoreFrom(name, id);
+			await goto(recordingHref(name), { invalidateAll: true });
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : String(e);
+		} finally {
+			restoring = false;
+		}
+	}
 	function startNew() {
 		newName = '';
 		newAuthor = reply?.author ?? '';
@@ -190,7 +206,7 @@
 						<td class="name">
 							<a href={recordingHref(r.name)}>{r.name}</a>
 							{#if r.title && r.title !== r.name}<span class="muted sub">{r.title}</span>{/if}
-							{#if r.deleted}<span class="muted sub">{t.deletedInDraft}</span>{:else if r.unlisted}<span class="sub warn">{t.unlistedShort}</span>{:else if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
+							{#if r.deleted}<span class="muted sub">{t.deletedInDraft}</span>{:else if r.restoring}<span class="muted sub">{t.restoringShort}</span>{:else if r.unlisted}<span class="sub warn">{t.unlistedShort}</span>{:else if r.new}<span class="muted sub">{t.notSavedYet}</span>{:else if r.drafted}<span class="muted sub">{t.unsavedChanges}</span>{/if}
 						</td>
 						<td class="mod muted"><span use:clipped>{r.mod}</span>{#if r.losing.length}<span class="sub">{t.losing({ mods: r.losing.join(', ') })}</span>{/if}</td>
 						<td class="n">{count(r.steps)}</td>
@@ -249,6 +265,24 @@
 	</div>
 {/if}
 
+{#if data.deleted.length}
+	<!-- Recordings the list no longer has, each with the backup its deletion
+	     (or an earlier Save) kept. -->
+	<section class="deleted" aria-label={t.deletedTitle}>
+		<h2 class="caps">{t.deletedTitle}</h2>
+		<p class="muted lead">{t.deletedLead}</p>
+		<ul>
+			{#each data.deleted as d (d.name)}
+				<li>
+					<span class="name">{d.name}</span>
+					<span class="muted">{t.latestBackup({ when: realTime(Date.parse(d.latest.at)), count: d.count })}</span>
+					{#if editing}<button type="button" class="textbutton" disabled={restoring} onclick={() => bringBack(d.name, d.latest.id)}>{t.restoreIt}</button>{/if}
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
+
 <style>
 	.bar {
 		display: flex;
@@ -280,6 +314,37 @@
 	}
 	.empty {
 		max-width: 60ch;
+	}
+	.deleted {
+		margin-top: var(--space-6);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--rule-strong);
+		max-width: 60rem;
+	}
+	.deleted h2 {
+		font-size: var(--step--1);
+		font-weight: 500;
+		color: var(--accent);
+	}
+	.deleted .lead {
+		margin: var(--space-2) 0 var(--space-3);
+		max-width: 70ch;
+	}
+	.deleted ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.deleted li {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--space-1) var(--space-4);
+		padding: var(--space-2) 0;
+		border-bottom: 1px solid var(--rule);
+	}
+	.deleted .name {
+		min-width: 14rem;
 	}
 	.split {
 		display: grid;

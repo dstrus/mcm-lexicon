@@ -13,6 +13,7 @@
 	import { change } from '#lib/recordings/draft.ts';
 	import Tabs from '#lib/ui/Tabs.svelte';
 	import Up from '#lib/ui/Up.svelte';
+	import { realTime } from '#lib/format.ts';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -90,7 +91,11 @@
 		<!-- Two lines' room whatever it says, so the table below doesn't move
 		     when the first change is made in it. -->
 		<p class="line">
-			{#if ed.deleted}
+			{#if ed.fromBackup && ed.changed}
+				{d.fromBackup({ count: writes, when: realTime(Date.parse(ed.fromBackup.at)), folder })}
+				<a class="textbutton" href="/changes">{d.review}</a>
+				<button type="button" class="textbutton" disabled={working} onclick={discard}>{d.discard}</button>
+			{:else if ed.deleted}
 				{d.deletes({ count: writes, folder })}
 				<button type="button" class="textbutton" disabled={working} onclick={undelete}>{d.restore}</button>
 			{:else if ed.changed && target.kind !== 'none'}
@@ -104,8 +109,8 @@
 			{/if}
 		</p>
 
-		{#if ed.deleted || target.kind === 'data'}
-			<!-- Nothing to choose: a deletion removes the files where they are, and a Data folder is the only place. -->
+		{#if ed.deleted || ed.fromBackup || target.kind === 'data'}
+			<!-- Nothing to choose: a deletion removes the files where they are, a backup goes back where it came from, and a Data folder is the only place. -->
 		{:else if target.kind === 'folder' || target.kind === 'none'}
 			<form class="target" onsubmit={useOther}>
 				<label>
@@ -150,7 +155,8 @@
 	tabs={[
 		{ href: recordingHref(draft.name), label: t.steps, count: draft.steps.length },
 		{ href: recordingHref(draft.name, 'files'), label: t.files, count: ed.files.length },
-		{ href: recordingHref(draft.name, 'info'), label: t.infoTab }
+		{ href: recordingHref(draft.name, 'info'), label: t.infoTab },
+		{ href: recordingHref(draft.name, 'backups'), label: t.backupsTab }
 	]}
 />
 {@render children()}

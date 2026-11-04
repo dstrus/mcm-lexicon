@@ -64,7 +64,7 @@
 {:else if !changes.recordings.length}
 	<p class="lead muted">{t.none}</p>
 {:else}
-	<p class="lead">{t.summary({ files: changes.files, count: changes.recordings.length })}</p>
+	<p class="lead">{t.summary({ files: m.recording.fileCount({ count: changes.files }), recordings: t.recordingCount({ count: changes.recordings.length }) })}</p>
 	<div class="actions">
 		<button type="button" class="button primary" disabled={!canSave} onclick={saveNow}>{t.saveAll}</button>
 		<button type="button" class="button" disabled={working} onclick={discardEverything}>{t.discardAll}</button>

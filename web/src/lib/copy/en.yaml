@@ -407,6 +407,14 @@ recordings:
   delete: Delete
   restore: Restore
   deletedInDraft: Deleted in the draft
+  restoringShort: Being restored from a backup
+  # Recordings the list no longer has, which a backup can bring back.
+  deletedTitle: Deleted, with a backup
+  deletedLead: Recordings this list no longer has. Restore puts the newest backup in the draft, and Save writes it back exactly as it was. A recording’s page lists all its backups.
+  latestBackup:
+    one: "{when} · {count} backup"
+    other: "{when} · {count} backups"
+  restoreIt: Restore
   unlistedShort: Its mod is disabled
   unlisted: It’s saved in {mod}, which is disabled in this profile, so the game won’t play it. Enable the mod in MO2, then rescan here.
   deletedSays: The draft deletes it. Save removes its files from {mod}, after backing them up beside the list.
@@ -430,6 +438,7 @@ recording:
   steps: Steps
   files: Files
   infoTab: Info
+  backupsTab: Backups
   stepCount:
     one: "{count} step"
     other: "{count} steps"
@@ -507,6 +516,9 @@ draft:
   discardNew: Discard the recording
   review: Review changes
   restore: Restore it
+  fromBackup:
+    one: Not saved. Save puts back the backup from {when}, writing {count} file to {folder} exactly as it was, after backing up the current ones.
+    other: Not saved. Save puts back the backup from {when}, writing {count} files to {folder} exactly as they were, after backing up the current ones.
   deletes:
     one: The draft deletes this recording. Save removes its {count} file from {folder}, backing it up first.
     other: The draft deletes this recording. Save removes its {count} files from {folder}, backing them up first.
@@ -545,9 +557,11 @@ changes:
   title: Changes
   readOnly: MCM Lexicon is read-only. Turn on editing at the top of the column to make and change recordings; every change waits here until you save it.
   none: The draft has no changes. Make them on any recording’s page, from a menu or a search result with A, or with New on Recordings.
-  summary:
-    one: Save writes or removes {files} file for {count} recording, backing up the current ones first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
-    other: Save writes or removes {files} files for {count} recordings, backing up the current ones first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
+  # The files and the recordings are counted apart: 3 files for 1 recording.
+  summary: Save writes or removes {files} for {recordings}, backing up the current ones first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
+  recordingCount:
+    one: "{count} recording"
+    other: "{count} recordings"
   saveAll: Save all
   discardAll: Discard all
   blocked: Some recordings can’t be written yet; each says why below. Nothing is written until they can be.
@@ -555,6 +569,7 @@ changes:
     new: New
     changed: Changed
     deleted: Deleted
+    restored: Restored
   writesTo: Written to {folder}.
   removesFrom: Removed from {folder}.
   discard: Discard its changes
@@ -576,6 +591,26 @@ info:
   kept: Each change goes into a draft as you make it. Save, in the column or on the Changes page, writes it.
 
 # The files Save writes.
+# A recording's backups: its files as each Save or delete found them.
+backups:
+  none: There are no backups of this recording yet. Each Save or delete keeps one, beside the mod list in a lexicon-backups folder.
+  when: When
+  madeBy: Made by
+  steps: Steps
+  files: Files
+  reasons:
+    save: Save
+    delete: Delete
+    restore: Restore
+    unknown: "—"
+  inFolder: From {folder}.
+  restore: Restore
+  restoreTitle: Put this backup in the draft; Save writes it back
+  restoring: Save puts this backup back. Discard the change to keep the files as they are.
+  readOnly: Turn on editing to restore a backup.
+  sameAsDisk: This backup matches the files on disk.
+  pane: Backup
+
 files:
   inFolder: Written to {folder}.
   changesTo: Changes to {file}

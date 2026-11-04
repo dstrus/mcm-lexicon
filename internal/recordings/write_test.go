@@ -1,6 +1,7 @@
 package recordings
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -195,4 +196,69 @@ func keys(m map[string]string) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// Each backup says what made it and where its files came from, and a
+// backup put back gives exactly its files again, with names and spacing
+// as they were, after backing up what it replaces.
+func TestBackupsAndPut(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "My Recordings")
+	backups := filepath.Join(t.TempDir(), "lexicon-backups")
+	at := time.Date(2026, 11, 2, 23, 4, 0, 0, time.Local)
+	// A recording as another tool wrote it: two files numbered 0001, its
+	// own spacing, which Save wouldn't write.
+	original := map[string]string{
+		"McmRecorder/Mine.json":        `{"name": "Mine",   "autorun": "True"}`,
+		"McmRecorder/Mine/0001_A.json": `[{"Mod": "A", "option": "x", "toggle": "on"}]`,
+		"McmRecorder/Mine/0001_B.json": `[{"Mod": "B", "option": "y", "toggle": "off"}]`,
+	}
+	for p, text := range original {
+		full := filepath.Join(dir, filepath.FromSlash(p))
+		os.MkdirAll(filepath.Dir(full), 0o755)
+		os.WriteFile(full, []byte(text), 0o644)
+	}
+	if _, err := Save(dir, Draft{Name: "Mine", Steps: []Step{{Mod: "C", Option: "z", Kind: KindToggle, Value: "off"}}}, backups, at); err != nil {
+		t.Fatal(err)
+	}
+	list := Backups(backups, "Mine")
+	if len(list) != 1 || list[0].Reason != BackupSave || list[0].Mod != "My Recordings" || list[0].Files != 3 || list[0].Steps != 2 || !list[0].At.Equal(at) {
+		t.Fatalf("after a save: %+v", list)
+	}
+	files := backupFiles(list[0].dir, "Mine")
+	s, err := Put(dir, "Mine", files, backups, at.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disk := Disk(dir, "Mine"); !maps.Equal(disk, original) {
+		t.Errorf("put back: %v", disk)
+	}
+	if s.Backup == "" || len(s.Written) != 3 {
+		t.Errorf("put = %+v", s)
+	}
+	list = Backups(backups, "Mine")
+	if len(list) != 2 || list[0].Reason != BackupRestore || list[1].Reason != BackupSave {
+		t.Errorf("newest first, restore then save: %+v", list)
+	}
+	// Deleted, then put back from the backup the delete made.
+	if _, err := Delete(dir, "Mine", backups, at.Add(2*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	list = Backups(backups, "Mine")
+	if list[0].Reason != BackupDelete {
+		t.Fatalf("after a delete: %+v", list[0])
+	}
+	if _, err := Put(dir, "Mine", backupFiles(list[0].dir, "Mine"), backups, at.Add(3*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if disk := Disk(dir, "Mine"); !maps.Equal(disk, original) {
+		t.Errorf("put back after a delete: %v", disk)
+	}
+	// A backup without the info file leaves none.
+	delete(files, "McmRecorder/Mine.json")
+	if _, err := Put(dir, "Mine", files, backups, at.Add(4*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := Disk(dir, "Mine")["McmRecorder/Mine.json"]; ok {
+		t.Error("the info file stayed")
+	}
 }

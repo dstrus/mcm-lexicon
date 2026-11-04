@@ -2,6 +2,54 @@
 import type * as catalog from './catalog.ts';
 
 //////////
+// source: backup.go
+
+/**
+ * BackupReason is what made a backup.
+ */
+export type BackupReason = string;
+export const BackupSave: BackupReason = "save"; // a Save replaced the files
+export const BackupDelete: BackupReason = "delete"; // a Save deleted the recording
+export const BackupRestore: BackupReason = "restore"; // a Save put a backup back in their place
+/**
+ * Backup is a recording's files as a Save or a delete found them, before
+ * it wrote: a folder under the list's lexicon-backups.
+ */
+export interface Backup {
+  id: string; // its folder's name, the time it was made
+  at: string; // when it was made
+  reason: BackupReason; // "" for a backup from before backups said
+  mod: string; // the mod folder the files were in; "" when the backup doesn't say
+  steps: number /* int */;
+  files: number /* int */;
+}
+/**
+ * BackupView is a backup with its files as it would put them back, against
+ * what's on disk now.
+ */
+export interface BackupView extends Backup {
+  planned: PlannedFile[];
+}
+export interface BackupsReply {
+  backups: BackupView[]; // newest first
+  /**
+   * Restoring is the backup the draft puts back, by ID; "" for none.
+   */
+  restoring: string;
+}
+/**
+ * DeletedBackups is a recording the list no longer has, with its backups.
+ */
+export interface DeletedBackups {
+  name: string;
+  latest: Backup;
+  count: number /* int */;
+}
+export interface DeletedReply {
+  recordings: DeletedBackups[];
+}
+
+//////////
 // source: recordings.go
 /*
 Package recordings reads MCM Recorder's recordings from a list and checks
@@ -132,6 +180,7 @@ export interface Summary {
   new: boolean; // it's only a draft, never saved
   deletes: string; // why it can't be deleted; "" when it can
   unlisted: boolean; // in a folder MCM Lexicon saved to that the profile doesn't enable
+  restoring: boolean; // the draft puts it back from a backup
 }
 export interface ListReply {
   recordings: Summary[];
@@ -199,6 +248,11 @@ export interface Editor {
   targets: string[]; // mod folders to choose from: those with recordings, and the default
   problems: string[]; // what's wrong with the draft, so Save can't write it
   deleted: boolean; // the draft deletes it: Save removes its files
+  /**
+   * FromBackup is the backup the draft puts back: Save writes its files
+   * exactly, after backing up what's there.
+   */
+  fromBackup?: Backup;
 }
 /**
  * CreateRequest makes a new recording, as a draft.
@@ -263,7 +317,8 @@ export interface Service {
 export const ChangeKindNew = "new";
 export const ChangeKindChanged = "changed";
 export const ChangeKindDeleted = "deleted";
-export type ChangeKind = typeof ChangeKindNew | typeof ChangeKindChanged | typeof ChangeKindDeleted;
+export const ChangeKindRestored = "restored"; // put back from a backup
+export type ChangeKind = typeof ChangeKindNew | typeof ChangeKindChanged | typeof ChangeKindDeleted | typeof ChangeKindRestored;
 /**
  * Change is one recording the draft changes, as its editor shows it.
  */
