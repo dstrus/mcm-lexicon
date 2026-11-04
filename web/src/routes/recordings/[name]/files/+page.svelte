@@ -10,6 +10,7 @@
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import { putFileText, recordingsDependency } from '#lib/recordings/api.ts';
+	import CodeArea from '#lib/ui/CodeArea.svelte';
 	import LineDiff from '#lib/ui/LineDiff.svelte';
 	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import { tick } from 'svelte';
@@ -95,8 +96,8 @@
 			<p class="muted path"><span class="raw">{f.path}</span></p>
 			{#if f.covers}<p class="note"><Fill text={t.covers.text}>{#snippet mod()}<span class="raw">{f.covers}</span>{/snippet}</Fill></p>{/if}
 			{#if i >= 0 && typing === i}
-				<!-- The file as text, in the file font, read into the draft on Apply. -->
-				<textarea bind:this={box} bind:value={text} aria-label={t.editing({ file: f.name })} rows={Math.min(40, Math.max(6, text.split('\n').length + 1))} spellcheck="false" autocomplete="off" onkeydown={keys}></textarea>
+				<!-- The file as text, in the file font with its parts set apart, read into the draft on Apply. -->
+				<CodeArea bind:value={text} bind:box label={t.editing({ file: f.name })} rows={Math.min(40, Math.max(6, text.split('\n').length + 1))} disabled={working} onkeydown={keys} />
 				<div class="actions">
 					<button type="button" class="button primary" disabled={working} onclick={applyText}>{t.apply}</button>
 					<button type="button" class="button" disabled={working} onclick={cancel}>{t.cancel}</button>
@@ -144,13 +145,6 @@
 		font: 400 var(--step--1) var(--font-text);
 		text-transform: none;
 		letter-spacing: 0;
-	}
-	textarea {
-		display: block;
-		width: 100%;
-		font: 400 var(--step--1) / 1.55 var(--font-mono);
-		white-space: pre;
-		resize: vertical;
 	}
 	.actions {
 		display: flex;

@@ -214,6 +214,8 @@ A near-monochrome palette, off-white on near-black (or near-black on pale smoke)
 
 **The Lined-Up Figures Rule.** Tabular figures are on at the body level. Numeric columns align right.
 
+**The File Markup Rule.** A recording's file, while it's typed on the Files tab, shows its JSON with its parts set apart, as Hermaeus sets a template's markup apart from its prose: the keys in the accent, since they're the words MCM Recorder reads, which decide what a step does; the values in ink, since they're what it fills in; the punctuation muted. A word that isn't JSON stays in ink as plain text; the server says what's wrong when the text is applied, not the field. Only color sets the parts apart, never weight, so the marks beneath the clear text area line up with it letter for letter. The file at rest, and its diff, stay as they are.
+
 **The Raw Selector Rule.** The translated text is for reading, in Jost; the raw selector sits beneath it, muted, in DM Mono, only when the two differ or when the selector has a space at either end. A trailing space is invisible in any font, so copy names it: "Ends with a space. MCM Recorder matches it exactly."
 
 ## Layout
