@@ -404,6 +404,8 @@ func join(a Value, b *Value) Value {
 		return Value{k: kOption, ids: ids}
 	case same(a, *b):
 		return a
+	case textual(a) && textual(*b):
+		return shared(a, *b)
 	case a.k == kArray && b.k == kArray && a.arr != nil && b.arr != nil:
 		// One list that starts the other, such as Pages with a VR-only
 		// page last: the longer, so every page is found.

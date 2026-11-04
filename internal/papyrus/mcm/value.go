@@ -3,6 +3,7 @@ package mcm
 import (
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // kind is what the analysis knows of a value.
@@ -116,6 +117,72 @@ func (v Value) asParts() []part {
 		return []part{{text: t}}
 	}
 	return []part{{gap: true}}
+}
+
+// textual reports whether v is text: a string, or a pattern.
+func textual(v Value) bool { return v.k == kString || v.k == kPattern }
+
+// shared is what two texts have in common, as a pattern: the start and the
+// end they share, with a gap for where they differ ("Left Hand …" and
+// "Right Hand …" share "… Hand …"). Texts that share nothing are unknown.
+func shared(a, b Value) Value {
+	// A translation key ($FF_On) is translated only whole, so a piece of
+	// one ($FF_) shared with another means nothing.
+	if a.k == kString && strings.HasPrefix(a.s, "$") || b.k == kString && strings.HasPrefix(b.s, "$") {
+		return unknown
+	}
+	const gap = '\x00'
+	runes := func(v Value) []rune {
+		var out []rune
+		for _, p := range v.asParts() {
+			if p.gap {
+				out = append(out, gap)
+			} else {
+				out = append(out, []rune(p.text)...)
+			}
+		}
+		return out
+	}
+	x, y := runes(a), runes(b)
+	pre := 0
+	for pre < len(x) && pre < len(y) && x[pre] == y[pre] {
+		pre++
+	}
+	suf := 0
+	for suf < len(x)-pre && suf < len(y)-pre && x[len(x)-1-suf] == y[len(y)-1-suf] {
+		suf++
+	}
+	// Whole words only: a shared start or end that cuts a word in two
+	// ("Lef|t" and "Righ|t") gives the part of the word back to the gap.
+	letter := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	for pre > 0 && pre < len(x) && pre < len(y) && letter(x[pre-1]) && (letter(x[pre]) || letter(y[pre])) {
+		pre--
+	}
+	for suf > 0 && suf < len(x) && suf < len(y) && letter(x[len(x)-suf]) && (letter(x[len(x)-1-suf]) || letter(y[len(y)-1-suf])) {
+		suf--
+	}
+	whole := append(append(append([]rune{}, x[:pre]...), gap), x[len(x)-suf:]...)
+	var parts []part
+	for _, r := range whole {
+		isGap := r == gap
+		if n := len(parts); n > 0 && parts[n-1].gap == isGap {
+			if !isGap {
+				parts[n-1].text += string(r)
+			}
+			continue
+		}
+		if isGap {
+			parts = append(parts, part{gap: true})
+		} else {
+			parts = append(parts, part{text: string(r)})
+		}
+	}
+	for _, p := range parts {
+		if !p.gap && strings.TrimSpace(p.text) != "" {
+			return Value{k: kPattern, parts: parts}
+		}
+	}
+	return unknown
 }
 
 // concat is a + b with at least one side a string.
