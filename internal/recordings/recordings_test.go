@@ -284,3 +284,37 @@ func TestParseInfo(t *testing.T) {
 		}
 	}
 }
+
+// How long MCM Recorder looks for an option is kept as the file spells it:
+// read from a file, typed, and written back.
+func TestWaits(t *testing.T) {
+	steps, err := ParseSteps(`[{"mod": "Be Seated", "option": "Height", "slider": 2.0, "timeout": 60, "interval": 0.25, "pageload": 10.0}]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := steps[0]
+	if s.Timeout != "60" || s.Interval != "0.25" || s.PageLoad != "10.0" {
+		t.Fatalf("typed: %+v", s)
+	}
+	out, err := Plan(&Draft{Name: "Waits", Steps: steps})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"timeout": 60`, `"interval": 0.25`, `"pageload": 10.0`} {
+		if !strings.Contains(out[1].Text, want) {
+			t.Errorf("written without %s:\n%s", want, out[1].Text)
+		}
+	}
+	again, err := ParseSteps(out[1].Text)
+	if err != nil || again[0].Timeout != "60" || again[0].Interval != "0.25" || again[0].PageLoad != "10.0" {
+		t.Errorf("read back: %+v, %v", again, err)
+	}
+	for text, want := range map[string]string{
+		`[{"mod": "x", "option": "y", "toggle": "on", "timeout": "60"}]`: "number of seconds",
+		`[{"mod": "x", "option": "y", "toggle": "on", "pageload": -1}]`:  "number of seconds",
+	} {
+		if _, err := ParseSteps(text); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", text, err, want)
+		}
+	}
+}

@@ -235,6 +235,10 @@
 								{#if s.index}<dt class="caps">{t.index}</dt><dd>{s.index}</dd>{/if}
 								{#if s.state}<dt class="caps">{t.state}</dt><dd class="raw">{s.state}</dd>{/if}
 								{#if s.side}<dt class="caps">{t.foundBy}</dt><dd>{t.byItsValue}</dd>{/if}
+								{#if s.timeout || s.interval || s.pageload}
+									<dt class="caps">{t.waits}</dt>
+									<dd>{[s.timeout ? t.waitTimeout({ seconds: s.timeout }) : '', s.interval ? t.waitInterval({ seconds: s.interval }) : '', s.pageload ? t.waitPageLoad({ seconds: s.pageload }) : ''].filter(Boolean).join(' · ')}</dd>
+								{/if}
 								<dt class="caps">{t.file}</dt><dd class="raw">{fileNames[s.file]}</dd>
 							</dl>
 							{#if canEdit}<div class="actions">

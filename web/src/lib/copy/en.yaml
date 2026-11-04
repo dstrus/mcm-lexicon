@@ -419,6 +419,11 @@ recordings:
 # One recording, in the editor.
 recording:
   up: Recordings
+  # How long MCM Recorder looks for a step's option, when the step says.
+  waits: Looks for it
+  waitTimeout: "for up to {seconds} s"
+  waitInterval: "every {seconds} s"
+  waitPageLoad: "allowing the page {seconds} s to load"
   # A run of identical click steps: a stepper clicked that many times.
   clickOf: "{n} of {count}"
   tabs: Recording

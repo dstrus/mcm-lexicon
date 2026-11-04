@@ -71,6 +71,14 @@ export interface Step {
   side: string; // a click step's side, when it says
   state: string; // an ST option's state, when it says
   wildcard: boolean; // the selector is *part*, which matches any label containing part
+  /**
+   * How long MCM Recorder looks for the option, in seconds, as the file
+   * spells them; "" when the step doesn't say, and the player's own
+   * defaults apply: 30 in all, every 0.5, allowing a page 5 to load.
+   */
+  timeout?: string;
+  interval?: string;
+  pageload?: string;
 }
 /**
  * ProblemKind says what's wrong with a recording's files.

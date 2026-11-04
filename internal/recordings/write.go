@@ -168,6 +168,17 @@ func action(s Step) (string, error) {
 	if s.State != "" {
 		pairs = append(pairs, pair{"state", s.State})
 	}
+	// How long to look for the option, as the file spelled it.
+	for _, k := range waits {
+		w := strings.TrimSpace(*s.wait(k))
+		if w == "" {
+			continue
+		}
+		if f, err := strconv.ParseFloat(w, 64); err != nil || f < 0 {
+			return "", fmt.Errorf("its %s is a number of seconds, not %q", k, w)
+		}
+		pairs = append(pairs, pair{k, json.Number(w)})
+	}
 	sort.SliceStable(pairs, func(i, j int) bool { return pairs[i].key < pairs[j].key })
 	return encode(pairs)
 }

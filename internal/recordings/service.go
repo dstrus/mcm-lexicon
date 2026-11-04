@@ -1238,6 +1238,8 @@ func (s *Service) setClicks(e *env, name string, step Step, n int) (AddReply, er
 		if Find([]Step{st}, step) == 0 {
 			if at < 0 {
 				at = len(kept)
+				// The run keeps how long its first click looked.
+				step.Timeout, step.Interval, step.PageLoad = st.Timeout, st.Interval, st.PageLoad
 			}
 			continue
 		}

@@ -492,6 +492,14 @@ func TestSetClicks(t *testing.T) {
 	if c, order := clicks(); c != 3 || order[1] != "Mode" || order[3] != "Mode" || order[4] != "Height" {
 		t.Fatalf("after three, in place: %d, %v", c, order)
 	}
+	// A run's waits, typed on its first click, are kept as the count changes.
+	ed.Draft.Steps[1].Timeout = "60"
+	h.call("PUT", "/api/recordings/MGO/draft", ed.Draft, &ed)
+	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(2)}, &reply)
+	h.call("GET", "/api/recordings/MGO", nil, &ed)
+	if ed.Draft.Steps[1].Timeout != "60" || ed.Draft.Steps[2].Timeout != "60" {
+		t.Errorf("the run's timeout: %q, %q", ed.Draft.Steps[1].Timeout, ed.Draft.Steps[2].Timeout)
+	}
 	h.call("POST", "/api/recordings/MGO/steps", AddRequest{Step: click, Clicks: n(0)}, &reply)
 	h.call("GET", "/api/recordings/MGO", nil, &ed)
 	if c, order := clicks(); c != 0 || len(order) != 2 {

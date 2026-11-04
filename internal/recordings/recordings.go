@@ -84,6 +84,26 @@ type Step struct {
 	Side     string `json:"side"`     // a click step's side, when it says
 	State    string `json:"state"`    // an ST option's state, when it says
 	Wildcard bool   `json:"wildcard"` // the selector is *part*, which matches any label containing part
+	// How long MCM Recorder looks for the option, in seconds, as the file
+	// spells them; "" when the step doesn't say, and the player's own
+	// defaults apply: 30 in all, every 0.5, allowing a page 5 to load.
+	Timeout  string `json:"timeout,omitempty"`
+	Interval string `json:"interval,omitempty"`
+	PageLoad string `json:"pageload,omitempty"`
+}
+
+// waits are the keys that say how long MCM Recorder looks for an option.
+var waits = []string{"timeout", "interval", "pageload"}
+
+// wait is a step's field for one of the waits.
+func (s *Step) wait(key string) *string {
+	switch key {
+	case "timeout":
+		return &s.Timeout
+	case "interval":
+		return &s.Interval
+	}
+	return &s.PageLoad
 }
 
 // ProblemKind says what's wrong with a recording's files.
@@ -223,6 +243,11 @@ func readSteps(r *Recording, file int) []Step {
 	for i, raw := range actions {
 		a := lower(raw)
 		s := Step{File: file, Mod: text(a["mod"]), Page: text(a["page"]), Option: text(a["option"]), Side: text(a["side"]), State: text(a["state"])}
+		for _, k := range waits {
+			if v, ok := a[k]; ok {
+				*s.wait(k) = text(v)
+			}
+		}
 		if n, err := strconv.Atoi(text(a["index"])); err == nil {
 			s.Index = n
 		}
@@ -246,7 +271,7 @@ func readSteps(r *Recording, file int) []Step {
 
 // The keys MCM Recorder reads from an action, besides the one that holds
 // its value.
-var stepKeys = map[string]bool{"mod": true, "page": true, "option": true, "index": true, "side": true, "state": true}
+var stepKeys = map[string]bool{"mod": true, "page": true, "option": true, "index": true, "side": true, "state": true, "timeout": true, "interval": true, "pageload": true}
 
 // ParseSteps reads a step file's text as typed, strictly: a JSON array of
 // actions, each with the keys MCM Recorder reads and exactly one value
@@ -270,6 +295,11 @@ func ParseSteps(s string) ([]Step, error) {
 		for k, v := range raw {
 			lk := strings.ToLower(k)
 			switch {
+			case slices.Contains(waits, lk):
+				num, ok := v.(json.Number)
+				if f, err := num.Float64(); !ok || err != nil || f < 0 {
+					return nil, apperr.New(apperr.Invalid, "Step %d: %s is a number of seconds, not in quotes", n, k)
+				}
 			case stepKeys[lk]:
 				if _, ok := v.(string); !ok && lk != "index" {
 					return nil, apperr.New(apperr.Invalid, "Step %d: %s is text, in quotes", n, k)
@@ -291,6 +321,11 @@ func ParseSteps(s string) ([]Step, error) {
 		}
 		a := lower(raw)
 		st := Step{Mod: text(a["mod"]), Page: text(a["page"]), Option: text(a["option"]), Side: text(a["side"]), State: text(a["state"]), Kind: kind, Value: text(a[string(kind)])}
+		for _, k := range waits {
+			if v, ok := a[k]; ok {
+				*st.wait(k) = text(v)
+			}
+		}
 		if idx, ok := a["index"]; ok {
 			k, err := strconv.Atoi(text(idx))
 			if err != nil || k < 0 {
