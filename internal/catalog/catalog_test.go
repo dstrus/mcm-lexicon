@@ -651,3 +651,52 @@ func TestWatchRescans(t *testing.T) {
 	inst.Plugins("BeSeated.esp")
 	until("a rescan after plugins.txt changed", func() bool { return runs() > before && !s.State().Scanning })
 }
+
+// For a Data folder, the game's own plugins.txt under AppData is watched:
+// a plugin disabled there (by Vortex, say) rescans the list.
+func TestWatchDataFolderPlugins(t *testing.T) {
+	was := watchEvery
+	watchEvery = 20 * time.Millisecond
+	t.Cleanup(func() { watchEvery = was })
+	appData := t.TempDir()
+	t.Setenv("LOCALAPPDATA", appData)
+	game := filepath.Join(t.TempDir(), "Skyrim Special Edition")
+	data := filepath.Join(game, "Data")
+	for p, text := range map[string]string{
+		filepath.Join(game, "SkyrimSE.exe"):                             "",
+		filepath.Join(data, "Skyrim.esm"):                               "",
+		filepath.Join(data, "BeSeated.esp"):                             string(testcorpus.Plugin()),
+		filepath.Join(data, "MCM", "Config", "BeSeated", "config.json"): `{"modName": "BeSeated", "displayName": "Be Seated", "content": [{"text": "Prompts", "type": "toggle", "id": "bPrompts:Main"}]}`,
+		filepath.Join(appData, "Skyrim Special Edition", "plugins.txt"): "*BeSeated.esp\n",
+	} {
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	src, err := modlist.Check(data, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewService("test")
+	s.UseList(src)
+	active := func() bool {
+		c, err := s.Catalog(httptest.NewRequest("GET", "/", nil))
+		if err != nil || len(c.Menus) != 1 {
+			t.Fatalf("catalog: %v, %+v", err, c)
+		}
+		return c.Menus[0].Active
+	}
+	if !active() {
+		t.Fatal("Be Seated starts inactive")
+	}
+	os.WriteFile(filepath.Join(appData, "Skyrim Special Edition", "plugins.txt"), []byte("BeSeated.esp\n"), 0o644)
+	for deadline := time.Now().Add(3 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		if !s.State().Scanning && !active() {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("no rescan after the game's plugins.txt changed")
+		}
+	}
+}

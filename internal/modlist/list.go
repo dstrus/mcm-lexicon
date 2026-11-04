@@ -97,6 +97,11 @@ func Read(src Source) (*List, error) {
 	if src.Kind == Data {
 		l.Mods = []Mod{{Name: "Data", Dir: src.Path, Enabled: true, Layer: LayerData}}
 		l.DataDir = src.Path
+		// Which plugins the game loads: its own plugins.txt, which Vortex
+		// and the game's launcher keep under AppData.
+		if p := GamePluginsFile(src.Path); p != "" {
+			l.readPlugins(p, filepath.Base(filepath.Dir(p)) == "Skyrim")
+		}
 		return l, nil
 	}
 	profile := filepath.Join(src.Path, "profiles", src.Profile)
@@ -143,19 +148,71 @@ func Read(src Source) (*List, error) {
 	if dir := filepath.Join(src.Path, "overwrite"); IsDir(dir) {
 		l.Mods = append(l.Mods, Mod{Name: "overwrite", Dir: dir, Enabled: true, Priority: len(entries), Layer: LayerOverwrite})
 	}
-	if plugins, err := readLines(filepath.Join(profile, "plugins.txt")); err == nil {
-		l.plugins = []Plugin{}
-		l.byName = map[string]bool{}
-		for _, line := range plugins {
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			p := Plugin{Name: strings.TrimPrefix(line, "*"), Active: strings.HasPrefix(line, "*")}
-			l.plugins = append(l.plugins, p)
-			l.byName[strings.ToLower(p.Name)] = p.Active
+	l.readPlugins(filepath.Join(profile, "plugins.txt"), false)
+	return l, nil
+}
+
+// readPlugins reads a plugins.txt, if there is one: each plugin in load
+// order, active when marked with *. legacy is Skyrim LE's own file, which
+// lists only the active plugins, unmarked.
+func (l *List) readPlugins(path string, legacy bool) {
+	lines, err := readLines(path)
+	if err != nil {
+		return
+	}
+	l.plugins = []Plugin{}
+	l.byName = map[string]bool{}
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		p := Plugin{Name: strings.TrimPrefix(line, "*"), Active: legacy || strings.HasPrefix(line, "*")}
+		l.plugins = append(l.plugins, p)
+		l.byName[strings.ToLower(p.Name)] = p.Active
+	}
+}
+
+// localAppData is where Windows keeps a game's plugins.txt; a variable so
+// tests can point it elsewhere.
+var localAppData = func() string { return os.Getenv("LOCALAPPDATA") }
+
+// GamePluginsFile is the plugins.txt the game reads for the Data folder
+// dataDir, under AppData in a folder named for the edition its game folder
+// holds; "" when there's none (not Windows, or no such file).
+func GamePluginsFile(dataDir string) string {
+	base := localAppData()
+	if base == "" {
+		return ""
+	}
+	game := filepath.Dir(dataDir)
+	var folders []string
+	switch {
+	case fileExists(filepath.Join(game, "SkyrimVR.exe")):
+		folders = []string{"Skyrim VR"}
+	case fileExists(filepath.Join(game, "SkyrimSE.exe")):
+		// GOG's edition keeps its own folder; Steam's doesn't say.
+		if fileExists(filepath.Join(game, "Galaxy64.dll")) {
+			folders = []string{"Skyrim Special Edition GOG", "Skyrim Special Edition"}
+		} else {
+			folders = []string{"Skyrim Special Edition", "Skyrim Special Edition GOG"}
+		}
+	case fileExists(filepath.Join(game, "TESV.exe")):
+		folders = []string{"Skyrim"}
+	default:
+		folders = []string{"Skyrim VR", "Skyrim Special Edition", "Skyrim Special Edition GOG", "Skyrim"}
+	}
+	for _, f := range folders {
+		if p := filepath.Join(base, f, "plugins.txt"); fileExists(p) {
+			return p
 		}
 	}
-	return l, nil
+	return ""
+}
+
+func fileExists(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && !info.IsDir()
 }
 
 // Plugins is plugins.txt in order, or nil when the profile has none (in

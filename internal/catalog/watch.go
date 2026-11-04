@@ -11,7 +11,8 @@ import (
 )
 
 // The profile's files that say which mods and plugins the game loads: when
-// MO2 writes either with something new, the catalog is out of date.
+// MO2 (or, for a Data folder, Vortex or the launcher) writes one with
+// something new, the catalog is out of date.
 var watchedFiles = []string{"modlist.txt", "plugins.txt"}
 
 // watchEvery is how often the profile's files are looked at. A change is
@@ -22,10 +23,20 @@ var watchEvery = 2 * time.Second
 // contents, or "" when it isn't there.
 type sums map[string]string
 
-// profileFiles is the watched files of src's profile; none for a Data
-// folder, whose plugins.txt the game keeps elsewhere.
+// profileFiles is the watched files of src: its MO2 profile's, or for a
+// Data folder, the game's own plugins.txt under AppData, which Vortex and
+// the game's launcher keep.
 func profileFiles(src *modlist.Source) []string {
-	if src == nil || src.Kind != modlist.MO2 {
+	if src == nil {
+		return nil
+	}
+	if src.Kind == modlist.Data {
+		if p := modlist.GamePluginsFile(src.Path); p != "" {
+			return []string{p}
+		}
+		return nil
+	}
+	if src.Kind != modlist.MO2 {
 		return nil
 	}
 	var out []string

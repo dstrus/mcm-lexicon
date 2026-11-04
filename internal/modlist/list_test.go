@@ -260,3 +260,57 @@ func TestRealSnapshots(t *testing.T) {
 		})
 	}
 }
+
+// A Data folder's plugins come from the game's own plugins.txt under
+// AppData, in the folder for the edition its game folder holds.
+func TestDataFolderPlugins(t *testing.T) {
+	appData := t.TempDir()
+	was := localAppData
+	localAppData = func() string { return appData }
+	t.Cleanup(func() { localAppData = was })
+	write := func(p, text string) {
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, c := range []struct {
+		exe, folder, text string
+		active, inactive  []string
+	}{
+		{"SkyrimSE.exe", "Skyrim Special Edition", "# by Vortex\n*A.esp\nB.esp\n", []string{"A.esp", "Skyrim.esm"}, []string{"B.esp", "C.esp"}},
+		{"SkyrimVR.exe", "Skyrim VR", "*A.esp\r\nB.esp\r\n", []string{"A.esp"}, []string{"B.esp"}},
+		{"TESV.exe", "Skyrim", "A.esp\nB.esp\n", []string{"A.esp", "B.esp"}, []string{"C.esp"}},
+	} {
+		game := filepath.Join(t.TempDir(), "Game")
+		write(filepath.Join(game, c.exe), "")
+		os.MkdirAll(filepath.Join(game, "Data"), 0o755)
+		write(filepath.Join(appData, c.folder, "plugins.txt"), c.text)
+		data := filepath.Join(game, "Data")
+		if got, want := GamePluginsFile(data), filepath.Join(appData, c.folder, "plugins.txt"); got != want {
+			t.Errorf("%s: plugins file %q, want %q", c.exe, got, want)
+		}
+		l, err := Read(Source{Kind: Data, Path: data})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, p := range c.active {
+			if !l.PluginActive(p) {
+				t.Errorf("%s: %s inactive", c.exe, p)
+			}
+		}
+		for _, p := range c.inactive {
+			if l.PluginActive(p) {
+				t.Errorf("%s: %s active", c.exe, p)
+			}
+		}
+		os.RemoveAll(filepath.Join(appData, c.folder))
+	}
+	// No plugins.txt: every plugin counts as active, as before.
+	game := filepath.Join(t.TempDir(), "Game")
+	write(filepath.Join(game, "SkyrimSE.exe"), "")
+	os.MkdirAll(filepath.Join(game, "Data"), 0o755)
+	if l, _ := Read(Source{Kind: Data, Path: filepath.Join(game, "Data")}); !l.PluginActive("Anything.esp") || GamePluginsFile(filepath.Join(game, "Data")) != "" {
+		t.Error("without a plugins.txt")
+	}
+}
