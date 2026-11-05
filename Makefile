@@ -4,7 +4,7 @@
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GOBUILD = CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 
-.PHONY: build windows release web notices types test dev icons clean
+.PHONY: build windows release release-notes web notices types test dev icons clean
 
 # The program, for this machine.
 build: web
@@ -31,6 +31,18 @@ release: windows
 	cp THIRD_PARTY_NOTICES.txt dist/windows/
 	cd dist/windows && zip -qX ../MCMLexicon-windows-x64.zip MCMLexicon.exe LICENSE.txt THIRD_PARTY_NOTICES.txt
 	cd dist && shasum -a 256 MCMLexicon-* > SHA256SUMS
+
+# A release's notes, into dist/release-notes.md: VERSION's section of
+# CHANGELOG.md, under "What changed", then what every release says, from
+# .github/release-notes.md. Fails if the changelog has no section for
+# VERSION. Run it after `make release`, which empties dist/.
+release-notes:
+	@mkdir -p dist
+	@printf '## What changed\n' > dist/release-notes.md
+	@awk -v v="$(VERSION:v%=%)" '/^## / { on = ($$2 == v); found = found || on; next } on { print } END { exit !found }' CHANGELOG.md >> dist/release-notes.md \
+		|| { echo "CHANGELOG.md has no section for $(VERSION:v%=%)" >&2; exit 1; }
+	@printf '\n' >> dist/release-notes.md
+	@cat .github/release-notes.md >> dist/release-notes.md
 
 # THIRD_PARTY_NOTICES.txt: the license of everything built into the program,
 # from its Go modules and the npm packages in its pages, which the frontend's
