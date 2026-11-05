@@ -286,8 +286,17 @@
 								{:else if editable(s)}
 									<button type="button" class="button primary" disabled={working || editing} onclick={startEdit}>{e.edit}</button>
 								{/if}
-								<button type="button" class="button" disabled={working || current.n === 1} onclick={() => moveBy(-1)}>{e.moveUp}</button>
-								<button type="button" class="button" disabled={working || current.n === steps.length} onclick={() => moveBy(1)}>{e.moveDown}</button>
+								<!-- MOVE, named once, with its two directions as drawn arrows:
+								     one group, so the three actions fit the pane on one line. -->
+								<div class="move caps" role="group" aria-label={e.move}>
+									<span aria-hidden="true">{e.move}</span>
+									<button type="button" title={e.moveUp} aria-label={e.moveUp} disabled={working || current.n === 1} onclick={() => moveBy(-1)}>
+										<svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M0 6h8L4 1z" fill="currentColor" /></svg>
+									</button>
+									<button type="button" title={e.moveDown} aria-label={e.moveDown} disabled={working || current.n === steps.length} onclick={() => moveBy(1)}>
+										<svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M0 2h8L4 7z" fill="currentColor" /></svg>
+									</button>
+								</div>
 								<button type="button" class="button" disabled={working} onclick={remove}>{e.remove}</button>
 							</div>{/if}
 							{#if menuLink(c)}<a class="textbutton open" href={menuLink(c)}>{t.openInMenus}</a>{/if}
@@ -462,7 +471,64 @@
 	.actions {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: stretch;
 		gap: var(--space-2);
+		container-type: inline-size;
+	}
+	/* Drawn as the buttons beside it are, one border around the word and
+	   both arrows, with a hairline between each, as the theme switch is. */
+	.move {
+		display: inline-flex;
+		align-items: stretch;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		font-size: var(--step-0);
+		letter-spacing: var(--track);
+		overflow: hidden;
+	}
+	.move span {
+		display: flex;
+		align-items: center;
+		padding: var(--space-1) var(--space-3);
+		color: var(--muted);
+	}
+	.move button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25em;
+		background: none;
+		border: 0;
+		border-left: 1px solid var(--rule-strong);
+		color: var(--ink);
+		cursor: pointer;
+	}
+	.move button:hover:not(:disabled) {
+		background: var(--select);
+		color: var(--accent);
+	}
+	.move button:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: -2px;
+	}
+	.move button:disabled {
+		color: var(--muted);
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+	/* In the narrowest pane the word goes and the buttons tighten, so the
+	   three still fit on one line; each arrow keeps its name as its tooltip
+	   and label. */
+	@container (max-width: 17.5rem) {
+		.move span {
+			display: none;
+		}
+		.move button:first-of-type {
+			border-left: 0;
+		}
+		.button {
+			padding-inline: var(--space-2);
+		}
 	}
 	.open {
 		display: inline-block;

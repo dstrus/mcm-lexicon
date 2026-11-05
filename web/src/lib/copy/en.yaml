@@ -538,6 +538,7 @@ draft:
 edit:
   edit: Edit
   apply: Apply
+  move: Move
   moveUp: Move up
   moveDown: Move down
   remove: Remove
