@@ -13,6 +13,7 @@ export interface Shortcut {
 	command?: boolean; // pressed with Ctrl (⌘ on a Mac), and works while typing
 	shift?: boolean; // a command shortcut pressed with Shift as well
 	notTyping?: boolean; // a command shortcut a text field keeps for itself (⌘Z undoes typing there)
+	writes?: boolean; // writes to disk: drawn in Save's amber, as every way to write is
 }
 
 // onMac is whether the command key is ⌘ rather than Ctrl.
@@ -27,6 +28,12 @@ export function deleteShortcuts(s: Omit<Shortcut, 'key' | 'shown'>): Shortcut[] 
 		{ ...s, key: 'Delete', hidden: true }
 	];
 }
+
+// holdSave takes ⌘⏎ while a value is being edited in its cell, where Enter
+// applies the edit: Save (the column's) neither shows beside Apply, where
+// it would read as keeping the edit, nor writes the draft without the
+// value half typed. It comes back when the edit is applied or cancelled.
+export const holdSave: Shortcut = { key: 'Enter', command: true, label: '', hidden: true, disabled: true, run: () => {} };
 
 // The registered shortcut sets, in registration order, kept outside
 // reactive state: a page leaving reads state as it was when it mounted, so

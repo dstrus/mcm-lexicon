@@ -9,7 +9,7 @@
 {#if hints.length}
 	<nav class="hints" aria-label={m.ui.shortcuts}>
 		{#each hints as h (`${h.command ? 'cmd+' : ''}${h.shift ? 'shift+' : ''}${h.key}`)}
-			<button type="button" class="hint caps" onclick={h.run} disabled={h.disabled}>
+			<button type="button" class="hint caps" class:writes={h.writes} onclick={h.run} disabled={h.disabled}>
 				<kbd>{h.shift ? (onMac ? '⇧' : 'Shift ') : ''}{h.command ? (onMac ? '⌘ ' : 'Ctrl ') : ''}{h.shown ?? h.key}</kbd>{h.label}
 			</button>
 		{/each}
@@ -56,5 +56,31 @@
 		padding: 0 0.4em;
 		min-width: 1.6em;
 		text-align: center;
+	}
+	/* A hint that writes to disk looks like Save's button (theme.css,
+	   .button.save): the key in amber with its glow, breathing, and the
+	   label in amber, so no way to write ever looks like any other key. */
+	.hint.writes {
+		color: var(--warn);
+	}
+	.hint.writes kbd {
+		background: var(--warn);
+		border-color: var(--warn);
+		color: var(--panel);
+		font-weight: 600;
+		box-shadow: 0 2px 14px -2px color-mix(in oklab, var(--warn) 55%, transparent);
+		animation: save-breathe 2.8s ease-in-out infinite;
+	}
+	.hint.writes:hover:not(:disabled) kbd {
+		border-color: var(--ink);
+	}
+	.hint.writes:disabled kbd {
+		box-shadow: none;
+		animation: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.hint.writes kbd {
+			animation: none;
+		}
 	}
 </style>

@@ -45,7 +45,7 @@
 	const folder = (c: Change) => (c.editor.target.kind === 'overwrite' ? m.draft.overwrite : c.editor.target.kind === 'data' ? m.draft.data : c.editor.target.name);
 	let canSave = $derived(editing && !working && changes.recordings.length > 0 && !changes.unsaved);
 
-	useShortcuts(() => [{ key: 'Enter', label: t.saveAll, command: true, disabled: !canSave, hidden: !changes.recordings.length, run: saveNow }]);
+	useShortcuts(() => [{ key: 'Enter', label: t.saveAll, command: true, writes: true, disabled: !canSave, hidden: !changes.recordings.length, run: saveNow }]);
 </script>
 
 <h1 class="caps">{t.title}</h1>

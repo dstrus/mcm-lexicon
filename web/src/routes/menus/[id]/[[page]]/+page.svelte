@@ -26,7 +26,7 @@
 	import Switch from '#lib/ui/Switch.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
-	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
+	import { holdSave, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -347,6 +347,7 @@
 			? [
 					// The cell's field takes these first; they're here so the strip shows them.
 					{ key: 'Enter', label: m.edit.apply, disabled: working, run: () => inline?.done() },
+					holdSave,
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
 			: [

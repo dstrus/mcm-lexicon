@@ -25,7 +25,7 @@
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { fitToViewport } from '#lib/ui/fit.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
-	import { deleteShortcuts, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
+	import { deleteShortcuts, holdSave, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -167,6 +167,7 @@
 					// The cell's field takes these keys first; they're here so the
 					// strip shows them.
 					{ key: 'Enter', label: e.apply, disabled: working, run: () => inline?.done() },
+					holdSave,
 					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
 				]
 			: [

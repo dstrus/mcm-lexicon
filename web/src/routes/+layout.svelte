@@ -164,7 +164,7 @@
 			saving = false;
 		}
 	}
-	useShortcuts(() => (editing && pending > 0 ? [{ key: 'Enter', label: m.nav.save, command: true, disabled: saving, run: saveNow }] : []));
+	useShortcuts(() => (editing && pending > 0 ? [{ key: 'Enter', label: m.nav.save, command: true, writes: true, disabled: saving, run: saveNow }] : []));
 
 	// Undo and redo step through the draft's changes, from any screen, while
 	// editing; a text field keeps ⌘Z for its own typing. Save starts the
