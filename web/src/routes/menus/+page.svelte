@@ -44,7 +44,8 @@
 </div>
 <p class="muted where">
 	{#if source?.kind === 'mo2'}
-		<Fill text={t.inInstance.text}>{#snippet path()}<span class="path">{source.path}</span>{/snippet}{#snippet profile()}<span class="path">{source.profile}</span>{/snippet}</Fill>
+		<Fill text={t.inInstance.text}>{#snippet path()}<span class="path">{source.path}</span>{/snippet}</Fill>
+		<span class="line"><Fill text={t.inProfile.text}>{#snippet profile()}<span class="path">{source.profile}</span>{/snippet}</Fill></span>
 	{:else if source}
 		<Fill text={t.inData.text}>{#snippet path()}<span class="path">{source.path}</span>{/snippet}</Fill>
 	{:else}
@@ -110,6 +111,10 @@
 		margin: var(--space-3) 0 0;
 		max-width: 80ch;
 		overflow-wrap: anywhere;
+	}
+	/* The profile, on a line of its own under a path that may be long. */
+	.line {
+		display: block;
 	}
 	.path {
 		font-family: var(--font-mono);

@@ -35,6 +35,10 @@
 	let catalog = $derived(data.status.catalogFile);
 	// Something is open: a list, or a catalog file in its place.
 	let open = $derived(!!source || !!catalog);
+	// The list by its folder's name, for the top bar: the instance's, or for
+	// a Data folder, the game's folder it's in.
+	const folderName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? p;
+	let listName = $derived(source ? folderName(source.kind === 'data' ? source.path.replace(/[\\/][^\\/]+[\\/]*$/, '') : source.path) : '');
 	let profileError = $state('');
 
 	// Choosing a profile reads the same instance again under it.
@@ -208,6 +212,13 @@
 	<header class="top">
 		<a class="name caps" href="/"><Mark size="1.35em" /> {m.shell.name}</a>
 		<div class="state">
+			<!-- The list in use, linked to where it's changed. -->
+			{#if source}
+				<a class="source list" href="/settings#mod-list" title={m.shell.listTitle({ path: source.path })}>
+					<span class="caps muted">{m.shell.list}</span>
+					<span class="file" use:clipped>{listName}</span>
+				</a>
+			{/if}
 			{#if source?.kind === 'mo2'}
 				<label class="source">
 					<span class="caps muted">{m.shell.profile}</span>
@@ -218,10 +229,10 @@
 					</select>
 				</label>
 			{:else if catalog}
-				<span class="source">
+				<a class="source list" href="/settings#mod-list" title={m.shell.listTitle({ path: catalog })}>
 					<span class="caps muted">{m.shell.catalog}</span>
-					<span class="file" title={catalog} use:clipped>{fileName(catalog)}</span>
-				</span>
+					<span class="file" use:clipped>{fileName(catalog)}</span>
+				</a>
 			{/if}
 			{#if open && live.scan.scanning}
 				<span class="scan caps" role="status">{m.shell.scanning}</span>
@@ -364,6 +375,20 @@
 	}
 	.source > .caps {
 		font-size: var(--step--1);
+	}
+	/* The list's name links to Settings, muted until pointed at, like the
+	   column's sections. */
+	.source.list {
+		text-decoration: none;
+		color: var(--ink);
+	}
+	.source.list .file {
+		text-decoration: underline;
+		text-decoration-color: color-mix(in oklab, var(--accent) 75%, var(--ground));
+		text-underline-offset: 0.2em;
+	}
+	.source.list:hover .file {
+		text-decoration-color: var(--accent);
 	}
 	.source select {
 		--chevron-inset: var(--space-2);

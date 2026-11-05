@@ -66,6 +66,9 @@ func main() {
 		if s, err := modlist.Check(saved.ListDir, saved.Profile); err == nil {
 			source = &s
 		}
+	case saved.CatalogFile != "":
+		// A catalog file chosen last time, which the server opens: it's kept
+		// over a list found next to the program, as a chosen list is.
 	default:
 		if found := modlist.Find(); found != "" {
 			if s, err := modlist.Check(found, ""); err == nil {

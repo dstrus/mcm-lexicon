@@ -11,7 +11,7 @@ packages:
     output_path: web/src/lib/api/types/httpapi.ts
     fallback_type: unknown
   - path: lexicon/internal/modlist
-    include_files: [modlist.go]
+    include_files: [modlist.go, browse.go]
     output_path: web/src/lib/api/types/modlist.ts
     fallback_type: unknown
     enum_style: union

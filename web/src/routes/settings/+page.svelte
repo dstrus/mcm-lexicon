@@ -1,6 +1,8 @@
-<!-- MCM Lexicon's own settings: the mod folder recordings are saved to in
-     an MO2 instance. Each change is kept as it's made, editing or not,
-     since it changes no recording. -->
+<!-- MCM Lexicon's own settings: the mod list it reads, and the mod folder
+     recordings are saved to in an MO2 instance. A save folder change is
+     kept as it's made, editing or not, since it changes no recording;
+     another list is chosen in its form, since it rescans and can discard
+     the draft. -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -9,11 +11,21 @@
 	import type { Status } from '#lib/api/types/api.ts';
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
+	import SourceForm from '#lib/source/SourceForm.svelte';
+	import Path from '#lib/ui/Path.svelte';
+	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
+	import { useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import Switch from '#lib/ui/Switch.svelte';
 
 	const t = m.settings;
 
 	let status = $derived(page.data.status as Status);
+	let source = $derived(status.source);
+
+	// Choosing another list has its own address, so Back ends it.
+	let changing = $derived(param('mode') === 'source');
+	const closeSource = () => leave('mode'); // chosen or not
+	useShortcuts(() => (changing ? [{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: closeSource }] : []));
 	let folder = $derived(status.saveFolder);
 	let working = $state(false);
 	let error = $state('');
@@ -50,6 +62,26 @@
 </script>
 
 <h1 class="caps">{t.title}</h1>
+
+<section class="settings" id="mod-list" aria-labelledby="mod-list-title">
+	<h2 id="mod-list-title" class="caps">{t.modList}</h2>
+	{#if changing}
+		<SourceForm current={{ path: source?.path ?? '', profile: source?.profile ?? '', catalog: status.catalogFile }} changes={status.changes} close={closeSource} />
+	{:else}
+		<p class="result">
+			{#if source?.kind === 'mo2'}
+				<Fill text={m.menus.inInstance.text}>{#snippet path()}<span class="raw"><Path text={source.path} /></span>{/snippet}</Fill>
+				<span class="line"><Fill text={m.menus.inProfile.text}>{#snippet profile()}<span class="raw">{source.profile}</span>{/snippet}</Fill></span>
+			{:else if source}
+				<Fill text={m.menus.inData.text}>{#snippet path()}<span class="raw"><Path text={source.path} /></span>{/snippet}</Fill>
+			{:else if status.catalogFile}
+				<Fill text={t.inCatalog.text}>{#snippet path()}<span class="raw"><Path text={status.catalogFile} /></span>{/snippet}</Fill>
+			{/if}
+		</p>
+		<div><button type="button" class="button" onclick={() => setParams({ mode: 'source' })}>{t.changeList}</button></div>
+		<p class="note">{t.modListNote}</p>
+	{/if}
+</section>
 
 <section class="settings" aria-labelledby="save-folder">
 	<h2 id="save-folder" class="caps">{t.saveFolder}</h2>
@@ -92,6 +124,11 @@
 		max-width: 36rem;
 		margin-top: var(--space-6);
 	}
+	.settings + .settings {
+		margin-top: var(--space-7);
+		padding-top: var(--space-5);
+		border-top: 1px solid var(--rule);
+	}
 	.field {
 		display: grid;
 		gap: var(--space-1);
@@ -117,6 +154,10 @@
 		font-size: var(--step--1);
 		color: var(--muted);
 		max-width: 60ch;
+	}
+	/* The profile, on a line of its own under a path that may be long. */
+	.line {
+		display: block;
 	}
 	.raw {
 		font-family: var(--font-mono);

@@ -118,6 +118,17 @@ func (s *Server) routes() {
 		})
 		return s.status(), nil
 	}))
+	m.Handle("GET /api/folders", httpapi.JSON(func(r *http.Request, _ httpapi.None) (modlist.Listing, error) {
+		looking := modlist.LookingList
+		if r.URL.Query().Get("for") == string(modlist.LookingCatalog) {
+			looking = modlist.LookingCatalog
+		}
+		return modlist.Browse(r.URL.Query().Get("path"), looking)
+	}))
+	// What's at a folder, without choosing it: for the list form's profiles.
+	m.Handle("GET /api/source", httpapi.JSON(func(r *http.Request, _ httpapi.None) (modlist.Source, error) {
+		return modlist.Check(r.URL.Query().Get("path"), "")
+	}))
 	m.Handle("PUT /api/source", httpapi.JSON(func(_ *http.Request, req SourceRequest) (Status, error) {
 		switch {
 		case req.Catalog != "" && req.Path != "":

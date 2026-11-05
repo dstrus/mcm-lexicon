@@ -41,6 +41,8 @@ shell:
   review: Review changes
   discardAndLeave: Discard them
   keepEditing: Keep editing
+  list: List
+  listTitle: "{path}. Change it in Settings."
   profile: Profile
   catalog: Catalog
   gameRunning: Skyrim running · read-only
@@ -92,20 +94,49 @@ nav:
 # Choosing what to read: a mod list, or a catalog file.
 source:
   title: Where is your mod list?
+  change: >-
+    Choose another mod list, or another profile of this one. MCM Lexicon
+    remembers it, and uses it from now on, even where it would find another on
+    its own. Starting MCM Lexicon with {flag} still overrides it.
+  discards:
+    one: Another list discards the changes to {count} recording that aren’t saved yet. Save them first to keep them.
+    other: Another list discards the changes to {count} recordings that aren’t saved yet. Save them first to keep them.
   notFound: >-
     MCM Lexicon didn’t find a mod list next to it. Point it at your Mod
     Organizer 2 instance, the folder holding {ini}, {mods}, and {profiles}; or
     at the game’s {data} folder if you use Vortex or install mods by hand.
   folder: Mod list folder
   profile: Profile
-  profileHint: Only with Mod Organizer 2. Left empty, the profile MO2 has selected is read.
+  profileHint: The instance’s profiles, with the one in use chosen, or for another instance the one MO2 has selected.
+  noProfiles: A Data folder has no profiles.
+  checking: Looking in the folder…
   use: Use this list
-  orCatalog: Or open a catalog file
+  orCatalog: Open a catalog file instead
+  orList: Use a mod list instead
+  catalogInUse: A catalog file is in use now. Use this list to switch to a mod list.
+  listInUse: A mod list is in use now. Open this catalog to switch to it.
   catalogLead: >-
     A catalog is what MCM Lexicon knows about a list, saved as one file, so a
     list can be explored on a machine where it isn’t installed.
   catalogFile: Catalog file
   open: Open this catalog
+  # The folder picker, which opens under the folder field.
+  picker:
+    browse: Browse…
+    title: Choose your mod list
+    titleCatalog: Choose a catalog file
+    catalog: Catalog file
+    noCatalogs: There’s no catalog file in this folder.
+    drive: Drive
+    path: Folder path, listed when you press Enter
+    up: Up a folder
+    empty: This folder is empty.
+    choose: Choose this folder
+    mo2: MO2 instance
+    data: Data folder
+    dataInside: Data folder inside
+    isMo2: This is a Mod Organizer 2 instance.
+    isData: This is the game’s Data folder.
 
 # Quick find, from any page.
 find:
@@ -117,7 +148,9 @@ find:
 # The menus of the list: every MCM it holds.
 menus:
   title: Menus
-  inInstance: Mod Organizer 2 instance at {path}, profile {profile}
+  # The list's folder, then on its own line, for an MO2 instance, its profile.
+  inInstance: Mod Organizer 2 instance at {path}
+  inProfile: Profile {profile}
   inData: Data folder at {path}
   inCatalog: Catalog {path}, made from {list}
   which:
@@ -739,6 +772,10 @@ compare:
 # MCM Lexicon's own settings.
 settings:
   title: Settings
+  modList: Mod list
+  inCatalog: A catalog file is open in place of a list, {path}.
+  changeList: Change list…
+  modListNote: Choosing another list reads it afresh. MCM Lexicon remembers it, and opens it from then on.
   saveFolder: Save folder
   name: Mod folder name
   noDelete: "[NoDelete] prefix"
