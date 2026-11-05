@@ -373,7 +373,7 @@ recordings:
   modMissing:
     one: "{count} step is for a menu that isn’t in this list, which MCM Recorder skips."
     other: "{count} steps are for menus that aren’t in this list, which MCM Recorder skips."
-  openForAdding: Open for adding
+  openForAdding: Add new steps here
   isOpen: New steps go to this recording.
   onlyNew: A catalog file is open, so only recordings made here are listed. Save writes each to a folder you choose.
   notSavedYet: Not saved yet
