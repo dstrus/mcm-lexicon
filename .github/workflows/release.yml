@@ -1,5 +1,5 @@
-# Builds a release's downloads when a version tag (v0.1.0, v0.2.0-beta.1,
-# and so on) is pushed, and attaches them to a draft release for that tag,
+# Builds a release's download, for Windows, when a version tag (v0.1.0,
+# v0.2.0-beta.1, and so on) is pushed, and attaches it to a draft release for that tag,
 # with the annotated tag's message as its notes. Publishing the draft makes
 # it the latest release, which the site's download links point to.
 name: Release
@@ -11,8 +11,8 @@ permissions:
   contents: write
 jobs:
   release:
-    # macOS, for lipo and codesign; the Windows and Linux builds cross-compile.
-    runs-on: macos-latest
+    # The Windows build cross-compiles, so any runner does.
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -34,13 +34,13 @@ jobs:
       # release that built them, which can be newer than the committed copy's.
       - name: Check that THIRD_PARTY_NOTICES.txt is current
         run: make notices && git diff --exit-code -I '^The Go standard library' -I '^  The Go standard library' THIRD_PARTY_NOTICES.txt
-      - name: Build the downloads
+      - name: Build the download
         run: make release VERSION="$GITHUB_REF_NAME"
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "$GITHUB_REF_NAME"
-          dist/MCMLexicon-windows-x64.zip dist/MCMLexicon-macos.zip dist/MCMLexicon-linux-x64.tar.gz dist/SHA256SUMS
+          dist/MCMLexicon-windows-x64.zip dist/SHA256SUMS
           --draft --latest --verify-tag --notes-from-tag
           --title "MCM Lexicon ${GITHUB_REF_NAME#v}"

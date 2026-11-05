@@ -38,11 +38,13 @@ It's a single program that runs a small web server on your machine and opens its
 
 It works with [MCM Recorder](https://www.nexusmods.com/skyrimspecialedition/mods/61719) but isn't part of it, and isn't affiliated with MCM Recorder, SkyUI, MCM Helper, or Mod Organizer. It does not include any files from those other sources.
 
-## Installing it (Windows)
+## Installing it
 
 **MO2 users:** Put `MCMLexicon.exe` in your MO2 instance folder (the one holding `ModOrganizer.ini`, `mods`, and `profiles`).
 
 **Everyone else (including Vortex users):** Put `MCMLexicon.exe` in your Skyrim installation folder (the one holding `SkyrimVR.exe` or `SkyrimSE.exe`), or in its `Data` folder.
+
+Releases are for Windows only, but you can build it for macOS or Linux. See [DEVELOPING.md](DEVELOPING.md).
 
 ## Running it
 

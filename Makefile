@@ -18,25 +18,18 @@ windows: web
 		--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -o MCMLexicon.exe ./cmd/lexicon
 
-# A release's downloads, into dist/: a zip for Windows, a zip for macOS (one
-# program for both Apple silicon and Intel), and a tarball for Linux, each
-# with LICENSE and THIRD_PARTY_NOTICES.txt, plus their SHA256SUMS. Their
-# names carry no version, so the site can link to the latest release's.
-# Needs macOS, for lipo and codesign; the Release workflow runs it when a
-# version tag is pushed.
+# A release's download, into dist/: a zip for Windows, with LICENSE and
+# THIRD_PARTY_NOTICES.txt, plus its SHA256SUMS. Its name carries no version,
+# so a link to the latest release's download stays the same. Releases are
+# for Windows only, where the game runs; on macOS or Linux, make build
+# builds the program for that machine. Runs on any OS; the Release workflow
+# runs it when a version tag is pushed.
 release: windows
-	rm -rf dist && mkdir -p dist/windows dist/macos dist/linux
+	rm -rf dist && mkdir -p dist/windows
 	cp MCMLexicon.exe dist/windows/
-	GOOS=darwin GOARCH=arm64 $(GOBUILD) -o dist/macos/lexicon-arm64 ./cmd/lexicon
-	GOOS=darwin GOARCH=amd64 $(GOBUILD) -o dist/macos/lexicon-amd64 ./cmd/lexicon
-	lipo -create -output dist/macos/lexicon dist/macos/lexicon-arm64 dist/macos/lexicon-amd64
-	rm dist/macos/lexicon-arm64 dist/macos/lexicon-amd64
-	codesign --force --sign - dist/macos/lexicon
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -o dist/linux/lexicon ./cmd/lexicon
-	for os in windows macos linux; do cp LICENSE dist/$$os/LICENSE.txt; cp THIRD_PARTY_NOTICES.txt dist/$$os/; done
+	cp LICENSE dist/windows/LICENSE.txt
+	cp THIRD_PARTY_NOTICES.txt dist/windows/
 	cd dist/windows && zip -qX ../MCMLexicon-windows-x64.zip MCMLexicon.exe LICENSE.txt THIRD_PARTY_NOTICES.txt
-	cd dist/macos && zip -qX ../MCMLexicon-macos.zip lexicon LICENSE.txt THIRD_PARTY_NOTICES.txt
-	COPYFILE_DISABLE=1 tar -czf dist/MCMLexicon-linux-x64.tar.gz -C dist/linux lexicon LICENSE.txt THIRD_PARTY_NOTICES.txt
 	cd dist && shasum -a 256 MCMLexicon-* > SHA256SUMS
 
 # THIRD_PARTY_NOTICES.txt: the license of everything built into the program,
