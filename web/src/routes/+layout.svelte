@@ -265,8 +265,8 @@
 					</a>
 				{/if}
 				{#if editing && pending > 0}
-					<div class="save">
-						{#key pending}<button type="button" class="button unsaved" disabled={saving} onclick={saveNow}>{m.nav.save}</button>{/key}
+					<div class="saving">
+						{#key pending}<button type="button" class="button save" disabled={saving} onclick={saveNow}>{m.nav.save}</button>{/key}
 						<a class="caps review" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>{m.nav.review}</a>
 					</div>
 					<p class="note" role="status">{m.nav.changesTitle({ count: pending })}</p>
@@ -561,40 +561,10 @@
 	   waiting. It rises in when the draft starts and again as each change
 	   lands, then breathes a soft amber light so it's never mistaken for
 	   settled. */
-	.save {
+	.saving {
 		display: flex;
 		align-items: center;
 		gap: var(--space-4);
-	}
-	.save .button.unsaved {
-		background: var(--warn);
-		border-color: var(--warn);
-		color: var(--panel);
-		font-weight: 600;
-		box-shadow: 0 2px 14px -2px color-mix(in oklab, var(--warn) 55%, transparent);
-		animation:
-			arrive 320ms cubic-bezier(0.16, 1, 0.3, 1),
-			breathe 2.8s ease-in-out 320ms infinite;
-	}
-	.save .button.unsaved:hover:not(:disabled) {
-		border-color: var(--ink);
-		box-shadow: 0 3px 18px -2px color-mix(in oklab, var(--warn) 85%, transparent);
-	}
-	@keyframes arrive {
-		from {
-			opacity: 0;
-			transform: translateY(6px);
-		}
-	}
-	@keyframes breathe {
-		50% {
-			box-shadow: 0 2px 22px 0 color-mix(in oklab, var(--warn) 80%, transparent);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.save .button.unsaved {
-			animation: none;
-		}
 	}
 	.review {
 		font-size: var(--step-0);

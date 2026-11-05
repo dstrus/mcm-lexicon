@@ -66,7 +66,7 @@
 {:else}
 	<p class="lead">{t.summary({ files: m.recording.fileCount({ count: changes.files }), recordings: t.recordingCount({ count: changes.recordings.length }) })}</p>
 	<div class="actions">
-		<button type="button" class="button primary" disabled={!canSave} onclick={saveNow}>{t.saveAll}</button>
+		<button type="button" class="button save" disabled={!canSave} onclick={saveNow}>{t.saveAll}</button>
 		<button type="button" class="button" disabled={working} onclick={discardEverything}>{t.discardAll}</button>
 	</div>
 	{#if changes.unsaved === 'running'}<p class="notice warn">{m.draft.running}</p>{/if}
