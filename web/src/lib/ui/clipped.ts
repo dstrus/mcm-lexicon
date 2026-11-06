@@ -5,19 +5,34 @@
 // it reads as the same words continued. Text that fits shows nothing,
 // unless a note is given (a menu's raw $KEY name): the tip then shows the
 // note under the text, in the file font, whether the text is cut short or
-// not.
+// not. On a select, the text is the entry it shows.
 
 const delay = 250; // ms before the tip appears, so passing over rows doesn't flicker
+
+// A select doesn't report its shown entry's width, so the entry is
+// measured in the select's own type against the room inside its padding,
+// which leaves out the chevron's.
+let ruler: CanvasRenderingContext2D | null | undefined;
+function selectCut(node: HTMLSelectElement, text: string): boolean {
+	ruler ??= document.createElement('canvas').getContext('2d');
+	if (!ruler) return false;
+	const type = getComputedStyle(node);
+	// Built from its parts: the font shorthand can read back empty.
+	ruler.font = `${type.fontStyle} ${type.fontWeight} ${type.fontSize} ${type.fontFamily}`;
+	ruler.letterSpacing = type.letterSpacing === 'normal' ? '0px' : type.letterSpacing;
+	const room = node.clientWidth - parseFloat(type.paddingLeft) - parseFloat(type.paddingRight);
+	return ruler.measureText(text).width > room + 1;
+}
 
 export function clipped(node: HTMLElement, note?: string) {
 	let tip: HTMLElement | undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
 	function show() {
-		const cut = node.scrollWidth > node.clientWidth + 1;
-		if (!cut && !note) return;
-		const text = node.textContent?.trim();
+		const text = (node instanceof HTMLSelectElement ? node.selectedOptions[0]?.text : node.textContent)?.trim();
 		if (!text) return;
+		const cut = node instanceof HTMLSelectElement ? selectCut(node, text) : node.scrollWidth > node.clientWidth + 1;
+		if (!cut && !note) return;
 		tip = document.createElement('div');
 		tip.className = 'tip';
 		tip.setAttribute('role', 'tooltip');
@@ -64,6 +79,9 @@ export function clipped(node: HTMLElement, note?: string) {
 	const control = node.closest<HTMLElement>('a, button');
 	node.addEventListener('mouseenter', enter);
 	node.addEventListener('mouseleave', hide);
+	// A select's list opening, or a new entry, takes the tip away.
+	node.addEventListener('mousedown', hide);
+	node.addEventListener('change', hide);
 	control?.addEventListener('focus', enter);
 	control?.addEventListener('blur', hide);
 	return {
@@ -74,6 +92,8 @@ export function clipped(node: HTMLElement, note?: string) {
 			hide();
 			node.removeEventListener('mouseenter', enter);
 			node.removeEventListener('mouseleave', hide);
+			node.removeEventListener('mousedown', hide);
+			node.removeEventListener('change', hide);
 			control?.removeEventListener('focus', enter);
 			control?.removeEventListener('blur', hide);
 		}

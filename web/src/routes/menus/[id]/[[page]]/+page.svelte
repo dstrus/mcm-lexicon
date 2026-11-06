@@ -14,7 +14,7 @@
 	import { column } from '#lib/menus/column.svelte.ts';
 	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
-	import InlineValue from '#lib/recordings/InlineValue.svelte';
+	import LiveValue from '#lib/recordings/LiveValue.svelte';
 	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency, setClicks } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import type { Step } from '#lib/api/types/recordings.ts';
@@ -25,7 +25,6 @@
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
-	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
 	import { Selection } from '#lib/ui/selection.svelte.ts';
 	import { holdSave, useShortcuts } from '#lib/ui/shortcuts.svelte.ts';
 	import type { PageProps } from './$types';
@@ -207,10 +206,13 @@
 	// What a value shows and starts from: the recorded value, else the
 	// option's own.
 	const valueNow = (o: Option) => recorded(o)?.step ?? base(o);
-	const on = (o: Option) => valueNow(o).value.toLowerCase() === 'on';
-	// A toggle flips in place when its value is known (recorded, saved, or
-	// the mod's default); one that isn't is chosen outright, On or Off.
-	const flippable = (o: Option) => o.type === 'toggle' && (!!recorded(o) || !!known(o));
+	// What a row's control holds: the recorded value, else the value the
+	// option is known to have, else nothing, so the control shows its
+	// placeholder (a menu's "Choose an entry") until a value is chosen.
+	const valueShown = (o: Option) => (recorded(o) || known(o) ? valueNow(o).value : '');
+	// A toggle whose value isn't known shows off, so its first click records on.
+	const on = (o: Option) => valueShown(o).toLowerCase() === 'on';
+	const flippable = (o: Option) => o.type === 'toggle';
 	const canEdit = (o: Option) => recordable(o);
 
 	let working = $state(false);
@@ -221,8 +223,11 @@
 	let infoHeight = $state(0);
 	let hintsHeight = $derived(infoHeight && (document.querySelector<HTMLElement>('.hints')?.offsetHeight ?? 0));
 	let covered = $derived(infoHeight + hintsHeight);
-	let inline = $state<InlineValue>();
-	let editingCell = $derived(recording && param('mode') === 'edit' && current ? current.i : -1);
+	// The rows' controls, by option, so E can focus the selected one; and
+	// the one with focus, while a row's control has it: Enter applies a
+	// field's text, and Esc puts it back.
+	let lives: Record<number, LiveValue> = {};
+	let live = $state<{ i: number; field: boolean } | null>(null);
 
 	// record puts the option in the open recording with this value: a new
 	// step, or its step changed.
@@ -237,7 +242,6 @@
 			error = e instanceof ApiError ? e.message : String(e);
 		} finally {
 			working = false;
-			leave('mode');
 		}
 	}
 	const flip = (o: Option) => record(o, on(o) ? 'off' : 'on');
@@ -269,11 +273,11 @@
 		if (flippable(r.option)) return flip(r.option);
 		if (stepper(r.option)) return cycle(r.option);
 		if (r.option.type === 'text') return record(r.option, '');
-		setParams({ item: String(r.i), mode: 'edit' });
+		lives[r.i]?.focus();
 	}
 	// A records the selected option as it shows, asking which recording
-	// first when none is chosen; an option whose value isn't known opens
-	// its editor instead.
+	// first when none is chosen; an option whose value isn't known gets
+	// the focus in its control instead, for the value to be chosen.
 	async function add() {
 		const r = current;
 		if (!r || !canEdit(r.option) || working) return;
@@ -281,7 +285,7 @@
 		if (recorded(r.option)) return;
 		if (stepper(r.option)) return cycle(r.option);
 		if (flippable(r.option) || known(r.option) || r.option.type === 'text') return record(r.option, valueNow(r.option).value);
-		setParams({ mode: 'edit' });
+		lives[r.i]?.focus();
 	}
 
 	// Record all settings on this page: every option whose value is known
@@ -344,12 +348,12 @@
 	}
 
 	useShortcuts(() =>
-		editingCell >= 0
+		live
 			? [
-					// The cell's field takes these first; they're here so the strip shows them.
-					{ key: 'Enter', label: m.edit.apply, disabled: working, run: () => inline?.done() },
+					// The control takes these first; they're here so the strip shows them.
+					...(live.field ? [{ key: 'Enter', label: m.edit.apply, disabled: working, run: () => lives[live!.i]?.commit() }] : []),
 					holdSave,
-					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => leave('mode') }
+					{ key: 'Escape', shown: 'Esc', label: m.common.cancel, run: () => lives[live!.i]?.revert() }
 				]
 			: [
 					{ key: 'ArrowDown', label: m.common.next, hidden: true, run: () => vertical(1) },
@@ -361,7 +365,7 @@
 							? [{ key: ' ', shown: 'Space', label: on(current.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(current!.option) }]
 							: current.option.type === 'text'
 								? []
-								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => setParams({ mode: 'edit' }) }]
+								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => lives[current!.i]?.focus() }]
 						: []),
 					...(zone === 'options' && open.editing && current && canEdit(current.option) && !recorded(current.option)
 						? [{ key: 'a', shown: 'A', label: open.name ? m.adding.addTo({ recording: open.name }) : m.adding.addToAny, disabled: working, run: add }]
@@ -404,10 +408,10 @@
 		<span class="val readonly" title={o.inert ? m.adding.inert : m.adding.readOnly}>{@render shown(o)}</span>
 	{:else if recording}
 		{@const rec = recorded(o)}
-		<span class="val" class:changed={!!rec && stepChanged(rec.step, o)}>
+		<span class="val" class:live={canEdit(o) && !flippable(o) && !stepper(o) && o.type !== 'text'} class:changed={!!rec && stepChanged(rec.step, o)}>
 			<!-- What the recording holds of it: a hollow diamond for a step
 			     that's saved, an amber one for a step the draft hasn't saved. -->
-			{#if rec && canEdit(o) && editingCell !== i}
+			{#if rec && canEdit(o)}
 				{@const dirty = open.dirty(rec.step)}
 				<span class="mark" title={dirty ? m.adding.unsavedStep({ recording: open.name }) : m.adding.inRecording({ recording: open.name })}>
 					{#if dirty}<Diamond size={7} fill="var(--warn)" />{:else}<Diamond size={7} hollow />{/if}
@@ -434,19 +438,11 @@
 				<button type="button" class="click" title={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.clickTitle({ recording: open.name })} aria-label={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
 					{#if rec}<span class="caps word click-word">{m.steps.click}</span>{/if}{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
 				</button>
-			{:else if editingCell === i}
-				<InlineValue bind:this={inline} kind={base(o).kind} option={o} value={valueNow(o).value} fresh={!recorded(o)} apply={(v) => record(o, v)} cancel={() => leave('mode')} />
-			{:else if rec}
-				<button type="button" class="cell" title={m.edit.editValue} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
-					{#if o.type === 'color'}<span class="swatch" style:background={hex(Number(rec.step.value))}></span>{/if}{stepValue(rec.step, o)}
-				</button>
 			{:else}
-				<!-- Not recorded yet: the value the option has, muted, as the
-				     editor starts from it; a dash when none is known. -->
-				{@const k = known(o)}
-				<button type="button" class="cell unrecorded" title={m.adding.notYetTitle({ recording: open.name })} aria-label={m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
-					{#if k}{#if o.type === 'color'}<span class="swatch" style:background={hex(k.number)}></span>{/if}{show(o, k)}{:else}—{/if}
-				</button>
+				<!-- Any other value's control, always in the row: changing it
+				     records the option, so one not recorded yet needs no step
+				     first. It holds the value the option has until then, muted. -->
+				<LiveValue bind:this={lives[i]} kind={base(o).kind} option={o} value={valueShown(o)} recorded={!!rec} title={rec ? m.edit.editValue : m.adding.notYetTitle({ recording: open.name })} apply={(v) => record(o, v)} onfocus={(f, field) => (live = f ? { i, field } : live?.i === i ? null : live)} />
 			{/if}
 		</span>
 	{:else}
@@ -462,7 +458,7 @@
 	{:else if x.option}
 		{@const o = x.option}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
-		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => !(editingCell >= 0) && pick(x.i!)}>
+		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => pick(x.i!)}>
 			<span class="marker">{#if selected(x.i!)}<Diamond />{/if}</span>
 			<span class="label">
 				{o.text || o.label || m.values.noLabel}
@@ -714,26 +710,14 @@
 		align-items: center;
 		gap: var(--space-2);
 	}
-	/* Any other value's cell is a button that turns into its editor, drawn
-	   as a field at rest so it reads as editable before it's clicked: the
-	   same glass and hairline as an input, a dash in it where the option
-	   isn't recorded yet. A text option's cell, which can't be changed, is
-	   plain. */
-	.cell {
-		min-width: 3.5rem;
-		padding: 0.1em var(--space-2);
-		background: var(--glass-strong);
-		border: 1px solid var(--rule-strong);
-		border-radius: var(--radius);
-		font: inherit;
-		color: inherit;
-		text-align: right;
-		cursor: text;
+	/* Any other value's control stays in the row, and may grow past the
+	   value's half of it while it has focus: a slider's hairline, or the
+	   controller list beside a key box, shows then. */
+	.val.live {
+		overflow: visible;
 	}
-	.cell:hover:not(:disabled),
-	.cell:focus-visible {
-		border-color: var(--accent);
-		outline: none;
+	.val.live:focus-within {
+		max-width: 80%;
 	}
 	/* A text option's click: its value, plain, as the game shows it; a
 	   hairline under it on hover says a click records it. */
@@ -761,9 +745,6 @@
 	   nothing to edit. */
 	.grid .opt.disabled .label,
 	.val.readonly {
-		color: var(--muted);
-	}
-	.cell.unrecorded {
 		color: var(--muted);
 	}
 	.mark {
