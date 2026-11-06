@@ -1,13 +1,14 @@
 <!-- A step's value edited in its table cell: the smallest control for its
      kind, focused on arrival. Enter applies and Esc cancels; a menu entry,
-     a color, or a key pressed applies as soon as it's chosen. Toggles
-     don't come here: their cell's checkbox flips them. -->
+     a color, or a key pressed applies as soon as it's chosen. A slider's
+     number applies on leaving it too, held to the range and moved to the
+     nearest step. Toggles don't come here: their cell's switch flips them. -->
 <script lang="ts">
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
-	import { hex, number } from '#lib/menus/values.ts';
+	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onMount, tick } from 'svelte';
 
@@ -33,8 +34,9 @@
 	let draft = $state('');
 	let field = $state<HTMLElement>();
 	// The field is filled before its text is selected, so typing replaces it.
+	// A slider's number shows the decimals its format gives: 5.0, not 5.
 	onMount(async () => {
-		draft = value;
+		draft = kind === 'slider' && value.trim() !== '' && !Number.isNaN(Number(value)) ? plain(Number(value), option?.slider?.format) : value;
 		await tick();
 		field?.focus();
 		if (field instanceof HTMLInputElement && field.type !== 'color') field.select();
@@ -42,13 +44,23 @@
 
 	let range = $derived(option?.slider);
 	let choices = $derived(option?.choices ?? []);
+	// A slider's number past the range is held to it when applied, so only
+	// text that isn't a number can't be.
 	let problem = $derived.by(() => {
 		if (kind !== 'slider') return '';
 		const n = Number(draft.trim());
 		if (draft.trim() === '' || Number.isNaN(n)) return t.notANumber;
-		if (range && (n < range.min - 1e-6 || n > range.max + 1e-6)) return t.outOfRange({ min: number(range.min), max: number(range.max) });
 		return '';
 	});
+
+	// The editor ends once: applied or cancelled, the focus leaving as it
+	// closes doesn't apply it again.
+	let ended = false;
+	const end = (f: () => void) => {
+		if (ended) return;
+		ended = true;
+		f();
+	};
 
 	// done applies what's typed, if the value is one the step can hold; a
 	// menu's, the entry its select shows.
@@ -60,6 +72,14 @@
 			return;
 		}
 		if (problem) return;
+		if (kind === 'slider') {
+			const n = range ? snapped(Number(draft), range) : Number(draft);
+			draft = plain(n, range?.format);
+			const out = draft;
+			if (value.trim() !== '' && Number(value) === n) end(cancel);
+			else end(() => apply(out));
+			return;
+		}
 		if (draft === value) cancel();
 		else apply(draft);
 	}
@@ -70,7 +90,7 @@
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			e.stopPropagation();
-			cancel();
+			end(cancel);
 		} else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -79,10 +99,12 @@
 	}
 
 	// A slider and its field are one editor: moving between them isn't
-	// leaving it.
+	// leaving it. Leaving applies the number, unless it isn't one.
 	function left(e: FocusEvent) {
 		const to = e.relatedTarget;
-		if (!(to instanceof Node) || !(e.currentTarget as HTMLElement).contains(to)) cancel();
+		if (ended || (to instanceof Node && (e.currentTarget as HTMLElement).contains(to))) return;
+		if (problem) end(cancel);
+		else done();
 	}
 
 	function captureKey(e: KeyboardEvent) {
@@ -103,7 +125,7 @@
 	let colorHex = $derived(value === '' || Number.isNaN(Number(value)) ? '#000000' : hex(Number(value)).toLowerCase());
 </script>
 
-<span class="inline">
+<span class="inline" class:level={kind === 'slider'}>
 	{#if kind === 'toggle'}
 		<!-- A toggle whose value isn't known yet: On or Off, chosen outright. -->
 		<span class="choice" role="group" aria-label={t.value}>
@@ -158,7 +180,12 @@
 		gap: var(--space-2);
 		margin: -0.3em 0;
 	}
-	input:not([type='color']),
+	/* A slider's number is the resting value's field, the same size, so the
+	   row neither jumps nor clips it as editing starts. */
+	.inline.level {
+		margin: 0;
+	}
+	input:not([type='color']):not([type='range']),
 	select {
 		width: 9rem;
 		--chevron-inset: var(--space-2);
@@ -166,15 +193,24 @@
 		padding-left: var(--space-2);
 		font: inherit;
 	}
+	/* As SkyUI's slider dialog reads, and as the site's demo draws it: the
+	   hairline and diamond to the left, the number right-aligned in its
+	   field, which keeps its place at the cell's right edge. */
 	.pair {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
-		width: 13rem;
+	}
+	.pair :global(input[type='range']) {
+		flex: none;
+		width: 6.5rem;
+		min-width: 0;
 	}
 	.pair input.exact {
 		width: 4.5rem;
 		flex: none;
+		padding: 1.5px var(--space-2);
+		text-align: right;
 		font-variant-numeric: tabular-nums;
 	}
 	input[type='color'] {
@@ -183,6 +219,14 @@
 		padding: 0;
 		border: 1px solid var(--rule-strong);
 		background: none;
+	}
+	/* Focus on the field's own edge, since the row clips a ring drawn
+	   outside it. */
+	input:not([type='color']):not([type='range']):focus-visible,
+	select:focus-visible {
+		border-color: var(--accent);
+		outline: 1px solid var(--accent);
+		outline-offset: -1px;
 	}
 	/* A value the slider won't take: the field's own border says so. */
 	input.bad {

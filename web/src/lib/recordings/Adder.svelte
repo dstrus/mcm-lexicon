@@ -8,6 +8,7 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
+	import { plain } from '#lib/menus/values.ts';
 	import { addStep, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
 	import type { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { recordable, stepFor } from '#lib/recordings/steps.ts';
@@ -46,7 +47,10 @@
 	let error = $state('');
 	let done = $state('');
 	let working = $state(false);
-	let from = $derived(existing ? { value: existing.step.value, side: existing.step.side } : { value: base.value, side: base.side });
+	// A slider's number as its field shows it, with its format's decimals
+	// (5.0, not 5), on both sides of the comparison below.
+	const shown = (v: string) => (base.kind === 'slider' && v.trim() !== '' && !Number.isNaN(Number(v)) ? plain(Number(v), option.slider?.format) : v);
+	let from = $derived(existing ? { value: shown(existing.step.value), side: existing.step.side } : { value: shown(base.value), side: base.side });
 	$effect(() => {
 		value = from.value;
 		side = from.side;

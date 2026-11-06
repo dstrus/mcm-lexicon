@@ -14,6 +14,25 @@ export function number(n: number, format = ''): string {
 	return Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+// snapped is n on a slider's range: held to its ends, and moved to the
+// nearest step from its start, with no more decimals than the step and the
+// start have, so 0.1 steps don't drift to 0.30000000000000004.
+export function snapped(n: number, r: { min: number; max: number; step: number }): number {
+	const held = Math.min(r.max, Math.max(r.min, n));
+	if (!(r.step > 0)) return held;
+	const decimals = (x: number) => (String(x).split('.')[1] ?? '').length;
+	const v = r.min + Math.round((held - r.min) / r.step) * r.step;
+	return Number(Math.min(r.max, v).toFixed(Math.max(decimals(r.step), decimals(r.min))));
+}
+
+// plain is a slider's value as its number field shows it: with the
+// decimal places the option's format gives ({1} is one), without the
+// format's words, which the field isn't for.
+export function plain(n: number, format = ''): string {
+	const places = /\{(\d)\}/.exec(format);
+	return places ? n.toFixed(Number(places[1])) : String(n);
+}
+
 // hex is a color's value as the game writes it, #RRGGBB.
 export function hex(n: number): string {
 	return '#' + Math.max(0, Math.round(n)).toString(16).padStart(6, '0').slice(-6).toUpperCase();

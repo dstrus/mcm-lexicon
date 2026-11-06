@@ -178,7 +178,9 @@ textarea {
 	color: inherit;
 }
 
-input:not([type='checkbox']):not([type='radio']),
+/* Fields. A slider isn't one: it's drawn below, as a hairline and the
+   diamond, which this rule would otherwise outrank. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
 select,
 textarea {
 	background: var(--glass-strong);

@@ -7,7 +7,7 @@
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
-	import { hex, number } from '#lib/menus/values.ts';
+	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import Segmented from '#lib/ui/Segmented.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -35,6 +35,14 @@
 	$effect(() => {
 		problem = check(kind, value);
 	});
+
+	// A slider's typed number, once left, held to the range and moved to
+	// the nearest step, with the decimals its format gives.
+	function settle() {
+		const n = Number(value.trim());
+		if (value.trim() === '' || Number.isNaN(n)) return;
+		value = plain(range ? snapped(n, range) : n, range?.format);
+	}
 
 	function check(k: Kind, v: string): string {
 		switch (k) {
@@ -88,7 +96,7 @@
 			     an exact value. -->
 			<span class="row slider">
 				{#if range}<Range bind:value min={range.min} max={range.max} step={range.step} label={t.slide} />{/if}
-				<input type="number" class:exact={!!range} bind:value={() => value, (v) => (value = v == null ? '' : String(v))} min={range?.min} max={range?.max} step={range?.step || 'any'} inputmode="decimal" autocomplete="off" />
+				<input type="text" class:exact={!!range} bind:value inputmode="decimal" autocomplete="off" spellcheck="false" onchange={settle} />
 			</span>
 		</label>
 		{#if range}<p class="muted small">{t.range({ min: number(range.min), max: number(range.max), step: number(range.step) })}{#if option?.default}{' '}{t.defaultIs({ value: number(option.default.number, range.format) })}{/if}</p>{/if}
@@ -167,9 +175,12 @@
 		display: flex;
 		width: 100%;
 	}
+	/* The number right-aligned in its field, as in a cell and in the site's
+	   demo. */
 	.row.slider input.exact {
 		width: 6rem;
 		flex: none;
+		text-align: right;
 		font-variant-numeric: tabular-nums;
 	}
 	.small {
