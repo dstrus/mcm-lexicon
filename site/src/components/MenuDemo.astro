@@ -123,6 +123,7 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 											<Diamond />
 										</span>
 										<span class="label">{r.label}</span>
+										<span class="value">
 										{p.name === invite.page && r.label === invite.option && (
 											<button type="button" class="invite caps" data-invite>
 												Flip<span class="this"> this</span>
@@ -185,6 +186,7 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 												<span>Click</span>
 											</button>
 										)}
+										</span>
 									</div>
 								);
 							})}
@@ -864,7 +866,7 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 	}
 	.row {
 		display: grid;
-		grid-template-columns: 1rem minmax(0, 1fr) auto auto auto;
+		grid-template-columns: 1rem minmax(0, 1fr) auto;
 		align-items: center;
 		gap: var(--space-2);
 		min-height: 2.5rem;
@@ -882,6 +884,14 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 	.row.sel {
 		background: var(--select);
 		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+	}
+	/* Everything right of the label (the invitation, the unsaved mark, the
+	   control) is one cell, so a marker that isn't there takes no room and
+	   the control sits at the row's edge whatever the row holds. */
+	.value {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
 	}
 	/* The labels are the point, so a long one wraps rather than lose its
 	   end. */
