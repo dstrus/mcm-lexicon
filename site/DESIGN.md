@@ -15,8 +15,8 @@ colors:
   rule-strong: "#3a3a3a"
   changed: "#d2996b"
   warn: "#d9a441"
-  invite: "#8ec9f5"
-  on-invite: "#08161f"
+  invite: "#f0a3b5"
+  on-invite: "#22070f"
   accent-light: "#2a5f86"
   on-accent-light: "#eef4f9"
   ground-light: "#e4e3df"
@@ -30,8 +30,8 @@ colors:
   rule-strong-light: "#b3b0a7"
   changed-light: "#9a4a20"
   warn-light: "#8a5a00"
-  invite-light: "#2e7d5f"
-  on-invite-light: "#eef8f3"
+  invite-light: "#b0325a"
+  on-invite-light: "#fff1f5"
 typography:
   display:
     fontFamily: "Barlow Condensed, Jost, sans-serif"
@@ -241,7 +241,7 @@ The app's near-monochrome palette, unchanged: off-white on near-black in dark, n
 - **Accent Ink** (`on-accent` / `on-accent-light`): text and the diamond on an accent fill.
 
 ### Secondary
-- **Frost Invitation** (`invite` / `invite-light`): the site's own color, for what the page asks you to touch: the TRY IT and its arrow above the window, the window's outline, and the FLIP THIS chip in the menu. It's the other theme's accent: Skyrim's cold light in dark (frost, `#8ec9f5`), and verdigris deepened for pale smoke in light (`#2e7d5f`), so each theme borrows the hue its accent isn't. Never a fill larger than a chip, and never on anything the app itself shows.
+- **Rose Invitation** (`invite` / `invite-light`): the site's own color, for what the page asks you to touch: the TRY IT and its arrow above the window, the window's outline, and the FLIP THIS chip in the menu. Chosen for how it looks beside the rest, not for the world: the page's palette is warm (cream, warm gray, amber, copper) with one cool-leaning green, and rose is the warm hue it lacks and the near-complement of that green, so it pulls the eye and still belongs. A warm pink in dark (`#f0a3b5`) and the same rose deepened to raspberry for pale smoke in light (`#b0325a`). Never a fill larger than a chip, and never on anything the app itself shows.
 - **Invitation Ink** (`on-invite` / `on-invite-light`): text and the arrow on an invitation fill.
 - **Copper Changed** (`changed` / `changed-light`): in the hero's menu, a recorded value that differs from the mod's default (a slider's number or a menu's chosen entry), as the app shows it. The value only, never a row or a fill.
 
@@ -260,7 +260,7 @@ The app's near-monochrome palette, unchanged: off-white on near-black in dark, n
 - **Amber Warning** (`warn` / `warn-light`): the window's RECORDING lamp, its glow, and its count; the small amber diamond on a menu option whose step is in the draft but not saved, and the quoted state "Skyrim running · read-only" in the safety rules, as the app shows them. Never a fill on the site.
 
 ### Named Rules
-**The Same Token Set Rule.** The site defines one color of its own, Frost Invitation, as a dark and light pair. A color the site needs is a role the app already has, with the app's dark and light values; a new role ships in both, as a pair, or not at all.
+**The Same Token Set Rule.** The site defines one color of its own, Rose Invitation, as a dark and light pair. A color the site needs is a role the app already has, with the app's dark and light values; a new role ships in both, as a pair, or not at all.
 
 **The Changed Rule.** Copper means the player set this, and it differs from the mod's own default. It marks the value itself, never a row, a fill, or a highlight, and never doubles as a warning.
 
@@ -317,7 +317,7 @@ The site is flat, like the app. Depth comes from the smoked-glass gradient, from
 The one depth effect is focus by light: while the visitor scrolls the screens, the screen nearest the middle of the window is lit and the others dim (opacity 0.38) and desaturate (0.4); their captions never dim, easing over 600ms. The dimming turns on only when script can observe the scroll, switches off under 60rem, and drops its transition under reduced motion.
 
 ### Named Rules
-**The No Lift Rule.** Nothing on the page floats except the window, which carries the app's modal lift (`0 1.5rem 3rem rgb(0 0 0 / 0.45)`) because it's a program in front of the page; nothing else has a drop shadow. Emphasis comes from light (the lit screen), the accent, the haze, and the diamond. The selected option's 1px accent outline is drawn inside its row and is a line, not a lift, and the window's Frost Invitation outline is the same line at the window's scale, in the invitation's hue.
+**The No Lift Rule.** Nothing on the page floats except the window, which carries the app's modal lift (`0 1.5rem 3rem rgb(0 0 0 / 0.45)`) because it's a program in front of the page; nothing else has a drop shadow. Emphasis comes from light (the lit screen), the accent, the haze, and the diamond. The selected option's 1px accent outline is drawn inside its row and is a line, not a lift, and the window's Rose Invitation outline is the same line at the window's scale, in the invitation's hue.
 
 ## Shapes
 
@@ -348,9 +348,9 @@ Values sit at a row's right edge in the smoked field with a strong hairline, its
 Under the grid, where SkyUI shows its info text, an info area on Pane Glass over a hairline: the selected option's help in Jost (two lines at most, whole under 48rem), then one muted label-caps line with its selector in DM Mono and ink, its type, and what it allows. Up and down arrows move between options in a column, every control is reachable by keyboard, and each written step is announced politely to screen readers.
 
 ### The Window (signature)
-The hero is MCM Lexicon's own window, running, in front of the page: the one thing the screenshots further down can't be. It's outlined (1px) in Frost Invitation, the line the selected row wears inside it in the accent, because it's the thing to touch, and lifted with the app's modal lift (`0 1.5rem 3rem rgb(0 0 0 / 0.45)`), the site's one shadow. Above it, at the right end of the hook's line (from 60rem up) or right-aligned just above the window (below), TRY IT in Frost Invitation: label caps at weight 600 from 1.375 to 2rem with a drawn down arrow at 1em that nudges 0.3rem toward the window three times a second after the page loads (none under reduced motion) and dips 2px on hover; it's a link to the window. Its top bar is the app's, at the app's size: the mark and name at left; at right, LIST and PROFILE in muted label caps with their values (the list's name in the File font), SKYRIM CLOSED in muted label caps, and the lamp. Under the bar, the menu screen beside the details pane; along the bottom, the hint strip. The site's own strip steps aside (slides down and fades over 360ms, none under reduced motion) while at least a third of the window is on screen, so the page never shows two strips, and returns once the window is scrolled past.
+The hero is MCM Lexicon's own window, running, in front of the page: the one thing the screenshots further down can't be. It's outlined (1px) in Rose Invitation, the line the selected row wears inside it in the accent, because it's the thing to touch, and lifted with the app's modal lift (`0 1.5rem 3rem rgb(0 0 0 / 0.45)`), the site's one shadow. Above it, at the right end of the hook's line (from 60rem up) or right-aligned just above the window (below), TRY IT in Rose Invitation: label caps at weight 600 from 1.375 to 2rem with a drawn down arrow at 1em that nudges 0.3rem toward the window three times a second after the page loads (none under reduced motion) and dips 2px on hover; it's a link to the window. Its top bar is the app's, at the app's size: the mark and name at left; at right, LIST and PROFILE in muted label caps with their values (the list's name in the File font), SKYRIM CLOSED in muted label caps, and the lamp. Under the bar, the menu screen beside the details pane; along the bottom, the hint strip. The site's own strip steps aside (slides down and fades over 360ms, none under reduced motion) while at least a third of the window is on screen, so the page never shows two strips, and returns once the window is scrolled past.
 
-**The Invitation.** In the row of one option not recorded yet (Allow Axe Throw, two rows under the selected one at the top of General), between its label and its switch, a Frost Invitation chip: FLIP THIS and a drawn arrow pointing at the switch, label caps at weight 600 in invitation ink, 3px corners. It arrives 700ms after the page (6px slide, 320ms), then nudges 5px toward the switch three times (1.4s each), none under reduced motion. Clicking it flips the switch, so the visitor's first act adds a step and the lamp counts up. The first pointer or key anywhere in the window sends it away (320ms fade) for good. Between 70 and 86rem, where the menu's columns are narrow beside the pane, it reads FLIP → so the label beside it keeps its lines.
+**The Invitation.** In the row of one option not recorded yet (Allow Axe Throw, two rows under the selected one at the top of General), between its label and its switch, a Rose Invitation chip: FLIP THIS and a drawn arrow pointing at the switch, label caps at weight 600 in invitation ink, 3px corners. It arrives 700ms after the page (6px slide, 320ms), then nudges 5px toward the switch three times (1.4s each), none under reduced motion. Clicking it flips the switch, so the visitor's first act adds a step and the lamp counts up. The first pointer or key anywhere in the window sends it away (320ms fade) for good. Between 70 and 86rem, where the menu's columns are narrow beside the pane, it reads FLIP → so the label beside it keeps its lines.
 
 **The Lamp.** RECORDING in Save's amber (`warn`), label caps at weight 600, with the 9px diamond before it carrying Save's glow (a drop shadow in amber, breathing between 3px and 7px over 2.8s, none under reduced motion) and "· N STEPS" after it, the count in tabular figures. Amber here means what it means in the app: a draft that isn't on disk. The count rises in (4px, 320ms) each time a step lands, as Save does in the app. The lamp is the site's only repeating motion.
 

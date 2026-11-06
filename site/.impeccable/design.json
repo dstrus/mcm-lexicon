@@ -396,32 +396,32 @@
       },
       "invite": {
         "role": "secondary",
-        "displayName": "Frost Invitation",
-        "canonical": "#8ec9f5",
+        "displayName": "Rose Invitation",
+        "canonical": "#f0a3b5",
         "tonalRamp": [
-          "#06111a",
-          "#0d2a3f",
-          "#154362",
-          "#1f5d87",
-          "#2f7bae",
-          "#5ba0d4",
-          "#8ec9f5",
-          "#d3ecff"
+          "#1a070c",
+          "#3d1420",
+          "#652438",
+          "#8e3552",
+          "#b0325a",
+          "#d2667f",
+          "#f0a3b5",
+          "#fbd9e1"
         ]
       },
       "on-invite": {
         "role": "secondary",
         "displayName": "Invitation Ink",
-        "canonical": "#08161f",
+        "canonical": "#22070f",
         "tonalRamp": [
-          "#08161f",
-          "#0f2a3a",
-          "#1b4259",
-          "#2b5c7a",
-          "#3e789c",
-          "#6a9dbd",
-          "#a2c6de",
-          "#dbeaf5"
+          "#22070f",
+          "#3f1420",
+          "#5e2334",
+          "#7f354b",
+          "#a04e66",
+          "#c07a8e",
+          "#dfa9b8",
+          "#f6dde4"
         ]
       }
     },
