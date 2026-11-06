@@ -21,7 +21,6 @@
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { inVR } from '#lib/menus/keys.ts';
-	import Path from '#lib/ui/Path.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -376,7 +375,7 @@
 </script>
 
 <h1 class="caps">{menu.nameText}</h1>
-<p class="muted sub">{menu.mod}{#if menu.plugin}{' · '}{menu.plugin}{/if}{' · '}{m.menus.kinds[menu.kind]}</p>
+<p class="muted sub">{menu.mod}{#if menu.plugin}{' · '}{menu.plugin}{/if}</p>
 {#if !menu.active}<p class="notice warn">{m.menus.inactive({ plugin: menu.plugin })}</p>{/if}
 <!-- How the menu was read, where that's worth knowing: a guess, another
      copy, or a framework read along with it. -->
@@ -518,7 +517,6 @@
 						<span class="sep">·</span> {allowed(o)}
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
-						<span class="sep">·</span> <span class="caps">{m.option.definedIn}</span> <span class="raw"><Path text={o.source.path} />{#if o.source.line}:{o.source.line}{/if}</span>{#if o.source.archive} {m.common.inArchive({ archive: o.source.archive })}{/if}
 						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if recording && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}

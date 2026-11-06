@@ -176,12 +176,6 @@ menus:
   kind: Kind
   pages: Pages
   options: Options
-  kinds:
-    mcmhelper: MCM Helper
-    source: Source
-    compiled: Compiled
-    framework: Framework
-
   # What isn't read yet.
   notMenus:
     one: "{count} script is built on SkyUI’s menu script, but no quest runs it or it sets no name and no options, so it isn’t a menu the game shows."
@@ -262,7 +256,6 @@ option:
   default: Default
   saved: Saved
   setting: Setting
-  definedIn: Defined in
   help: In the menu
   pattern: This label is built while the game runs, so a recording can only match it with a *wildcard* around its fixed parts.
   unknown: This label is only known while the game runs, so a recording can’t name it.

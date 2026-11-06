@@ -1,10 +1,9 @@
 <!-- The selected option in the details pane: its text, then what a
-     recording needs to know about it, then where it's defined. -->
+     recording needs to know about it. -->
 <script lang="ts">
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import Fill from '#lib/copy/Fill.svelte';
-	import Path from '#lib/ui/Path.svelte';
 	import type { Snippet } from 'svelte';
 	import { allowed, changed, edgeSpace, hex, number, show } from './values.ts';
 
@@ -66,8 +65,6 @@
 		<dt class="caps">{t.setting}</dt>
 		<dd class="raw">{o.setting}</dd>
 	{/if}
-	<dt class="caps">{t.definedIn}</dt>
-	<dd class="path"><span class="raw"><Path text={o.source.path} /></span>{#if o.source.archive}<span class="muted small">{m.common.inArchive({ archive: o.source.archive })}</span>{/if}<span class="muted small">{o.source.mod}</span></dd>
 </dl>
 
 {#if o.certainty !== 'exact'}
@@ -129,10 +126,6 @@
 	.raw {
 		font-family: var(--font-mono);
 		font-size: var(--step--1);
-	}
-	/* A path breaks after its separators (Path), not inside a name. */
-	.path {
-		overflow-wrap: normal;
 	}
 	.choices .raw,
 	dd .small {
