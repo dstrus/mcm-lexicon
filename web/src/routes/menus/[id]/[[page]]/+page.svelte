@@ -421,7 +421,7 @@
 			{#if !canEdit(o)}
 				<span class="muted" title={m.adding.cantRecord}>—</span>
 			{:else if flippable(o)}
-				<span class="flip" title={rec ? undefined : m.adding.notYetTitle({ recording: open.name })}>
+				<span class="flip">
 					{#if rec}{stepValue(rec.step, o)}{/if}
 					<Switch checked={on(o)} dim={!rec} disabled={working} label={m.edit.toggleLabel({ option: o.text })} onchange={() => flip(o)} />
 				</span>
@@ -442,7 +442,7 @@
 				<!-- Any other value's control, always in the row: changing it
 				     records the option, so one not recorded yet needs no step
 				     first. It holds the value the option has until then, muted. -->
-				<LiveValue bind:this={lives[i]} kind={base(o).kind} option={o} value={valueShown(o)} recorded={!!rec} title={rec ? m.edit.editValue : m.adding.notYetTitle({ recording: open.name })} apply={(v) => record(o, v)} onfocus={(f, field) => (live = f ? { i, field } : live?.i === i ? null : live)} />
+				<LiveValue bind:this={lives[i]} kind={base(o).kind} option={o} value={valueShown(o)} recorded={!!rec} label={o.text || o.label} apply={(v) => record(o, v)} onfocus={(f, field) => (live = f ? { i, field } : live?.i === i ? null : live)} />
 			{/if}
 		</span>
 	{:else}
@@ -519,7 +519,7 @@
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
 						<span class="sep">·</span> <span class="caps">{m.option.definedIn}</span> <span class="raw"><Path text={o.source.path} />{#if o.source.line}:{o.source.line}{/if}</span>{#if o.source.archive} {m.common.inArchive({ archive: o.source.archive })}{/if}
-						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{/if}
+						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if recording && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}

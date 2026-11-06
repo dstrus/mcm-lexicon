@@ -11,7 +11,7 @@
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
-	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
+	import { hex, plain, snapped } from '#lib/menus/values.ts';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy } from 'svelte';
@@ -22,7 +22,7 @@
 		option,
 		value,
 		recorded,
-		title,
+		label,
 		apply,
 		onfocus
 	}: {
@@ -30,7 +30,7 @@
 		option: Option;
 		value: string; // the recorded value, else the option's own; "" for none
 		recorded: boolean;
-		title?: string;
+		label: string; // the option's name, which each control is named by
 		apply: (value: string) => void;
 		onfocus?: (focused: boolean, field: boolean) => void; // field: Enter applies there
 	} = $props();
@@ -147,11 +147,11 @@
 	let known = $derived(choices.some((c) => c.raw.toLowerCase() === value.toLowerCase()));
 </script>
 
-<span class="live" class:unrecorded={!recorded} {title} bind:this={box} onfocusin={focusIn} onfocusout={focusOut}>
+<span class="live" class:unrecorded={!recorded} bind:this={box} onfocusin={focusIn} onfocusout={focusOut}>
 	{#if kind === 'choose' && choices.length}
 		<!-- The entry the option has, selected, with a placeholder when none
 		     is known; choosing one records it. -->
-		<select class="field" use:clipped aria-label={t.entry} value={known ? choices.find((c) => c.raw.toLowerCase() === value.toLowerCase())!.raw : value && !known ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
+		<select class="field" use:clipped aria-label={label} value={known ? choices.find((c) => c.raw.toLowerCase() === value.toLowerCase())!.raw : value && !known ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
 			<option value="" disabled>{t.chooseEntry}</option>
 			{#each choices as c, i (i)}
 				<option value={c.raw}>{c.text}{option.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
@@ -162,25 +162,25 @@
 		<!-- The number, right-aligned, with its hairline and diamond to the
 		     left while it has focus; the knob records as it's let go. -->
 		<span class="pair">
-			{#if range}<Range bind:value={draft} min={range.min} max={range.max} step={range.step} label={t.slide} oncommit={commitNumber} onkeydown={(e) => e.key === 'Escape' && escapeLeaves(e)} />{/if}
-			<input class="field exact" type="text" inputmode="decimal" bind:value={draft} aria-label={t.value} title={range ? t.range({ min: number(range.min), max: number(range.max), step: number(range.step) }) : undefined} onkeydown={(e) => fieldKeys(e, commitNumber)} onblur={commitNumber} autocomplete="off" />
+			{#if range}<Range bind:value={draft} min={range.min} max={range.max} step={range.step} label={t.slideFor({ option: label })} oncommit={commitNumber} onkeydown={(e) => e.key === 'Escape' && escapeLeaves(e)} />{/if}
+			<input class="field exact" type="text" inputmode="decimal" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, commitNumber)} onblur={commitNumber} autocomplete="off" />
 		</span>
 	{:else if kind === 'shortcut'}
 		<!-- The key box, with the controller list beside it while either has
 		     focus. -->
 		<span class="pair key">
-			<button type="button" class="capture" aria-label={t.pressKey} title={vr ? `${t.controllerNote} ${t.vrNote}` : t.controllerNote} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
+			<button type="button" class="capture" aria-label={t.keyFor({ option: label, key: value ? keyName(Number(value)) : t.noKey })} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 				{#if value}{keyName(Number(value))}{:else if capturing}<span class="muted">{t.pressKey}</span>{:else}—{/if}
 			</button>
-			<select class="field pad" use:clipped aria-label={t.controllerButton} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
+			<select class="field pad" use:clipped aria-label={t.padFor({ option: label })} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
 				<option value="" disabled>{t.chooseButtonShort}</option>
 				<ControllerOptions {vr} />
 			</select>
 		</span>
 	{:else if kind === 'color'}
-		<input type="color" value={colorHex} aria-label={t.color} onchange={(e) => apply(String(parseInt(e.currentTarget.value.slice(1), 16)))} onkeydown={escapeLeaves} />
+		<input type="color" value={colorHex} aria-label={label} onchange={(e) => apply(String(parseInt(e.currentTarget.value.slice(1), 16)))} onkeydown={escapeLeaves} />
 	{:else}
-		<input class="field" type="text" bind:value={draft} aria-label={kind === 'text' ? t.text : t.entry} onkeydown={(e) => fieldKeys(e, commitText)} onblur={commitText} autocomplete="off" spellcheck="false" />
+		<input class="field" type="text" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, commitText)} onblur={commitText} autocomplete="off" spellcheck="false" />
 	{/if}
 </span>
 

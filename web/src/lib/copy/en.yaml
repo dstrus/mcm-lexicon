@@ -711,7 +711,8 @@ adding:
   unsavedStep: Changed in {recording}, not saved yet
   stepN: Step {n}.
   notYet: Not recorded yet. Adding it records this value.
-  notYetTitle: Not in {recording} yet. Change it here to record it.
+  # In the info area, where a recorded option says which step it is.
+  notIn: Not in {recording} yet
   recordThis: Record {option}
   cantRecord: Its label is built at runtime, so a recording can’t name it exactly.
   readOnly: Grayed out in the menu, so MCM Lexicon leaves it out of recordings.
@@ -757,6 +758,11 @@ editor:
   pressKeyHint: Focus the box, then press a key, a mouse button other than the left one, or a button on a controller plugged into this PC. For a controller button, the list below is the sure way.
   vrHint: Skyrim VR presents your motion controllers to menus as a gamepad, so each controller button writes a gamepad button’s code. Which button is which is the game’s doing, and the names here are provisional until confirmed in the headset.
   controllerButton: Or a controller button
+  # A row's controls on a menu page, named by the option they set.
+  keyFor: "{option}: {key}"
+  noKey: no key
+  padFor: "{option}: controller button"
+  slideFor: "{option}: slide to a value"
   chooseButton: Choose a button…
   chooseButtonShort: Controller button…
   # Beside a key step, where the capture box has no room for the hint.
