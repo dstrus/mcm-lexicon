@@ -67,3 +67,7 @@ desktop.ini
 # Other tools
 .claude
 CLAUDE.local.md
+
+# The web site's build and Astro's generated types
+/site/dist/
+/site/.astro/

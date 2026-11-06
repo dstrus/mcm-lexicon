@@ -1,0 +1,20 @@
+---
+// Each page of the docs; the one named index is /docs/ itself.
+import { getCollection, render } from 'astro:content';
+import Docs from '../../layouts/Docs.astro';
+
+export async function getStaticPaths() {
+	const pages = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+	return pages.map((page) => ({
+		params: { slug: page.id === 'index' ? undefined : page.id },
+		props: { page, pages }
+	}));
+}
+
+const { page, pages } = Astro.props;
+const { Content } = await render(page);
+---
+
+<Docs page={page} pages={pages}>
+	<Content />
+</Docs>

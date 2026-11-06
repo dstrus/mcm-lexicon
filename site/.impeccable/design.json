@@ -1,0 +1,689 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T23:11:25+00:00",
+  "title": "Design System: MCM Lexicon (web site)",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Verdigris",
+        "canonical": "#7fb8a0",
+        "tonalRamp": [
+          "#050d09",
+          "#162a22",
+          "#244b3c",
+          "#396d59",
+          "#589079",
+          "#7eb29c",
+          "#abd4c2",
+          "#def5ea"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "Accent Ink",
+        "canonical": "#0e1a15",
+        "tonalRamp": [
+          "#090c0b",
+          "#212624",
+          "#3b4540",
+          "#58655f",
+          "#788680",
+          "#9ba9a2",
+          "#c1ccc7",
+          "#eaf0ed"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Menu Black",
+        "canonical": "#0b0b0b",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "smoke": {
+        "role": "neutral",
+        "displayName": "Smoke Heart",
+        "canonical": "#1c1c1c",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Pane Glass",
+        "canonical": "#121212",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "select": {
+        "role": "neutral",
+        "displayName": "Selected Row Haze",
+        "canonical": "rgb(242 239 230 / 0.07)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262522",
+          "#44423c",
+          "#64615a",
+          "#85827a",
+          "#a7a59d",
+          "#cbc9c3",
+          "#efeeeb"
+        ]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Smoked Field",
+        "canonical": "rgb(0 0 0 / 0.38)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Parchment Ink",
+        "canonical": "#f2efe6",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262522",
+          "#44423c",
+          "#64615a",
+          "#85827a",
+          "#a7a59d",
+          "#cbc9c3",
+          "#efeeeb"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Weathered Ink",
+        "canonical": "#a8a293",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272520",
+          "#464238",
+          "#666154",
+          "#888273",
+          "#aaa597",
+          "#cdc9be",
+          "#f1eee8"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#2a2a2a",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#3a3a3a",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "changed": {
+        "role": "secondary",
+        "displayName": "Copper Changed",
+        "canonical": "#d2996b",
+        "tonalRamp": [
+          "#120903",
+          "#342010",
+          "#5d3818",
+          "#85542a",
+          "#ab7447",
+          "#cd986e",
+          "#eabf9e",
+          "#ffeadb"
+        ]
+      },
+      "warn": {
+        "role": "status",
+        "displayName": "Amber Warning",
+        "canonical": "#d9a441",
+        "tonalRamp": [
+          "#120900",
+          "#332201",
+          "#583c00",
+          "#7f5900",
+          "#a97801",
+          "#cc9c43",
+          "#eac382",
+          "#ffeccd"
+        ]
+      },
+      "accent-light": {
+        "role": "primary",
+        "displayName": "Frost Blue",
+        "canonical": "#2a5f86",
+        "tonalRamp": [
+          "#040c13",
+          "#142736",
+          "#204661",
+          "#35668b",
+          "#5388b1",
+          "#7aabd3",
+          "#a7cfef",
+          "#e1f1ff"
+        ]
+      },
+      "on-accent-light": {
+        "role": "primary",
+        "displayName": "Accent Ink (light)",
+        "canonical": "#eef4f9",
+        "tonalRamp": [
+          "#080c0f",
+          "#212629",
+          "#3e4347",
+          "#5d6266",
+          "#7e8388",
+          "#a0a6aa",
+          "#c4cacf",
+          "#e9eff4"
+        ]
+      },
+      "ground-light": {
+        "role": "neutral",
+        "displayName": "Menu Black (light)",
+        "canonical": "#e4e3df",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423f",
+          "#62615e",
+          "#83827f",
+          "#a6a5a1",
+          "#cac9c5",
+          "#efeeea"
+        ]
+      },
+      "smoke-light": {
+        "role": "neutral",
+        "displayName": "Smoke Heart (light)",
+        "canonical": "#f3f2ef",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262523",
+          "#43423f",
+          "#62615f",
+          "#83827f",
+          "#a6a5a2",
+          "#cac9c6",
+          "#efeeeb"
+        ]
+      },
+      "panel-light": {
+        "role": "neutral",
+        "displayName": "Pane Glass (light)",
+        "canonical": "#eceae6",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262522",
+          "#43423f",
+          "#62615e",
+          "#83827f",
+          "#a6a5a1",
+          "#cac9c5",
+          "#efeeea"
+        ]
+      },
+      "select-light": {
+        "role": "neutral",
+        "displayName": "Selected Row Haze (light)",
+        "canonical": "rgb(27 26 23 / 0.06)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262522",
+          "#43423e",
+          "#62615d",
+          "#83827e",
+          "#a6a5a1",
+          "#cac9c5",
+          "#f0eeea"
+        ]
+      },
+      "field-light": {
+        "role": "neutral",
+        "displayName": "Smoked Field (light)",
+        "canonical": "rgb(255 255 255 / 0.55)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262523",
+          "#43423f",
+          "#62615f",
+          "#83827f",
+          "#a6a5a2",
+          "#cac9c6",
+          "#efeeeb"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Parchment Ink (light)",
+        "canonical": "#1b1a17",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262522",
+          "#43423e",
+          "#62615d",
+          "#83827e",
+          "#a6a5a1",
+          "#cac9c5",
+          "#f0eeea"
+        ]
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "Weathered Ink (light)",
+        "canonical": "#5d5a52",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262522",
+          "#44423c",
+          "#646159",
+          "#85827a",
+          "#a8a59d",
+          "#cbc9c2",
+          "#f0eeeb"
+        ]
+      },
+      "rule-light": {
+        "role": "neutral",
+        "displayName": "Hairline (light)",
+        "canonical": "#cdcbc4",
+        "tonalRamp": [
+          "#0c0b07",
+          "#272520",
+          "#44423c",
+          "#63615b",
+          "#84827c",
+          "#a7a59e",
+          "#cbc9c2",
+          "#f0eee7"
+        ]
+      },
+      "rule-strong-light": {
+        "role": "neutral",
+        "displayName": "Strong Hairline (light)",
+        "canonical": "#b3b0a7",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262522",
+          "#44423c",
+          "#646159",
+          "#85827a",
+          "#a8a59d",
+          "#cbc9c2",
+          "#f0eeeb"
+        ]
+      },
+      "changed-light": {
+        "role": "secondary",
+        "displayName": "Copper Changed (light)",
+        "canonical": "#9a4a20",
+        "tonalRamp": [
+          "#150702",
+          "#3a1c0d",
+          "#683012",
+          "#944923",
+          "#bc6940",
+          "#df8e68",
+          "#fab89a",
+          "#feeae1"
+        ]
+      },
+      "warn-light": {
+        "role": "status",
+        "displayName": "Amber Warning (light)",
+        "canonical": "#8a5a00",
+        "tonalRamp": [
+          "#120901",
+          "#332107",
+          "#5b3a01",
+          "#845708",
+          "#a9772e",
+          "#cb9b5b",
+          "#e9c290",
+          "#ffebd3"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The name in the hero only; capped at 13cqi (15cqi stacked) so it fills its column and never passes it."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles, the docs page title, and Windows in the download row."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Screen captions, safety rule names, the name in the top bar, docs section headings, and previous and next links."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "The hook under the name; its promise in Jost 600 in the accent."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, captions, table cells, and asides; section leads at 1.125rem muted, fine print at 0.8125rem."
+      },
+      "prose": {
+        "displayName": "Prose",
+        "purpose": "The docs' 44rem reading column."
+      },
+      "option": {
+        "displayName": "Option",
+        "purpose": "Option labels, field values, and help inside the hero's menu, at the app's own size."
+      },
+      "file": {
+        "displayName": "File",
+        "purpose": "The step file, its path, and selectors; anything MCM Recorder matches character for character."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Buttons, section links, and docs page links."
+      },
+      "hint": {
+        "displayName": "Hint",
+        "purpose": "The hint strip, the menu's page list, and the footer's links."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column and group heads, menu header rows, theme options, Click, Start over, and provenance lines."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "screen-dim",
+        "value": "opacity 600ms cubic-bezier(0.16, 1, 0.3, 1), filter 600ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Unlit screens dim (0.38) and desaturate (0.4) as the visitor scrolls; off under 60rem; no transition under reduced motion."
+      },
+      {
+        "name": "step-fresh",
+        "value": "1.6s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "A step just written flashes the accent at 22% behind it in the file and fades; none under reduced motion."
+      },
+      {
+        "name": "switch-knob",
+        "value": "translate 140ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The menu switch's knob slides and lights as the switch turns on; none under reduced motion."
+      },
+      {
+        "name": "key-press",
+        "value": "220ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "A hint's key cap dips 2px and lights in the accent when the shortcut runs; none under reduced motion."
+      },
+      {
+        "name": "tip-in",
+        "value": "360ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "A new loading-screen tip fades in from a 3px blur; none under reduced motion."
+      },
+      {
+        "name": "smooth-scroll",
+        "value": "scroll-behavior: smooth",
+        "purpose": "Section jumps from the nav and hint strip, only without reduced motion."
+      },
+      {
+        "name": "lamp",
+        "duration": "2.8s",
+        "easing": "ease-in-out",
+        "purpose": "The window's RECORDING lamp breathes Save's amber glow (a drop shadow from 3px to 7px) while it runs; its count rises in over 320ms as each step lands; none under reduced motion."
+      },
+      {
+        "name": "strip-away",
+        "duration": "360ms",
+        "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The page's hint strip slides down and fades while the window is on screen, since the window carries its own; none under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "30rem",
+        "purpose": "Item table rows stack; the download note hides."
+      },
+      {
+        "name": "demo-narrow",
+        "value": "48rem",
+        "purpose": "The menu's pages wrap into a row above one column of options; the slider knob hides."
+      },
+      {
+        "name": "stack",
+        "value": "60rem",
+        "purpose": "The offer, Why, screen captions, and docs list stack; section links take their own row; dimming and the hint strip turn off."
+      },
+      {
+        "name": "demo-stack",
+        "value": "70rem",
+        "purpose": "The step file moves under the menu."
+      },
+      {
+        "name": "tip",
+        "value": "75rem",
+        "purpose": "Below this the hint strip's tip hides."
+      },
+      {
+        "name": "coarse-pointer",
+        "value": "(pointer: coarse)",
+        "purpose": "The hint strip hides on touch screens."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Outlined caps that light up in the accent on hover.",
+      "html": "<a class=\"ds-button\" href=\"#\">Build it yourself</a>",
+      "css": ".ds-button{display:inline-flex;align-items:baseline;gap:1rem;padding:.75rem 1.5rem;border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;background:transparent;color:var(--ink,#f2efe6);font:500 1.125rem/1.2 'Barlow Condensed','Jost',sans-serif;text-transform:uppercase;letter-spacing:.12em;text-decoration:none;cursor:pointer}.ds-button:hover{border-color:var(--accent,#7fb8a0)}.ds-button:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Primary Download Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Download for Windows: accent fill, the diamond in accent ink, and a Jost note.",
+      "html": "<a class=\"ds-button ds-primary\" href=\"#\"><span><svg class=\"ds-diamond\" width=\"9\" height=\"9\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg>Download for Windows</span><small>64-bit</small></a>",
+      "css": ".ds-button{display:inline-flex;align-items:baseline;justify-content:space-between;gap:1rem;padding:.75rem 1.5rem;border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;font:500 1.125rem/1.2 'Barlow Condensed','Jost',sans-serif;text-transform:uppercase;letter-spacing:.12em;text-decoration:none;cursor:pointer}.ds-primary{background:var(--accent,#7fb8a0);border-color:var(--accent,#7fb8a0);color:var(--on-accent,#0e1a15);font-weight:600}.ds-primary small{font:400 .8125rem/1 'Jost',system-ui,sans-serif;text-transform:none;letter-spacing:0;opacity:.8}.ds-diamond{display:inline-block;margin-right:.5em;vertical-align:.15em;color:var(--on-accent,#0e1a15)}.ds-button:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Theme Switch",
+      "kind": "chip",
+      "refersTo": "theme-option",
+      "description": "The app's segmented Auto, Dark, and Light choice; the chosen one fills with the accent.",
+      "html": "<div class=\"ds-theme\" role=\"group\" aria-label=\"Theme\"><button type=\"button\" aria-pressed=\"true\">Auto</button><button type=\"button\" aria-pressed=\"false\">Dark</button><button type=\"button\" aria-pressed=\"false\">Light</button></div>",
+      "css": ".ds-theme{display:inline-flex;border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;overflow:hidden}.ds-theme button{font:500 .8125rem/1 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted,#a8a293);background:none;border:0;padding:.5rem .75rem;cursor:pointer}.ds-theme button:hover{color:var(--ink,#f2efe6)}.ds-theme button[aria-pressed=true]{background:var(--accent,#7fb8a0);color:var(--on-accent,#0e1a15);font-weight:600}.ds-theme button:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Top Bar Navigation",
+      "kind": "nav",
+      "refersTo": "section-link",
+      "description": "Mark and name at left, section links in muted caps at right, over a hairline.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-brand\" href=\"#\">MCM Lexicon</a><nav class=\"ds-links\"><a href=\"#\">Why</a><a href=\"#\">What it does</a><a href=\"#\">Safety</a><a href=\"#\">Download</a><a href=\"#\" aria-current=\"page\">Docs</a></nav></header>",
+      "css": ".ds-top{display:flex;align-items:center;gap:2rem;padding:1rem 1.5rem;border-bottom:1px solid var(--rule,#2a2a2a)}.ds-brand{font:600 1.375rem/1 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink,#f2efe6);text-decoration:none}.ds-links{display:flex;gap:2rem;margin-left:auto;font:400 1.125rem/1.2 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase}.ds-links a{color:var(--muted,#a8a293);text-decoration:none}.ds-links a:hover,.ds-links [aria-current]{color:var(--ink,#f2efe6)}.ds-links [aria-current]{font-weight:600}.ds-links a:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Working Menu Rows",
+      "kind": "custom",
+      "refersTo": "menu-row",
+      "description": "Option rows on the game's grid: the selected row with haze, diamond, and accent outline; recorded values in ink or copper with the amber draft diamond.",
+      "html": "<div class=\"ds-grid\"><div class=\"ds-row\"><span class=\"ds-slot\"></span><span class=\"ds-label\">Allow Boomerang Throw</span><span class=\"ds-mk\"><svg class=\"ds-mark\" width=\"7\" height=\"7\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg></span><button class=\"ds-switch\" role=\"switch\" aria-checked=\"false\" aria-label=\"Allow Boomerang Throw\"><span class=\"ds-knob\"></span></button></div><div class=\"ds-row ds-sel\"><span class=\"ds-slot\"><svg class=\"ds-diamond\" width=\"9\" height=\"9\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg></span><span class=\"ds-label\">Allow Greanade and Other Throw</span><span class=\"ds-mk\"><svg class=\"ds-mark\" width=\"7\" height=\"7\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg></span><button class=\"ds-switch\" role=\"switch\" aria-checked=\"true\" aria-label=\"Allow Greanade and Other Throw\"><span class=\"ds-knob\"></span></button></div><div class=\"ds-row\"><span class=\"ds-slot\"></span><span class=\"ds-label\">Impact Damage Mult</span><span class=\"ds-mk\"><svg class=\"ds-mark\" width=\"7\" height=\"7\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg></span><input class=\"ds-field ds-changed\" value=\"2.5\" aria-label=\"Impact Damage Mult\"></div><div class=\"ds-row ds-unrec\"><span class=\"ds-slot\"></span><span class=\"ds-label\">Throw Speed</span><span></span><input class=\"ds-field\" value=\"1.0\" aria-label=\"Throw Speed\"></div></div>",
+      "css": ".ds-grid{max-width:24rem;font-variant-numeric:tabular-nums}.ds-row{display:grid;grid-template-columns:1rem minmax(0,1fr) auto auto;align-items:center;gap:.5rem;min-height:2.5rem;padding:.2rem .5rem;border-bottom:1px solid var(--rule,#2a2a2a);color:var(--ink,#f2efe6);font:400 .9375rem/1.3 'Jost',system-ui,sans-serif}.ds-row:hover{background:color-mix(in srgb,var(--select,rgb(242 239 230/.07)) 60%,transparent)}.ds-sel{background:var(--select,rgb(242 239 230/.07));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent,#7fb8a0) 70%,transparent)}.ds-slot{display:inline-flex;color:var(--accent,#7fb8a0)}.ds-mk{color:var(--warn,#d9a441)}.ds-mk svg{display:block}.ds-unrec .ds-mk{display:none}.ds-switch{position:relative;width:2.25rem;height:1.25rem;padding:0;background:var(--field,rgb(0 0 0/.38));border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;cursor:pointer}.ds-knob{position:absolute;top:2px;left:2px;width:calc(1.25rem - 6px);height:calc(1.25rem - 6px);background:var(--muted,#a8a293);border-radius:2px;transition:translate 140ms cubic-bezier(.16,1,.3,1)}.ds-switch[aria-checked=true]{background:color-mix(in oklab,var(--accent,#7fb8a0) 22%,var(--field,rgb(0 0 0/.38)));border-color:var(--accent,#7fb8a0)}.ds-switch[aria-checked=true] .ds-knob{translate:1rem 0;background:var(--accent,#7fb8a0)}.ds-field{width:4.5rem;text-align:right;font:400 .9375rem/1.2 'Jost',system-ui,sans-serif;color:var(--ink,#f2efe6);background:var(--field,rgb(0 0 0/.38));border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;padding:.2rem .5rem}.ds-unrec .ds-field{color:var(--muted,#a8a293)}.ds-changed{color:var(--changed,#d2996b)}.ds-field:hover{border-color:var(--accent,#7fb8a0)}.ds-switch:focus-visible,.ds-field:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Menu Page List",
+      "kind": "nav",
+      "refersTo": "menu-page",
+      "description": "A menu's pages in caps with muted counts; the current page in the accent with the diamond. The docs list pages the same way.",
+      "html": "<ul class=\"ds-pages\"><li><button type=\"button\"><span class=\"ds-slot\"></span><span>Presets</span><span class=\"ds-count\">12</span></button></li><li><button type=\"button\" aria-current=\"page\"><span class=\"ds-slot\"><svg class=\"ds-diamond\" width=\"9\" height=\"9\" viewBox=\"0 0 10 10\" aria-hidden=\"true\"><path d=\"M5 0 10 5 5 10 0 5Z\" fill=\"currentColor\"/></svg></span><span>General</span><span class=\"ds-count\">24</span></button></li><li><button type=\"button\"><span class=\"ds-slot\"></span><span>Impact</span><span class=\"ds-count\">24</span></button></li></ul>",
+      "css": ".ds-pages{list-style:none;margin:0;padding:0;width:12rem}.ds-pages button{display:grid;grid-template-columns:1rem minmax(0,1fr) auto;align-items:center;width:100%;padding:.3rem .5rem .3rem 0;background:none;border:0;border-radius:3px;color:var(--muted,#a8a293);font:500 1rem/1.25 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;text-align:left;cursor:pointer}.ds-pages button:hover{color:var(--ink,#f2efe6)}.ds-pages [aria-current]{color:var(--accent,#7fb8a0);font-weight:600}.ds-slot{display:inline-flex;color:var(--accent,#7fb8a0)}.ds-count{font:400 .75rem/1 'Jost',system-ui,sans-serif;letter-spacing:0;color:var(--muted,#a8a293)}.ds-pages button:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    },
+    {
+      "name": "Step File",
+      "kind": "card",
+      "refersTo": "step-file",
+      "description": "The file the menu writes, on Pane Glass in DM Mono: keys in the accent, values in ink, punctuation muted.",
+      "html": "<div class=\"ds-file\"><div class=\"ds-fhead\"><p class=\"ds-path\"><span>McmRecorder/My Settings/</span>0001_WeaponThrowVR.json</p><button type=\"button\" class=\"ds-again\">Start over</button></div><pre><span class=\"p\">[</span>\n  <span class=\"p\">{</span>\n    <span class=\"k\">\"mod\"</span><span class=\"p\">:</span> \"WeaponThrowVR\"<span class=\"p\">,</span>\n    <span class=\"k\">\"option\"</span><span class=\"p\">:</span> \"Allow Greanade and Other Throw\"<span class=\"p\">,</span>\n    <span class=\"k\">\"page\"</span><span class=\"p\">:</span> \"General\"<span class=\"p\">,</span>\n    <span class=\"k\">\"toggle\"</span><span class=\"p\">:</span> \"on\"\n  <span class=\"p\">}</span>\n<span class=\"p\">]</span></pre></div>",
+      "css": ".ds-file{background:var(--panel,#121212);border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;max-width:25rem}.ds-fhead{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;padding:1rem 1rem .75rem;border-bottom:1px solid var(--rule,#2a2a2a)}.ds-path{margin:0;font:400 .8125rem/1.4 'DM Mono',ui-monospace,monospace;color:var(--ink,#f2efe6)}.ds-path span{color:var(--muted,#a8a293)}.ds-again{background:none;border:0;padding:0;color:var(--accent,#7fb8a0);font:500 .8125rem/1.4 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--accent,#7fb8a0) 75%,var(--ground,#0b0b0b));text-underline-offset:.25em;cursor:pointer}.ds-again:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}.ds-file pre{margin:0;padding:.75rem 1rem;overflow:auto;font:400 .8125rem/1.55 'DM Mono',ui-monospace,monospace;color:var(--ink,#f2efe6)}.ds-file .k{color:var(--accent,#7fb8a0)}.ds-file .p{color:var(--muted,#a8a293)}"
+    },
+    {
+      "name": "By the Way Aside",
+      "kind": "card",
+      "refersTo": "aside",
+      "description": "Tangents, caveats, and jokes in the app's details-pane material.",
+      "html": "<aside class=\"ds-btw\"><p class=\"ds-btw-title\">By the way…</p><p>If you’re happy making recordings in the game, you should probably just use MCM Recorder.</p></aside>",
+      "css": ".ds-btw{background:var(--panel,#121212);border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;padding:1rem 1.5rem;color:var(--muted,#a8a293);font:400 1rem/1.55 'Jost',system-ui,sans-serif;max-width:44rem}.ds-btw p{margin:0}.ds-btw-title{color:var(--ink,#f2efe6);font:600 1.125rem/1.3 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;margin-bottom:.5rem!important}"
+    },
+    {
+      "name": "Item Table",
+      "kind": "custom",
+      "refersTo": "item-row",
+      "description": "The app's item table at page scale, with accent group heads.",
+      "html": "<table class=\"ds-items\"><thead><tr><th>Where</th><th>What it does</th></tr></thead><tbody><tr class=\"ds-group\"><th colspan=\"2\">On the command line</th></tr><tr><th scope=\"row\">diff</th><td>The differences between two catalog files, for when a list updates.</td></tr></tbody></table>",
+      "css": ".ds-items{width:100%;max-width:64rem;border-collapse:collapse;font:400 1rem/1.55 'Jost',system-ui,sans-serif;color:var(--ink,#f2efe6)}.ds-items thead th{text-align:left;color:var(--muted,#a8a293);font:500 .8125rem/1.4 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;padding:.5rem .75rem;border-bottom:1px solid var(--rule-strong,#3a3a3a)}.ds-group th{text-align:left;color:var(--accent,#7fb8a0);font:500 .8125rem/1.4 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;padding:2rem .75rem .5rem;border-bottom:1px solid var(--rule-strong,#3a3a3a)}.ds-items th[scope=row]{width:14rem;text-align:left;font:500 1.125rem/1.3 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;vertical-align:baseline}.ds-items th[scope=row],.ds-items td{padding:.75rem;border-bottom:1px solid var(--rule,#2a2a2a)}"
+    },
+    {
+      "name": "Button-Hint Strip",
+      "kind": "nav",
+      "refersTo": "hint-strip",
+      "description": "The game's bottom strip: a loading-screen tip at left, real keyboard shortcuts with key caps at right.",
+      "html": "<div class=\"ds-strip\"><button type=\"button\" class=\"ds-tip\">Labels have to match exactly, typos and trailing spaces included.</button><nav class=\"ds-hints\"><button type=\"button\"><kbd>D</kbd>Download</button><button type=\"button\"><kbd>S</kbd>Safety</button><button type=\"button\"><kbd>N</kbd>Next</button></nav></div>",
+      "css": ".ds-strip{display:flex;align-items:center;gap:2rem;padding:.5rem 1.5rem;background:var(--ground,#0b0b0b);border-top:1px solid var(--rule,#2a2a2a)}.ds-tip{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left;background:none;border:0;padding:0;color:var(--muted,#a8a293);font:400 .8125rem/1.5 'Jost',system-ui,sans-serif;cursor:pointer}.ds-tip:hover{color:var(--ink,#f2efe6)}.ds-hints{display:flex;gap:.5rem 1.5rem;margin-left:auto}.ds-hints button{display:flex;align-items:center;gap:.5rem;background:none;border:0;padding:0;color:var(--muted,#a8a293);font:500 1rem/1.5 'Barlow Condensed','Jost',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}.ds-hints button:hover{color:var(--ink,#f2efe6)}.ds-hints button:active kbd{translate:0 2px;border-color:var(--accent,#7fb8a0);color:var(--accent,#7fb8a0)}.ds-hints kbd{font:inherit;color:var(--ink,#f2efe6);border:1px solid var(--rule-strong,#3a3a3a);border-radius:3px;padding:0 .4em;min-width:1.6em;text-align:center}.ds-tip:focus-visible,.ds-hints button:focus-visible{outline:2px solid var(--accent,#7fb8a0);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Game's Own Menus, Set Larger",
+    "overview": "The site is the app's world, the one recorded in the repository's root `DESIGN.md`, set larger for a page that has to persuade. It is a sibling of Hermaeus's site and keeps that site's token set role for role: the same smoked-glass ground, ink, two strengths of hairline, verdigris and frost blue accent, 3px corners, the diamond, and the same two typefaces. From the app it adds the meanings MCM Lexicon needs: DM Mono for anything matched character for character, the File Markup colors, copper on a value that differs from the mod's default, the smoked field, and the small amber diamond on a step not saved yet. A visitor who downloads MCM Lexicon opens a program that looks like the page they just left.\n\nThe first viewport is a working menu, not a pitch. The offer runs across the top: the name at display size and the hook at left, and one line of support, the Windows download, and the fine print at right behind a strong hairline. Under it, full width, sits a slice of WeaponThrowVR's real menu, drawn the way MCM Lexicon draws it, beside the step file it writes; every value set in the menu lands in the file, live, spelled as the mod spells it. The rest of the page follows Hermaeus's site: why it exists with \"By the way…\" asides, real screens with sticky captions and the one in view lit, the app's item table, the safety rules under hairlines, and one download row. The game's button-hint strip runs along the bottom, and every hint is a working shortcut. The docs use the same top bar and footer, with the pages listed down the left the way the app lists a menu's pages.\n\nWhere the site departs from the app: a longer type scale (display, headline, and lead are site-only), a 1rem body instead of 15px, larger buttons, a section rhythm with no app equivalent, full-width sections instead of the app's shell, a working menu as the hero, framed screens with scroll dimming, and the diamond widened from \"the selected row\" to \"the selected thing\". Inside the hero's menu, the app's own scale returns: 15px option labels, the smoked field, and the game's two-column grid, because that part is the app.",
+    "keyCharacteristics": [
+      "The app's smoked-glass ground and token set, unchanged, in both themes.",
+      "A real menu, working, as the hero, writing the exact step file beside it.",
+      "Larger steps: a 6rem name and 3.75rem section titles; the app's own scale inside the menu.",
+      "One section rhythm: a caps title, a muted lead, then the material, with large gaps between sections.",
+      "Hairlines, not cards: no section, screen, or row is a filled tile, and nothing lifts on a shadow.",
+      "The bottom hint strip, D, S, and N, each a real shortcut."
+    ],
+    "rules": [
+      {
+        "name": "The Same Token Set Rule",
+        "body": "The site doesn't define colors of its own. A color the site needs is a role the app already has, with the app's dark and light values; a new role ships in both, as a pair, or not at all.",
+        "section": "colors"
+      },
+      {
+        "name": "The Changed Rule",
+        "body": "Copper means the player set this, and it differs from the mod's own default. It marks the value itself, never a row, a fill, or a highlight, and never doubles as a warning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Draft Diamond Rule",
+        "body": "Amber on the site is the app's amber: the small diamond on a step not saved yet, and the read-only state. It is never decoration and never a fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scarce Accent Rule",
+        "body": "The accent marks what's selected, what's actionable, and group headings inside a list. The largest accent fill is the primary download button. One exception, inherited from Hermaeus's site: the hook's promise is set in the accent, as text and never as a fill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Label Versus Read Rule",
+        "body": "As in the app: anything that labels is tracked condensed caps; anything that's read is Jost in sentence case. A note inside a button (such as \"64-bit\") switches back to Jost at 0.8125rem with no tracking; a page count beside a caps page name is Jost figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The File Font Rule",
+        "body": "DM Mono is for what MCM Recorder matches exactly: the step file, its path, and a selector. Only color sets a file's parts apart, never weight.",
+        "section": "typography"
+      },
+      {
+        "name": "The Section Rhythm Rule",
+        "body": "Every section after the hero is the same: the largest spacing step above it (5 to 9rem), a caps headline with a muted lead under it (up to 52rem wide), a 4rem gap, then the material. Sections don't get backgrounds or borders of their own to set them apart; the rhythm does that.",
+        "section": "layout"
+      },
+      {
+        "name": "The Scroll Inside Rule",
+        "body": "The demo's menu, page list, and file scroll inside themselves, never the page: the selected option starts in view on a whole row, a written step scrolls the file to it, and the options don't pass their scroll on to the page.",
+        "section": "layout"
+      },
+      {
+        "name": "The No Lift Rule",
+        "body": "Nothing on the page floats, so nothing has a drop shadow. Emphasis comes from light (the lit screen), the accent, the haze, and the diamond. The selected option's 1px accent outline is drawn inside its row and is a line, not a lift.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Real Menu Rule",
+        "body": "The hero's menu is WeaponThrowVR's, as MCM Lexicon reads it from the Synergy list, shown with Shizof's permission and credited in its header. Its pages, options, positions, help, ranges, and defaults are the catalog's; its labels are spelled as the mod spells them. Nothing in it is invented.",
+        "section": "components"
+      },
+      {
+        "name": "The File Markup Rule",
+        "body": "As in the app: keys in the accent, since they're the words MCM Recorder reads; values in ink, since they're what it fills in; punctuation muted.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** use the app's tokens role for role, in both themes, and add a new color only as a dark and light pair.",
+      "**Do** give every section the same rhythm: the largest spacing step above it, a caps headline and muted lead, then the material.",
+      "**Do** show the real thing: the real menu from the catalog, real screens in hairline frames in both themes, and the exact file MCM Lexicon writes, with provenance lines for where they came from.",
+      "**Do** put the diamond on the selected thing, and only there; amber diamonds only on steps not saved yet.",
+      "**Do** set anything MCM Recorder matches exactly (step files, paths, selectors) in DM Mono, with keys in the accent, values in ink, and punctuation muted.",
+      "**Do** keep the demo's scrolling inside the demo; it never scrolls the page.",
+      "**Do** back every hint in the strip with a working shortcut, and hide the strip where there's no keyboard."
+    ],
+    "donts": [
+      "**Don't** use cards, filled tiles, or section backgrounds; separate with hairlines and the section rhythm. Pane Glass is for the file, the info area, asides, and code blocks.",
+      "**Don't** put a drop shadow on anything, screens included.",
+      "**Don't** use copper anywhere the app wouldn't, or as a highlight; it marks a value that differs from the mod's default.",
+      "**Don't** add a second accent, or use the accent for decoration.",
+      "**Don't** invent or tidy a menu's labels in the demo; they're spelled as the mod spells them."
+    ]
+  }
+}

@@ -1,0 +1,314 @@
+---
+// A page of the docs: the site's top bar, the pages down the left as the
+// app lists a menu's pages (the diamond on the one you're reading), and the
+// page itself in a calm reading column, with the next page at its foot.
+import type { CollectionEntry } from 'astro:content';
+import Base from './Base.astro';
+import TopBar from '../components/TopBar.astro';
+import Foot from '../components/Foot.astro';
+import Diamond from '../components/Diamond.astro';
+
+interface Props {
+	page: CollectionEntry<'docs'>;
+	pages: CollectionEntry<'docs'>[];
+}
+const { page, pages } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const href = (p: CollectionEntry<'docs'>) => (p.id === 'index' ? `${base}/docs/` : `${base}/docs/${p.id}/`);
+const at = pages.indexOf(page);
+const next = pages[at + 1];
+const previous = pages[at - 1];
+---
+
+<Base title={`${page.data.title} · MCM Lexicon docs`} description={page.data.description}>
+	<TopBar
+		home={`${base}/`}
+		links={[
+			{ href: `${base}/`, label: 'Home' },
+			{ href: `${base}/docs/`, label: 'Docs', current: true },
+			{ href: `${base}/#download`, label: 'Download' }
+		]}
+	/>
+
+	<div class="docs">
+		<nav class="pages" aria-label="Docs">
+			<p class="caps head">Docs</p>
+			<ul>
+				{
+					pages.map((p) => (
+						<li>
+							<a class="caps" href={href(p)} aria-current={p === page ? 'page' : undefined}>
+								<span class="slot">
+									<Diamond />
+								</span>
+								{p.data.title}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</nav>
+
+		<main id="main" class="page">
+			<h1 class="caps">{page.data.title}</h1>
+			<div class="prose">
+				<slot />
+			</div>
+			<nav class="onward" aria-label="More docs">
+				{
+					previous && (
+						<a class="caps" href={href(previous)}>
+							<span class="dir">Previous</span>
+							{previous.data.title}
+						</a>
+					)
+				}
+				{
+					next && (
+						<a class="caps to-next" href={href(next)}>
+							<span class="dir">Next</span>
+							{next.data.title}
+						</a>
+					)
+				}
+			</nav>
+		</main>
+	</div>
+
+	<Foot />
+</Base>
+
+<script>
+	// Narrow, the pages scroll sideways; start with the current one in view.
+	const list = document.querySelector<HTMLElement>('.pages ul');
+	const current = list?.querySelector<HTMLElement>('[aria-current]');
+	if (list && current && list.scrollWidth > list.clientWidth) list.scrollLeft = current.offsetLeft - list.offsetLeft;
+</script>
+
+<style>
+	.docs {
+		display: grid;
+		grid-template-columns: 16rem minmax(0, 1fr);
+		gap: clamp(var(--space-6), 5vw, var(--space-9));
+		padding: var(--space-7) var(--gutter) 0;
+		max-width: 84rem;
+	}
+
+	/* The pages, as the app lists a menu's pages. */
+	.pages {
+		position: sticky;
+		top: var(--space-6);
+		align-self: start;
+	}
+	.head {
+		color: var(--muted);
+		font-size: var(--step--1);
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.pages ul {
+		list-style: none;
+		margin: var(--space-2) 0 0;
+		padding: 0;
+	}
+	.pages a {
+		display: grid;
+		grid-template-columns: 1.25rem minmax(0, 1fr);
+		align-items: center;
+		padding: var(--space-2) 0;
+		color: var(--muted);
+		font-size: var(--step-1);
+		font-weight: 500;
+		line-height: 1.2;
+		text-decoration: none;
+	}
+	.pages a:hover {
+		color: var(--ink);
+	}
+	.pages [aria-current] {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.slot :global(.diamond) {
+		display: none;
+		color: var(--accent);
+	}
+	.pages [aria-current] :global(.diamond) {
+		display: block;
+	}
+
+	/* The page: a title in the app's display caps, then the reading column. */
+	.page {
+		min-width: 0;
+		max-width: 44rem;
+	}
+	h1 {
+		font-size: var(--step-4);
+		font-weight: 600;
+		line-height: 1;
+		text-wrap: balance;
+		padding-bottom: var(--space-5);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.prose {
+		font-size: 1.0625rem;
+		line-height: 1.65;
+	}
+	.prose :global(> *) {
+		margin: var(--space-5) 0 0;
+	}
+	.prose :global(h2) {
+		font: 600 var(--step-2) / 1.2 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		margin-top: var(--space-8);
+		text-wrap: balance;
+	}
+	.prose :global(h3) {
+		font: 600 var(--step-1) / 1.2 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		margin-top: var(--space-7);
+	}
+	.prose :global(h2 + *),
+	.prose :global(h3 + *) {
+		margin-top: var(--space-3);
+	}
+	.prose :global(ul),
+	.prose :global(ol) {
+		padding-left: 1.25rem;
+	}
+	.prose :global(li + li) {
+		margin-top: var(--space-2);
+	}
+	.prose :global(::marker) {
+		color: var(--muted);
+	}
+	.prose :global(strong) {
+		font-weight: 600;
+	}
+	.prose :global(a) {
+		color: var(--ink);
+	}
+	/* Anything matched character for character is in the File font: file
+	   names, labels, commands. */
+	.prose :global(code) {
+		font: 400 0.9em / 1.4 var(--font-file);
+		background: var(--select);
+		border-radius: var(--radius);
+		padding: 0.05em 0.35em;
+	}
+	.prose :global(pre) {
+		margin-top: var(--space-4);
+		padding: var(--space-4) var(--space-5);
+		background: var(--panel);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		overflow-x: auto;
+		font: 400 0.875rem / 1.6 var(--font-file);
+		color: var(--ink);
+	}
+	.prose :global(pre code) {
+		background: none;
+		padding: 0;
+		font-size: inherit;
+	}
+	/* By the way…: as on the landing page, tangents pulled out of the flow. */
+	.prose :global(.btw) {
+		background: var(--panel);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		padding: var(--space-4) var(--space-5);
+		color: var(--muted);
+		font-size: var(--step-0);
+		line-height: 1.55;
+	}
+	.prose :global(.btw > p:first-child) {
+		color: var(--ink);
+		font: 600 var(--step-1) / 1.3 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		margin-bottom: var(--space-2);
+	}
+	.prose :global(.btw p + p) {
+		margin-top: var(--space-2);
+	}
+	.prose :global(.btw a) {
+		color: var(--ink);
+	}
+	.prose :global(table) {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: var(--step-0);
+	}
+	.prose :global(th) {
+		text-align: left;
+		color: var(--muted);
+		font: 500 var(--step--1) / 1.4 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		padding: var(--space-2) var(--space-3);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.prose :global(td) {
+		padding: var(--space-3);
+		border-bottom: 1px solid var(--rule);
+		vertical-align: baseline;
+	}
+	.prose :global(td:first-child) {
+		white-space: nowrap;
+	}
+
+	/* The way on: previous at left, next at right, over a hairline. */
+	.onward {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--space-5);
+		margin-top: var(--space-8);
+		padding-top: var(--space-4);
+		border-top: 1px solid var(--rule-strong);
+	}
+	.onward a {
+		display: grid;
+		gap: var(--space-1);
+		font-size: var(--step-2);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.onward a:hover {
+		color: var(--accent);
+	}
+	.onward .to-next {
+		margin-left: auto;
+		text-align: right;
+	}
+	.dir {
+		color: var(--muted);
+		font-size: var(--step--1);
+		font-weight: 500;
+	}
+
+	@media (max-width: 60rem) {
+		.docs {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--space-6);
+			padding-top: var(--space-5);
+		}
+		.pages {
+			position: static;
+		}
+		.pages ul {
+			display: flex;
+			gap: 0 var(--space-5);
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+		.pages li {
+			flex: none;
+		}
+		.pages a {
+			grid-template-columns: 1rem auto;
+			white-space: nowrap;
+		}
+	}
+</style>

@@ -1,0 +1,923 @@
+---
+import Base from '../layouts/Base.astro';
+import TopBar from '../components/TopBar.astro';
+import Foot from '../components/Foot.astro';
+import MenuDemo from '../components/MenuDemo.astro';
+import Screen from '../components/Screen.astro';
+import Diamond from '../components/Diamond.astro';
+import { download, releases, issues, mcmRecorder, developing } from '../links';
+
+import menuDark from '../assets/screens/menu-dark.png';
+import menuLight from '../assets/screens/menu-light.png';
+import searchDark from '../assets/screens/search-dark.png';
+import searchLight from '../assets/screens/search-light.png';
+import stepsDark from '../assets/screens/steps-dark.png';
+import stepsLight from '../assets/screens/steps-light.png';
+import changesDark from '../assets/screens/changes-dark.png';
+import changesLight from '../assets/screens/changes-light.png';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// Screens of the app on the Synergy list, in the order you'd use them.
+const screens = [
+	{
+		title: 'Menus',
+		text: 'Every MCM in your list, laid out as close as possible to the way SkyUI lays it out, with each option’s help text, its exact label, what it allows, and where it’s defined.',
+		dark: menuDark,
+		light: menuLight,
+		alt: 'MCM Lexicon showing WeaponThrowVR’s Impact page, with two sliders recorded and the selected option’s help beneath.'
+	},
+	{
+		title: 'Search',
+		text: 'Every option in every menu, by label, page, menu, or mod. Handy when you know what a setting does but not whose menu it’s in.',
+		dark: searchDark,
+		light: searchLight,
+		alt: 'MCM Lexicon’s search results for “impact”, grouped by menu.'
+	},
+	{
+		title: 'Recordings',
+		text: 'A recording’s steps, checked against what’s installed, so you know before you launch which ones still match a menu and an option in your game.',
+		dark: stepsDark,
+		light: stepsLight,
+		alt: 'MCM Lexicon listing a recording’s steps, grouped by step file, with one selected and its details beside it.'
+	},
+	{
+		title: 'Changes',
+		text: 'Nothing is written until you save. Before you do, every change is shown exactly as it will be written, compared with what’s on disk now.',
+		dark: changesDark,
+		light: changesLight,
+		alt: 'MCM Lexicon’s Changes page, showing a new step file as it will be written.'
+	}
+];
+
+// The rest of what MCM Lexicon does.
+const rest = [
+	{
+		group: 'In the app',
+		pages: [
+			['Compare', 'Two versions of a list’s catalog, side by side: which MCMs changed between releases, and which recorded steps those changes break.'],
+			['Backups', 'Every save and delete keeps a copy first. A recording’s Backups tab lists them and puts one back.'],
+			['Settings', 'Choose or change the mod list, the theme, and the name of the folder recordings save to.']
+		]
+	},
+	{
+		group: 'On the command line',
+		pages: [
+			['scan', 'Print the mods MCM Lexicon reads and the files it reads from each, or write the whole catalog to a file.'],
+			['diff', 'The differences between two catalog files, for when a list updates.'],
+			['snapshot', 'Copy just the part of a list MCM Lexicon reads, to test on a machine that doesn’t have the list.']
+		]
+	}
+];
+
+// Loading-screen tips for the hint strip, as Skyrim shows while you wait:
+// each one true, one picked at random per visit, another on a click and
+// whenever a new section reaches the middle of the window.
+const tips = [
+	'MCM Lexicon won’t write anything while Skyrim is running. Browse all you want, though.',
+	'Labels have to match exactly, typos and trailing spaces included. MCM Lexicon copies them for you.',
+	'Press / anywhere in the app to find a menu by name.',
+	'MO2 users: enable the [NoDelete] MCM Lexicon Recordings mod, or MCM Recorder won’t see what you saved.',
+	'Change a recording that came with another mod, and the change saves as a copy. The original stays untouched.',
+	'MCM Lexicon reads scripts packed in BSA archives too, not just loose files.',
+	'The menu at the top of this page is live. Flip something and watch the file.',
+	'Like the app itself, this site has keyboard shortcuts. Try N.'
+];
+
+const safety = [
+	{
+		rule: 'Hands off while Skyrim runs',
+		text: 'While the game is running, MCM Lexicon says <span class="running caps">Skyrim running · read-only</span> and won’t write anything until you close it. You can still look around.'
+	},
+	{
+		rule: 'Nothing until you save',
+		text: 'Every change goes into a draft. The Changes page shows each file as it will be written, next to what’s on disk, and nothing is written until you click Save.'
+	},
+	{
+		rule: 'A backup first',
+		text: 'Before a file is replaced or removed, a copy goes to lexicon-backups, beside your list. The recording’s Backups tab can put it back.'
+	},
+	{
+		rule: 'All or nothing',
+		text: 'If a save can’t finish completely, the old recording stays exactly as it was. You can never end up with half a recording.'
+	},
+	{
+		rule: 'Other mods’ recordings stay put',
+		text: 'MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to a mod folder of its own.'
+	},
+	{
+		rule: 'Your machine only',
+		text: 'MCM Lexicon listens only on 127.0.0.1, and every request has to carry a token from its own page, so other websites open in your browser can’t reach your files.'
+	}
+];
+---
+
+<Base
+	title="MCM Lexicon: create and edit MCM Recorder recordings, with Skyrim closed"
+	description="Catalogs every option in every Mod Configuration Menu in your Skyrim mod list, and creates and edits MCM Recorder recordings without launching the game."
+>
+	<TopBar
+		home="#top"
+		links={[
+			{ href: '#why', label: 'Why' },
+			{ href: '#screens', label: 'What it does' },
+			{ href: '#safety', label: 'Safety' },
+			{ href: '#download', label: 'Download' },
+			{ href: `${base}/docs/`, label: 'Docs' }
+		]}
+	/>
+
+	<main id="main">
+		<section class="hero" id="top" aria-labelledby="name">
+			<div class="offer">
+				<div class="pitch">
+					<h1 id="name" class="caps">MCM Lexicon</h1>
+					<p class="hook">Create and edit MCM Recorder recordings, <strong>with Skyrim closed</strong>.</p>
+				</div>
+				<div class="get">
+					<p class="sub">
+						Every option in every MCM in your list, read from your mods’ own files. The window below is the real thing: flip something, and watch the file.
+					</p>
+					<a class="button primary" href={download}>
+						<span><Diamond />Download for Windows</span>
+						<small>64-bit</small>
+					</a>
+					<p class="fine"><strong>Unofficial.</strong> Works with MCM Recorder, isn’t part of it, and isn’t affiliated with MCM Recorder, SkyUI, MCM Helper, or Mod Organizer.</p>
+				</div>
+			</div>
+
+			<MenuDemo />
+		</section>
+
+		<section class="block why" id="why" aria-labelledby="why-title">
+			<div class="intro">
+				<h2 id="why-title" class="caps">Because Skyrim takes a while to launch</h2>
+				<p>
+					<a href={mcmRecorder}>MCM Recorder</a> records your clicks in Mod Configuration Menus and replays them on a new game, so you don’t have to change dozens
+					of settings by hand every time. It’s great! But the recording has to be made in the game, by clicking.
+				</p>
+				<p>
+					I play Skyrim VR with <a href="https://synergyvr.org/mgo">1,700+ mods</a>. A great many things involving menus are far less convenient in VR, and launching
+					the game with that many mods takes a while. So if that’s what it takes to add one more setting to a recording, I’m probably just not going to
+					bother. Then the next time I start a new playthrough (which I do far too often, frankly), I wish I had.
+				</p>
+				<p>
+					You can edit recordings by hand, since they’re just JSON files, but every label and value has to be exactly what each mod expects, and they’re pretty
+					much never documented. So I built something that reads them out of the mods themselves.
+				</p>
+			</div>
+			<div class="asides">
+				<aside class="btw" aria-labelledby="btw-recorder">
+					<p id="btw-recorder" class="btw-title caps">By the way…</p>
+					<p>
+						If you’re happy making recordings in the game, you should probably just use MCM Recorder. There’s nothing wrong with it! MCM Lexicon is for when
+						launching the game is the part you’d rather skip.
+					</p>
+				</aside>
+				<aside class="btw" aria-labelledby="btw-name">
+					<p id="btw-name" class="btw-title caps">Why “Lexicon”?</p>
+					<p>
+						In Skyrim, a Dwemer lexicon is a cube the Dwemer stored their knowledge in. This one stores the exact label of every option in your list.
+					</p>
+				</aside>
+			</div>
+		</section>
+
+		<section class="block" id="screens" aria-labelledby="screens-title">
+			<div class="intro">
+				<h2 id="screens-title" class="caps">Every menu, every option</h2>
+				<p>
+					MCM Lexicon reads your mod list from disk, with Skyrim closed, and builds a catalog of every MCM in it: each menu’s name as SkyUI lists it, its pages,
+					its options, the values they allow, and their defaults. Then it lets you do things with that catalog.
+				</p>
+			</div>
+			<ol class="shots" data-shots>
+				{
+					screens.map((s, i) => (
+						<li class="shot">
+							<div class="caption">
+								<h3 class="caps">
+									<Diamond />
+									{s.title}
+								</h3>
+								<p>{s.text}</p>
+							</div>
+							<Screen dark={s.dark} light={s.light} alt={s.alt} eager={i === 0} />
+						</li>
+					))
+				}
+			</ol>
+			<p class="synthetic caps">Screens from the Synergy list</p>
+		</section>
+
+		<section class="block" id="rest" aria-labelledby="rest-title">
+			<div class="intro">
+				<h2 id="rest-title" class="caps">And for list authors</h2>
+				<p>When a list updates, menus change under its recordings. These are for finding out what broke before your players do.</p>
+			</div>
+			<table class="items">
+				<caption class="visually-hidden">What else MCM Lexicon does</caption>
+				<thead>
+					<tr>
+						<th scope="col" class="caps">Where</th>
+						<th scope="col" class="caps">What it does</th>
+					</tr>
+				</thead>
+				{
+					rest.map((g) => (
+						<tbody>
+							<tr class="group">
+								<th scope="colgroup" colspan="2" class="caps">
+									{g.group}
+								</th>
+							</tr>
+							{g.pages.map(([name, text]) => (
+								<tr>
+									<th scope="row" class="caps">
+										{name}
+									</th>
+									<td>{text}</td>
+								</tr>
+							))}
+						</tbody>
+					))
+				}
+			</table>
+		</section>
+
+		<section class="block" id="safety" aria-labelledby="safety-title">
+			<div class="intro">
+				<h2 id="safety-title" class="caps">Before you point it at your list</h2>
+				<p>MCM Lexicon writes files MCM Recorder plays on a new game, so I’ve tried hard not to break anything. Here’s how.</p>
+			</div>
+			<dl class="rules">
+				{
+					safety.map((s) => (
+						<div>
+							<dt class="caps">{s.rule}</dt>
+							<dd set:html={s.text} />
+						</div>
+					))
+				}
+			</dl>
+			<aside class="btw" aria-labelledby="btw-vibes">
+				<p id="btw-vibes" class="btw-title caps">Yes, it’s vibe-coded</p>
+				<p>
+					But at least it’s vibe-coded by a professional software engineer with lots of experience. 🤷🏻‍♂️ If something does go wrong, your backups are in
+					<code>lexicon-backups</code>, and I’d like to <a href={issues}>hear&nbsp;about&nbsp;it</a>.
+				</p>
+			</aside>
+		</section>
+
+		<section class="block" id="download" aria-labelledby="download-title">
+			<div class="intro">
+				<h2 id="download-title" class="caps">Download</h2>
+				<p>Unzip it and put <code>MCMLexicon.exe</code> where it can find your list:</p>
+				<ul class="steps">
+					<li>
+						<strong>MO2 users:</strong> your MO2 instance folder (the one holding <code>ModOrganizer.ini</code>, <code>mods</code>, and <code>profiles</code>).
+					</li>
+					<li>
+						<strong>Everyone else (including Vortex users):</strong> your Skyrim installation folder (the one holding <code>SkyrimVR.exe</code> or
+						<code>SkyrimSE.exe</code>), or its <code>Data</code> folder.
+					</li>
+				</ul>
+				<p>
+					Then run it! It finds your list, scans it (a few seconds for 1,800 mods), and opens in your browser. If you ran it from somewhere else, it asks where
+					your list is. <a href={`${base}/docs/`}>The docs</a> cover the rest.
+				</p>
+				<p>To play a recording back in the game, you’ll need MCM Recorder in your list.</p>
+			</div>
+			<ul class="systems">
+				<li class="mine">
+					<span class="os caps"><Diamond />Windows</span>
+					<span class="note">64-bit</span>
+					<a class="button primary" href={download}>Download<span class="visually-hidden"> for Windows</span></a>
+				</li>
+			</ul>
+			<p class="after">
+				Releases are for Windows only, but you can <a href={developing}>build it yourself</a> for macOS or Linux. Every release is on <a href={releases}>GitHub</a>,
+				listing what changed.
+			</p>
+		</section>
+	</main>
+
+	<Foot />
+
+	<div class="strip">
+		<button type="button" class="tip" data-tips={JSON.stringify(tips)}>
+			<span data-tip>{tips[0]}</span><span class="visually-hidden"> (Another tip)</span>
+		</button>
+		<nav class="hints caps" aria-label="Keyboard shortcuts">
+			<button type="button" data-key="d"><kbd>D</kbd>Download</button>
+			<button type="button" data-key="s"><kbd>S</kbd>Safety</button>
+			<button type="button" data-key="n"><kbd>N</kbd>Next</button>
+		</nav>
+	</div>
+</Base>
+
+<script>
+	// The screen nearest the middle of the window is lit; the rest dim.
+	const shots = document.querySelector('[data-shots]');
+	if (shots && 'IntersectionObserver' in window) {
+		const items = [...shots.children];
+		const io = new IntersectionObserver(
+			(entries) => {
+				for (const e of entries) if (e.isIntersecting) items.forEach((li) => li.classList.toggle('lit', li === e.target));
+			},
+			{ rootMargin: '-45% 0px -45% 0px' }
+		);
+		items.forEach((li) => io.observe(li));
+		shots.classList.add('dimming');
+	}
+
+	// The hint strip: every hint is a real shortcut, and clicking it does the same.
+	// While the demo's window is on screen, its own strip is the strip, and
+	// the page's steps aside; it comes back once the demo is scrolled past.
+	const root = document.documentElement;
+	const strip = document.querySelector<HTMLElement>('.strip');
+	const demoWindow = document.querySelector('[data-demo]');
+	if (strip && demoWindow && 'IntersectionObserver' in window) {
+		new IntersectionObserver(([e]) => strip.classList.toggle('away', e.isIntersecting), { threshold: 0.35 }).observe(demoWindow);
+	}
+	const order = ['why', 'screens', 'rest', 'safety', 'download'];
+	// The next section is the first whose top is still below where scrolling
+	// to a section leaves it (the page's scroll padding), so the one just
+	// reached doesn't count. After the last, back to the top.
+	function next() {
+		const landed = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
+		const id = order.find((id) => (document.getElementById(id)?.getBoundingClientRect().top ?? 0) > landed + 1);
+		go(id ?? 'top');
+	}
+	function go(id: string) {
+		document.getElementById(id)?.scrollIntoView();
+		if (id === 'download') document.querySelector<HTMLElement>('#download .button')?.focus({ preventScroll: true });
+	}
+	const actions: Record<string, () => void> = { d: () => go('download'), s: () => go('safety'), n: next };
+	// The key cap presses in, as the game's do, whichever way the hint ran.
+	function press(key: string) {
+		const b = document.querySelector<HTMLElement>(`.hints [data-key="${key}"]`);
+		if (!b) return;
+		b.classList.remove('pressed');
+		void b.offsetWidth;
+		b.classList.add('pressed');
+	}
+	document.querySelectorAll<HTMLButtonElement>('.hints [data-key]').forEach((b) =>
+		b.addEventListener('click', () => {
+			press(b.dataset.key!);
+			actions[b.dataset.key!]();
+		})
+	);
+	document.addEventListener('keydown', (e) => {
+		if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+		const t = e.target as HTMLElement;
+		if (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+		const key = e.key.toLowerCase();
+		const run = actions[key];
+		if (run) {
+			e.preventDefault();
+			press(key);
+			run();
+		}
+	});
+
+	// The tips in a random order per visit, the next one on a click or when a
+	// new section reaches the middle of the window, as Skyrim shows a new one
+	// at each loading screen. None repeats until every one has been shown.
+	const tip = document.querySelector<HTMLButtonElement>('.tip');
+	const tipText = tip?.querySelector<HTMLElement>('[data-tip]');
+	if (tip && tipText) {
+		const all: string[] = JSON.parse(tip.dataset.tips ?? '[]');
+		for (let i = all.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[all[i], all[j]] = [all[j], all[i]];
+		}
+		let at = 0;
+		tipText.textContent = all[at];
+		const another = () => {
+			at = (at + 1) % all.length;
+			tipText.textContent = all[at];
+			tip.classList.remove('fresh');
+			void tip.offsetWidth;
+			tip.classList.add('fresh');
+		};
+		tip.addEventListener('click', another);
+
+		if ('IntersectionObserver' in window) {
+			let current: Element | null = null;
+			const io = new IntersectionObserver(
+				(entries) => {
+					for (const e of entries) {
+						if (!e.isIntersecting || e.target === current) continue;
+						// The section in view at load keeps the tip it came with.
+						if (current) another();
+						current = e.target;
+					}
+				},
+				{ rootMargin: '-50% 0px -50% 0px' }
+			);
+			document.querySelectorAll('main > section').forEach((s) => io.observe(s));
+		}
+	}
+</script>
+
+<style>
+	/* The first viewport: the offer across the top, and under it the menu,
+	   working, beside the file it writes. */
+	.hero {
+		display: grid;
+		gap: var(--space-5);
+		padding: var(--space-5) var(--gutter) var(--space-5);
+		/* The menu takes what the window has left, within reason. */
+		--menu-height: clamp(12rem, 100svh - 37.5rem, 30rem);
+	}
+	.offer {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(19rem, 28rem);
+		column-gap: clamp(var(--space-6), 5vw, 6rem);
+		align-items: end;
+	}
+	.pitch {
+		container-type: inline-size;
+	}
+	h1 {
+		font-size: min(var(--step-5), 13cqi); /* the name fills its column, never past it */
+		font-weight: 600;
+		line-height: 0.9;
+		letter-spacing: 0.06em;
+		margin-left: -0.04em;
+	}
+	.hook {
+		font-size: var(--step-2);
+		line-height: 1.35;
+		margin-top: var(--space-3);
+		text-wrap: balance;
+	}
+	.hook strong {
+		color: var(--accent);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.get {
+		display: grid;
+		gap: var(--space-3);
+		justify-items: start;
+		border-left: 1px solid var(--rule-strong);
+		padding-left: clamp(var(--space-5), 3vw, var(--space-7));
+	}
+	.sub {
+		color: var(--muted);
+		max-width: 40ch;
+	}
+	.get .button {
+		width: 100%;
+		margin-top: var(--space-2);
+	}
+	.fine {
+		font-size: var(--step--1);
+		color: var(--muted);
+		max-width: 44ch;
+	}
+	.fine strong {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	.synthetic {
+		color: var(--muted);
+		font-size: var(--step--1);
+	}
+
+	/* The diamond marks what's selected: the lit screen, the download. */
+	:global(.diamond) {
+		display: none;
+		color: var(--accent);
+		margin-right: 0.5em;
+		vertical-align: 0.15em;
+	}
+	.button.primary :global(.diamond),
+	.dimming .shot.lit :global(.diamond),
+	.systems .mine :global(.diamond) {
+		display: inline-block;
+	}
+	.button.primary :global(.diamond) {
+		color: var(--on-accent);
+	}
+	.systems .mine {
+		background: var(--select);
+	}
+	/* As in the app's tables, the diamond has a column of its own. */
+	.systems li {
+		position: relative;
+	}
+	.systems :global(.diamond) {
+		position: absolute;
+		left: var(--space-3);
+		top: 50%;
+		translate: 0 -50%;
+		margin: 0;
+	}
+
+	/* Why: the story beside its asides. */
+	.why {
+		display: grid;
+		grid-template-columns: minmax(0, 52rem) minmax(16rem, 24rem);
+		gap: var(--space-6) clamp(var(--space-6), 5vw, var(--space-8));
+		align-items: start;
+	}
+	.why .intro {
+		margin-bottom: 0;
+	}
+	.intro p a,
+	.after a {
+		color: var(--ink);
+	}
+	.asides {
+		display: grid;
+		gap: var(--space-5);
+		padding-top: var(--space-2);
+	}
+
+	/* By the way…: tangents, caveats, and jokes, pulled out of the main
+	   flow, in the app's details-pane material. */
+	.btw {
+		background: var(--panel);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		padding: var(--space-4) var(--space-5);
+		color: var(--muted);
+		max-width: 44rem;
+	}
+	#safety .btw {
+		margin-top: var(--space-8);
+	}
+	.btw-title {
+		color: var(--ink);
+		font-size: var(--step-1);
+		font-weight: 600;
+		margin-bottom: var(--space-2);
+	}
+	.btw a {
+		color: var(--ink);
+	}
+	/* A file name is matched character for character, so it's in the File
+	   font, keeping the color of the text around it, on the haze. */
+	code {
+		font: 400 0.9em / 1.4 var(--font-file);
+		color: inherit;
+		background: var(--select);
+		border-radius: var(--radius);
+		padding: 0.05em 0.35em;
+	}
+	/* The install steps are instructions, so each one reads in one ink, its
+	   label set apart by weight alone. */
+	.steps {
+		margin: var(--space-4) 0 0;
+		padding-left: 1.25rem;
+		color: var(--ink);
+		font-size: var(--step-1);
+		max-width: 60ch;
+		display: grid;
+		gap: var(--space-2);
+	}
+	.steps strong {
+		font-weight: 600;
+	}
+	.steps ::marker {
+		color: var(--muted);
+	}
+
+	/* Sections share one rhythm: a title and its lead, then the material. */
+	.block {
+		padding: var(--space-9) var(--gutter) 0;
+	}
+	.intro {
+		max-width: 52rem;
+		margin-bottom: var(--space-8);
+	}
+	h2 {
+		font-size: var(--step-4);
+		font-weight: 600;
+		line-height: 1;
+		text-wrap: balance;
+	}
+	.intro p {
+		margin-top: var(--space-5);
+		font-size: var(--step-1);
+		color: var(--muted);
+		max-width: 60ch;
+	}
+
+	/* The screens: a caption beside each, the one in view lit. */
+	.shots {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: var(--space-9);
+	}
+	.shot {
+		display: grid;
+		grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr);
+		gap: clamp(var(--space-5), 4vw, var(--space-8));
+		align-items: start;
+	}
+	.caption {
+		position: sticky;
+		top: var(--space-6);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--rule-strong);
+	}
+	h3 {
+		font-size: var(--step-2);
+		font-weight: 600;
+	}
+	.caption p {
+		margin-top: var(--space-3);
+		color: var(--muted);
+	}
+	/* Only the screen dims; its caption stays readable. */
+	.dimming .shot :global(.screen) {
+		opacity: 0.38;
+		filter: saturate(0.4);
+		transition:
+			opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+			filter 600ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.dimming .shot.lit :global(.screen) {
+		opacity: 1;
+		filter: none;
+	}
+	.dimming .shot.lit h3 {
+		color: var(--accent);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.dimming .shot :global(.screen) {
+			transition: none;
+		}
+	}
+	#screens > .synthetic {
+		margin-top: var(--space-6);
+	}
+
+	/* The rest: the app's item table, grouped under accent headings. */
+	.items {
+		width: 100%;
+		max-width: 64rem;
+		border-collapse: collapse;
+	}
+	.items thead th {
+		text-align: left;
+		color: var(--muted);
+		font-size: var(--step--1);
+		font-weight: 500;
+		padding: var(--space-2) var(--space-3);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.items .group th {
+		text-align: left;
+		color: var(--accent);
+		font-size: var(--step--1);
+		font-weight: 500;
+		padding: var(--space-6) var(--space-3) var(--space-2);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.items tbody th[scope='row'] {
+		width: 14rem;
+		text-align: left;
+		font-size: var(--step-1);
+		font-weight: 500;
+		vertical-align: baseline;
+	}
+	.items tbody th[scope='row'],
+	.items td {
+		padding: var(--space-3);
+		border-bottom: 1px solid var(--rule);
+	}
+
+	/* Safety: the rules as the app would say them. */
+	.rules :global(.running) {
+		color: var(--warn);
+		font-size: var(--step--1);
+		white-space: nowrap;
+	}
+	.rules {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+		gap: var(--space-7) clamp(var(--space-6), 5vw, var(--space-8));
+		max-width: 80rem;
+	}
+	.rules div {
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--rule-strong);
+	}
+	.rules dt {
+		font-size: var(--step-2);
+		font-weight: 600;
+	}
+	.rules dd {
+		margin-top: var(--space-2);
+		color: var(--muted);
+		max-width: 44ch;
+	}
+
+	/* Download: one row, for the one system there's a build for. */
+	.systems {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		max-width: 48rem;
+		border-top: 1px solid var(--rule-strong);
+	}
+	.systems li {
+		display: grid;
+		grid-template-columns: 1fr auto auto;
+		gap: var(--space-5);
+		align-items: center;
+		padding: var(--space-4) var(--space-3) var(--space-4) var(--space-6);
+		border-bottom: 1px solid var(--rule);
+	}
+	.systems .os {
+		font-size: var(--step-4);
+		font-weight: 600;
+		line-height: 1;
+	}
+	.systems .note {
+		color: var(--muted);
+	}
+	.after {
+		margin-top: var(--space-6);
+		max-width: 60ch;
+		color: var(--muted);
+	}
+
+	/* The game's bottom strip: a loading-screen tip at left, the button
+	   hints at right. */
+	.strip {
+		position: fixed;
+		inset: auto 0 0 0;
+		display: flex;
+		align-items: center;
+		gap: var(--space-6);
+		padding: var(--space-2) var(--gutter);
+		background: var(--ground);
+		border-top: 1px solid var(--rule);
+		z-index: 2;
+	}
+	.strip.away {
+		translate: 0 100%;
+		opacity: 0;
+		pointer-events: none;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.strip {
+			transition:
+				translate 360ms cubic-bezier(0.16, 1, 0.3, 1),
+				opacity 360ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+	}
+	.tip {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		text-align: left;
+		background: none;
+		border: 0;
+		padding: 0;
+		color: var(--muted);
+		font: 400 var(--step--1) / 1.5 var(--font-text);
+		cursor: pointer;
+	}
+	.tip:hover {
+		color: var(--ink);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.tip.fresh [data-tip] {
+			animation: tip-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+		.hints .pressed kbd {
+			animation: press 220ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+	}
+	@keyframes tip-in {
+		from {
+			opacity: 0;
+			filter: blur(3px);
+		}
+	}
+	@keyframes press {
+		30% {
+			translate: 0 2px;
+			border-color: var(--accent);
+			background: var(--select);
+			color: var(--accent);
+		}
+	}
+	.hints {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2) var(--space-5);
+		margin-left: auto;
+	}
+	.hints button {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		background: none;
+		border: 0;
+		padding: 0;
+		color: var(--muted);
+		font: 500 var(--step-0) / 1.5 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+	.hints button:hover {
+		color: var(--ink);
+	}
+	kbd {
+		font: inherit;
+		color: var(--ink);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		padding: 0 0.4em;
+		min-width: 1.6em;
+		text-align: center;
+	}
+
+	@media (max-width: 60rem) {
+		.offer {
+			grid-template-columns: minmax(0, 1fr);
+			row-gap: var(--space-6);
+		}
+		h1 {
+			font-size: min(var(--step-5), 15cqi);
+		}
+		.get {
+			border-left: 0;
+			padding-left: 0;
+		}
+		.why {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.shot {
+			grid-template-columns: minmax(0, 1fr);
+			gap: var(--space-4);
+		}
+		.caption {
+			position: static;
+		}
+		.dimming .shot :global(.screen) {
+			opacity: 1;
+			filter: none;
+		}
+		.items tbody th[scope='row'] {
+			width: auto;
+		}
+	}
+
+	/* Shortcuts are for keyboards; on touch screens the strip goes. */
+	@media (max-width: 60rem), (pointer: coarse) {
+		.strip {
+			display: none;
+		}
+	}
+	/* Where a tip would be cut short, the strip keeps only the hints. */
+	@media (max-width: 75rem) {
+		.tip {
+			display: none;
+		}
+	}
+
+	@media (max-width: 30rem) {
+		.items thead {
+			display: none;
+		}
+		.items tbody tr:not(.group) {
+			display: grid;
+			border-bottom: 1px solid var(--rule);
+		}
+		.items tbody th[scope='row'],
+		.items td {
+			border-bottom: 0;
+			padding: var(--space-1) 0;
+		}
+		.items tbody th[scope='row'] {
+			padding-top: var(--space-3);
+		}
+		.items td {
+			padding-bottom: var(--space-3);
+			color: var(--muted);
+		}
+		.items .group th {
+			padding-inline: 0;
+		}
+		.systems li {
+			grid-template-columns: 1fr auto;
+		}
+		.systems .note {
+			display: none;
+		}
+	}
+</style>

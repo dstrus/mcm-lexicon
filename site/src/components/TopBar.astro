@@ -1,0 +1,150 @@
+---
+// The top bar, as the app's: the mark and name at left, then the links and
+// the theme switch at right, over a hairline. The landing page links its
+// sections; the docs link back to it.
+import Mark from './Mark.astro';
+
+interface Props {
+	home: string;
+	links: { href: string; label: string; current?: boolean }[];
+}
+const { home, links } = Astro.props;
+---
+
+<a class="skip caps" href="#main">Skip to content</a>
+<header class="top">
+	<a class="brand caps" href={home} aria-label="MCM Lexicon, home"><Mark size="1.2em" /> MCM Lexicon</a>
+	<nav class="sections caps" aria-label="Site">
+		{
+			links.map((l) => (
+				<a href={l.href} aria-current={l.current ? 'page' : undefined}>
+					{l.label}
+				</a>
+			))
+		}
+	</nav>
+	<div class="theme caps" role="group" aria-label="Theme">
+		<button type="button" data-theme-choice="system" aria-pressed="true">Auto</button>
+		<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+		<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+	</div>
+</header>
+
+<script>
+	// The theme switch: Auto follows the OS; Dark and Light are remembered.
+	const root = document.documentElement;
+	const choices = document.querySelectorAll<HTMLButtonElement>('[data-theme-choice]');
+	function showTheme() {
+		const current = root.dataset.theme ?? 'system';
+		choices.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themeChoice === current)));
+	}
+	choices.forEach((b) =>
+		b.addEventListener('click', () => {
+			const t = b.dataset.themeChoice;
+			if (t === 'dark' || t === 'light') root.dataset.theme = t;
+			else delete root.dataset.theme;
+			try {
+				if (t === 'dark' || t === 'light') localStorage.setItem('lexicon-theme', t);
+				else localStorage.removeItem('lexicon-theme');
+			} catch {}
+			showTheme();
+		})
+	);
+	showTheme();
+</script>
+
+<style>
+	.skip {
+		position: absolute;
+		left: var(--gutter);
+		top: -4rem;
+		padding: var(--space-2) var(--space-3);
+		background: var(--accent);
+		color: var(--on-accent);
+		z-index: 3;
+	}
+	.skip:focus {
+		top: var(--space-2);
+	}
+	.top {
+		display: flex;
+		align-items: center;
+		gap: var(--space-6);
+		padding: var(--space-4) var(--gutter);
+		border-bottom: 1px solid var(--rule);
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-3);
+		font-size: var(--step-2);
+		font-weight: 600;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.sections {
+		display: flex;
+		gap: var(--space-6);
+		margin-left: auto;
+		font-size: var(--step-1);
+	}
+	.sections a {
+		color: var(--muted);
+		text-decoration: none;
+	}
+	.sections a:hover,
+	.sections [aria-current] {
+		color: var(--ink);
+	}
+	.sections [aria-current] {
+		font-weight: 600;
+	}
+	.theme {
+		display: flex;
+		flex: none;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		overflow: hidden;
+	}
+	.theme button {
+		font: 500 var(--step--1) / 1 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		color: var(--muted);
+		background: none;
+		border: 0;
+		padding: var(--space-2) var(--space-3);
+		cursor: pointer;
+	}
+	.theme button:hover {
+		color: var(--ink);
+	}
+	.theme button[aria-pressed='true'] {
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 600;
+	}
+	/* Narrow: the links drop to a row of their own under the name, and
+	   scroll sideways if they must. */
+	@media (max-width: 60rem) {
+		.top {
+			flex-wrap: wrap;
+			gap: var(--space-3) var(--space-4);
+		}
+		.theme {
+			margin-left: auto;
+		}
+		.sections {
+			order: 3;
+			flex-basis: 100%;
+			margin-left: 0;
+			gap: var(--space-4);
+			overflow-x: auto;
+			scrollbar-width: none;
+			font-size: 0.9375rem;
+		}
+		.sections a {
+			flex: none;
+		}
+	}
+</style>

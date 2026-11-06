@@ -1,0 +1,1172 @@
+---
+// The hero: MCM Lexicon's own window, running. Its top bar with the list
+// it's reading and a RECORDING lamp counting the draft, WeaponThrowVR's
+// real menu as the app draws it, the step file it writes as the app's
+// details pane, and the app's hint strip along the bottom with working
+// keys. Every value the visitor sets lands in the file as MCM Recorder
+// reads it. Nothing leaves the page. The menu's data is made by scanning
+// the Synergy list (src/data/weaponthrowvr.json), shown with its author's
+// permission; the list and profile named in the bar are that snapshot's.
+import Diamond from './Diamond.astro';
+import Mark from './Mark.astro';
+import menu from '../data/weaponthrowvr.json';
+import { stepFile, type Step } from '../lib/steps';
+
+type Row = {
+	kind: string;
+	label?: string;
+	text?: string;
+	position: number;
+	help?: string;
+	default?: number | boolean | string;
+	slider?: { min: number; max: number; step: number; format: string };
+	choices?: string[];
+	value?: string;
+};
+
+// The menu opens on General, scrolled to the toggle whose label is spelled
+// as the mod spells it, with it and its neighbor already in the draft, so
+// both steps in the file are on screen beside them at any window height.
+const start = menu.pages.findIndex((p) => p.name === 'General');
+const steps: Step[] = [
+	{ page: 'General', option: 'Allow Greanade and Other Throw', kind: 'toggle', value: 'on' },
+	{ page: 'General', option: 'Allow Boomerang Throw', kind: 'toggle', value: 'off' }
+];
+const selected = { page: 'General', option: 'Allow Greanade and Other Throw' };
+
+// A slider's value as SkyUI shows it: {1} is one decimal place.
+function shown(n: number, format = '') {
+	const m = /\{(\d)\}/.exec(format);
+	return m ? format.replace(m[0], n.toFixed(Number(m[1]))) : String(n);
+}
+const kinds: Record<string, string> = { toggle: 'Toggle', slider: 'Slider', menu: 'Menu', text: 'Text' };
+function allows(r: Row) {
+	if (r.slider) return `${r.slider.min} to ${r.slider.max} by ${r.slider.step}`;
+	if (r.kind === 'toggle') return 'On or off';
+	if (r.choices) return `${r.choices.length} choices`;
+	if (r.kind === 'text') return 'A click';
+	return '';
+}
+function recorded(page: string, r: Row) {
+	return steps.find((s) => s.page === page && s.option === r.label);
+}
+const first = menu.pages[start].rows.find((r: Row) => r.label === selected.option) as Row;
+---
+
+<div class="demo" data-demo data-mod={menu.name} data-steps={JSON.stringify(steps)} data-kind={first.kind}>
+	<div class="bar">
+		<p class="brand caps"><Mark size="1.2em" /> MCM Lexicon</p>
+		<div class="state">
+			<p class="source"><span class="caps">List</span> <span class="file-name">synergy-rc37</span></p>
+			<p class="source profile"><span class="caps">Profile</span> Synergy VR - ENB</p>
+			<p class="game caps">Skyrim closed</p>
+			<p class="lamp caps" role="status">
+				<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0 10 5 5 10 0 5Z" fill="currentColor"></path></svg>
+				Recording <span class="count-wrap">· <b data-count>{steps.length}</b> steps</span>
+			</p>
+		</div>
+	</div>
+	<div class="shell">
+	<div class="menu">
+		<div class="head">
+			<p class="name caps">{menu.name}</p>
+			<p class="meta">{menu.mod} · {menu.plugin} · Source</p>
+			<p class="credit caps">By Shizof, shown with permission</p>
+		</div>
+		<div class="body">
+			<ul class="pages caps" aria-label="Pages">
+				{
+					menu.pages.map((p, i) => (
+						<li>
+							<button type="button" data-page={i} aria-current={i === start ? 'page' : undefined}>
+								<span class="slot"><Diamond /></span>
+								<span class="pname">{p.name}</span>
+								<span class="count">{p.rows.filter((r: Row) => r.kind !== 'header').length}</span>
+							</button>
+						</li>
+					))
+				}
+			</ul>
+			<div class="options" data-options>
+				{
+					menu.pages.map((p, i) => (
+						<div class="grid" data-grid={i} data-name={p.name} hidden={i !== start}>
+							{(p.rows as Row[]).map((r) => {
+								const style = `--r: ${Math.floor(r.position / 2) + 1}; --c: ${(r.position % 2) + 1}`;
+								if (r.kind === 'header') {
+									return (
+										<p class="header caps" style={style}>
+											{r.text}
+										</p>
+									);
+								}
+								const step = recorded(p.name, r);
+								const sel = p.name === selected.page && r.label === selected.option;
+								return (
+									<div
+										class:list={['row', { sel, rec: step }]}
+										style={style}
+										data-kind={r.kind}
+										data-label={r.label}
+										data-help={r.help}
+										data-allows={allows(r)}
+										data-type={kinds[r.kind]}
+										data-default={r.default === undefined ? undefined : String(r.default)}
+									>
+										<span class="slot">
+											<Diamond />
+										</span>
+										<span class="label">{r.label}</span>
+										<span class="mark" title="In the draft, not saved yet">
+											<svg width="7" height="7" viewBox="0 0 10 10" aria-hidden="true">
+												<path d="M5 0 10 5 5 10 0 5Z" fill="currentColor" />
+											</svg>
+										</span>
+										{r.kind === 'toggle' && (
+											<button
+												type="button"
+												role="switch"
+												class:list={['switch', { unset: !step }]}
+												aria-checked={step?.value === 'on' ? 'true' : 'false'}
+												aria-label={r.label}
+											>
+												<span class="knob" />
+											</button>
+										)}
+										{r.kind === 'slider' && r.slider && (
+											<>
+												<input
+													class="range"
+													type="range"
+													tabindex="-1"
+													aria-hidden="true"
+													min={r.slider.min}
+													max={r.slider.max}
+													step={r.slider.step}
+													value={step ? step.value : r.default}
+												/>
+												<input
+													class:list={['num', 'field', { changed: step && r.default !== undefined && step.value !== r.default }]}
+													type="number"
+													inputmode="decimal"
+													min={r.slider.min}
+													max={r.slider.max}
+													step={r.slider.step}
+													value={shown(Number(step ? step.value : (r.default ?? r.slider.min)), r.slider.format).replace(/[^\d.-]/g, '')}
+													data-format={r.slider.format}
+													aria-label={r.label}
+												/>
+											</>
+										)}
+										{r.kind === 'menu' && r.choices && (
+											<select
+												class:list={['field', { changed: step && step.value !== r.choices[Number(r.default ?? 0)] }]}
+												aria-label={r.label}
+											>
+												{r.choices.map((c, j) => (
+													<option selected={step ? c === step.value : j === r.default}>{c}</option>
+												))}
+											</select>
+										)}
+										{r.kind === 'text' && (
+											<button type="button" class="click caps" aria-label={`Click ${r.label}`}>
+												<span>Click</span>
+											</button>
+										)}
+									</div>
+								);
+							})}
+						</div>
+					))
+				}
+			</div>
+		</div>
+		<div class="info" aria-live="off">
+			<p class="help" data-help-text>{first.help}</p>
+			<p class="facts caps" data-facts>
+				<span>Selector <code data-selector>{first.label}</code></span>
+				<span>Type <b data-type-text>{kinds[first.kind]}</b></span>
+				<span data-allows-text>{allows(first)}</span>
+			</p>
+		</div>
+	</div>
+
+	<div class="file">
+		<div class="file-head">
+			<p class="path"><span>McmRecorder/<wbr />My&nbsp;Settings/<wbr /></span><b>0001_WeaponThrowVR.json</b></p>
+		</div>
+		<pre data-file><code set:html={stepFile(menu.name, steps)} /></pre>
+		<p class="file-foot">
+			Every label spelled exactly the way the mod spells it, “Greanade” and all. Nothing here touches your files.
+		</p>
+		<p class="visually-hidden" aria-live="polite" data-said></p>
+	</div>
+	</div>
+	<div class="foot">
+		<p class="go">Go ahead, flip something.</p>
+		<nav class="keys caps" aria-label="Keys that work in this menu">
+			<button type="button" data-hint="move"><kbd>↑</kbd><kbd>↓</kbd>Move</button>
+			<button type="button" data-hint="space" data-for="toggle"><kbd>Space</kbd>On / off</button>
+			<button type="button" data-hint="space" data-for="text"><kbd>Space</kbd>Click</button>
+			<button type="button" data-hint="enter" data-for="slider"><kbd>Enter</kbd>Apply</button>
+			<button type="button" data-hint="again"><kbd>R</kbd>Start over</button>
+		</nav>
+	</div>
+</div>
+
+<script>
+	import { stepFile, type Step, type Kind } from '../lib/steps';
+
+	const demo = document.querySelector<HTMLElement>('[data-demo]');
+	if (demo) {
+		const mod = demo.dataset.mod!;
+		const initial: Step[] = JSON.parse(demo.dataset.steps ?? '[]');
+		let steps: Step[] = initial.map((s) => ({ ...s }));
+		const code = demo.querySelector<HTMLElement>('[data-file] code')!;
+		const pre = demo.querySelector<HTMLElement>('[data-file]')!;
+		const said = demo.querySelector<HTMLElement>('[data-said]')!;
+		const count = demo.querySelector<HTMLElement>('[data-count]')!;
+
+		// The lamp's count, with the same small rise Save makes in the app as
+		// each change lands.
+		function counted() {
+			count.textContent = String(steps.length);
+			count.classList.remove('landed');
+			void count.offsetWidth;
+			count.classList.add('landed');
+		}
+
+		const pageOf = (row: HTMLElement) => row.closest<HTMLElement>('[data-grid]')!.dataset.name!;
+		const decimals = (n: number) => (String(n).split('.')[1] ?? '').length;
+
+		// write puts the option's step in the draft, in place if it's already
+		// there, and shows the file with that step lit.
+		function write(row: HTMLElement, kind: Kind, value: string | number, words: string) {
+			const page = pageOf(row);
+			const option = row.dataset.label!;
+			let at = steps.findIndex((s) => s.page === page && s.option === option);
+			if (at < 0) {
+				steps.push({ page, option, kind, value });
+				at = steps.length - 1;
+			} else {
+				steps[at] = { page, option, kind, value };
+			}
+			row.classList.add('rec');
+			render(at);
+			counted();
+			said.textContent = `Step ${at + 1} of ${steps.length}: ${option}, ${words}.`;
+		}
+
+		function render(lit = -1) {
+			code.innerHTML = stepFile(mod, steps);
+			const el = code.querySelector<HTMLElement>(`[data-step="${lit}"]`);
+			if (!el) return;
+			el.classList.add('fresh');
+			// Scroll the file, never the page.
+			const top = el.offsetTop - pre.clientHeight / 2 + el.offsetHeight / 2;
+			pre.scrollTo({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+		}
+
+		// The selected option: the diamond and the haze, and its help and
+		// selector under the menu, as SkyUI shows its info text.
+		const help = demo.querySelector<HTMLElement>('[data-help-text]')!;
+		const selector = demo.querySelector<HTMLElement>('[data-selector]')!;
+		const typeText = demo.querySelector<HTMLElement>('[data-type-text]')!;
+		const allowsText = demo.querySelector<HTMLElement>('[data-allows-text]')!;
+		function select(row: HTMLElement) {
+			if (row.classList.contains('sel')) return;
+			demo!.querySelectorAll('.row.sel').forEach((r) => r.classList.remove('sel'));
+			row.classList.add('sel');
+			demo!.dataset.kind = row.dataset.kind; // the strip shows this kind's keys
+			help.textContent = row.dataset.help || 'This option has no help text.';
+			selector.textContent = row.dataset.label!;
+			typeText.textContent = row.dataset.type!;
+			allowsText.textContent = row.dataset.allows!;
+		}
+
+		demo.addEventListener('focusin', (e) => {
+			const row = (e.target as HTMLElement).closest<HTMLElement>('.row');
+			if (row) select(row);
+		});
+		demo.addEventListener('click', (e) => {
+			const t = e.target as HTMLElement;
+			const row = t.closest<HTMLElement>('.row');
+			if (!row) return;
+			select(row);
+			// A click anywhere on a row that only clicks or switches does it.
+			const sw = row.querySelector<HTMLButtonElement>('.switch, .click');
+			if (sw && !t.closest('button')) sw.click();
+		});
+
+		// Toggles: an option not recorded yet is dimmed, and its first click
+		// turns it on.
+		demo.querySelectorAll<HTMLButtonElement>('.switch').forEach((b) =>
+			b.addEventListener('click', () => {
+				const on = b.classList.contains('unset') ? true : b.getAttribute('aria-checked') !== 'true';
+				b.classList.remove('unset');
+				b.setAttribute('aria-checked', String(on));
+				write(b.closest('.row')!, 'toggle', on ? 'on' : 'off', on ? 'on' : 'off');
+			})
+		);
+
+		// Sliders: the knob moves the number as it goes and records where it's
+		// let go; the number records on Enter or leaving it. Copper when it
+		// differs from the mod's default.
+		demo.querySelectorAll<HTMLElement>('.row[data-kind="slider"]').forEach((row) => {
+			const range = row.querySelector<HTMLInputElement>('.range')!;
+			const num = row.querySelector<HTMLInputElement>('.num')!;
+			const step = Number(num.step);
+			const fix = (n: number) => {
+				const min = Number(num.min);
+				const max = Number(num.max);
+				const snapped = min + Math.round((Math.min(max, Math.max(min, n)) - min) / step) * step;
+				return Number(snapped.toFixed(Math.max(decimals(step), decimals(min))));
+			};
+			const commit = (n: number) => {
+				if (Number.isNaN(n)) return;
+				const v = fix(n);
+				const format = num.dataset.format ?? '';
+				const places = /\{(\d)\}/.exec(format);
+				num.value = places ? v.toFixed(Number(places[1])) : String(v);
+				range.value = String(v);
+				const d = row.dataset.default;
+				num.classList.toggle('changed', d !== undefined && Number(d) !== v);
+				write(row, 'slider', v, num.value);
+			};
+			range.addEventListener('input', () => (num.value = range.value));
+			range.addEventListener('change', () => commit(Number(range.value)));
+			num.addEventListener('change', () => commit(Number(num.value)));
+			num.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter') commit(Number(num.value));
+			});
+		});
+
+		// Menus: the chosen entry's text, as the menu holds it.
+		demo.querySelectorAll<HTMLSelectElement>('.row select').forEach((s) =>
+			s.addEventListener('change', () => {
+				const row = s.closest<HTMLElement>('.row')!;
+				s.classList.toggle('changed', s.selectedIndex !== Number(row.dataset.default ?? 0));
+				write(row, 'choose', s.value, s.value);
+			})
+		);
+
+		// Text options can only be clicked, so a step clicks them.
+		demo.querySelectorAll<HTMLButtonElement>('.click').forEach((b) =>
+			b.addEventListener('click', () => write(b.closest('.row')!, 'click', '', 'clicked'))
+		);
+
+		// The page list.
+		const pages = demo.querySelectorAll<HTMLButtonElement>('[data-page]');
+		const grids = demo.querySelectorAll<HTMLElement>('[data-grid]');
+		const options = demo.querySelector<HTMLElement>('[data-options]')!;
+		pages.forEach((b) =>
+			b.addEventListener('click', () => {
+				pages.forEach((p) => p.removeAttribute('aria-current'));
+				b.setAttribute('aria-current', 'page');
+				grids.forEach((g) => (g.hidden = g.dataset.grid !== b.dataset.page));
+				options.scrollTop = 0;
+				const grid = grids[Number(b.dataset.page)];
+				const row = grid.querySelector<HTMLElement>('.row');
+				if (row) select(row);
+			})
+		);
+
+		// Up and down move between options, in the column the keys are in,
+		// from any control that doesn't use the arrows itself.
+		demo.addEventListener('keydown', (e) => {
+			const t = e.target as HTMLElement;
+			if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || !t.matches('.switch, .click')) return;
+			const row = t.closest<HTMLElement>('.row')!;
+			const col = row.style.getPropertyValue('--c');
+			const rows = [...row.parentElement!.querySelectorAll<HTMLElement>('.row')]
+				.filter((r) => r.style.getPropertyValue('--c') === col)
+				.sort((a, b) => Number(a.style.getPropertyValue('--r')) - Number(b.style.getPropertyValue('--r')));
+			const next = rows[rows.indexOf(row) + (e.key === 'ArrowDown' ? 1 : -1)];
+			const control = next?.querySelector<HTMLElement>('button, input.num, select');
+			if (control) {
+				e.preventDefault();
+				control.focus();
+			}
+		});
+
+		// The selected option starts in view, scrolling the menu, never the
+		// page, with the list starting on a whole row.
+		// Again once the fonts are in, since they change the rows' heights.
+		const first = options.querySelector<HTMLElement>('.row.sel');
+		const reveal = () => {
+			if (!first) return;
+			const want = first.offsetTop + first.offsetHeight - options.clientHeight + 16;
+			const tops = [...first.parentElement!.children].map((r) => (r as HTMLElement).offsetTop).filter((t) => t >= want);
+			const top = Math.min(first.offsetTop, ...tops);
+			// The last rows can't scroll to a whole row without room beneath.
+			const short = top + options.clientHeight - options.scrollHeight;
+			if (short > 0) options.style.paddingBottom = `calc(1rem + ${short}px)`;
+			options.scrollTop = top;
+		};
+		reveal();
+		// The rows settle late (fonts, and choice fields sized to their
+		// text), so keep the list on a whole row until the visitor takes
+		// over.
+		let settled = false;
+		const settle = () => (settled = true);
+		demo.addEventListener('pointerdown', settle, { once: true });
+		demo.addEventListener('focusin', settle, { once: true });
+		document.fonts?.ready.then(() => settled || reveal());
+		if ('ResizeObserver' in window) {
+			const grid = first?.parentElement;
+			if (grid) new ResizeObserver(() => settled || reveal()).observe(grid);
+		}
+
+		// Start over: an empty draft, and every option back to not recorded.
+		function again() {
+			steps = [];
+			demo.querySelectorAll('.row.rec').forEach((r) => r.classList.remove('rec'));
+			demo.querySelectorAll<HTMLButtonElement>('.switch').forEach((b) => {
+				b.classList.add('unset');
+				b.setAttribute('aria-checked', 'false');
+			});
+			demo.querySelectorAll<HTMLElement>('.row[data-kind="slider"]').forEach((row) => {
+				const num = row.querySelector<HTMLInputElement>('.num')!;
+				const range = row.querySelector<HTMLInputElement>('.range')!;
+				const d = Number(row.dataset.default ?? num.min);
+				const places = /\{(\d)\}/.exec(num.dataset.format ?? '');
+				num.value = places ? d.toFixed(Number(places[1])) : String(d);
+				range.value = String(d);
+				num.classList.remove('changed');
+			});
+			demo.querySelectorAll<HTMLSelectElement>('.row select').forEach((s) => {
+				s.selectedIndex = Number(s.closest<HTMLElement>('.row')!.dataset.default ?? 0);
+				s.classList.remove('changed');
+			});
+			render();
+			counted();
+			said.textContent = 'The draft is empty.';
+		}
+
+		// The strip: every hint is a real key, and clicking it does the same.
+		// A key runs while focus is inside the window and not in a field.
+		const control = () => demo!.querySelector<HTMLElement>('.row.sel button, .row.sel input.num, .row.sel select');
+		const acts: Record<string, () => void> = {
+			move: () => control()?.focus(),
+			space: () => demo!.querySelector<HTMLButtonElement>('.row.sel .switch, .row.sel .click')?.click(),
+			enter: () => {
+				const num = demo!.querySelector<HTMLInputElement>('.row.sel input.num');
+				if (num) num.dispatchEvent(new Event('change'));
+			},
+			again
+		};
+		function press(hint: string) {
+			demo!.querySelectorAll<HTMLElement>(`[data-hint="${hint}"]`).forEach((b) => {
+				b.classList.remove('pressed');
+				void b.offsetWidth;
+				b.classList.add('pressed');
+			});
+		}
+		demo.querySelectorAll<HTMLButtonElement>('[data-hint]').forEach((b) =>
+			b.addEventListener('click', () => {
+				press(b.dataset.hint!);
+				acts[b.dataset.hint!]();
+			})
+		);
+		demo.addEventListener('keydown', (e) => {
+			if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+			const t = e.target as HTMLElement;
+			if (/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+			if (e.key.toLowerCase() === 'r') {
+				e.preventDefault();
+				press('again');
+				again();
+			} else if (e.key === ' ' && t.matches('.switch, .click')) {
+				press('space'); // the button itself does the clicking
+			}
+		});
+	}
+</script>
+
+<style>
+	/* The app's window: its top bar, the menu screen beside the details
+	   pane, and its hint strip, inside one hairline on the game's ground. */
+	.demo {
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr) auto;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		overflow: hidden;
+		background: var(--ground);
+	}
+	.shell {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(19rem, 25rem);
+		min-height: 0;
+	}
+
+	/* The top bar, as the app's: the name at left and, at right, what it's
+	   reading and the game's state. Then the lamp: RECORDING in Save's
+	   amber, breathing its glow, with the draft's count. */
+	.bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-2) var(--space-5);
+		padding: var(--space-2) var(--space-5);
+		border-bottom: 1px solid var(--rule);
+	}
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--step-1);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.state {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-1) var(--space-5);
+		margin-left: auto;
+		font-size: 0.875rem;
+	}
+	.source {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
+		white-space: nowrap;
+	}
+	.source .caps,
+	.game {
+		color: var(--muted);
+		font-size: 0.75rem;
+		font-weight: 500;
+	}
+	.file-name {
+		font: 400 0.8125rem / 1.4 var(--font-file);
+	}
+	.lamp {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		color: var(--warn);
+		font-size: 0.8125rem;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.lamp svg {
+		display: block;
+		filter: drop-shadow(0 0 3px color-mix(in oklab, var(--warn) 70%, transparent));
+	}
+	.count-wrap {
+		font-weight: 500;
+	}
+	.count-wrap b {
+		display: inline-block;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.lamp svg {
+			animation: lamp 2.8s ease-in-out infinite;
+		}
+		.count-wrap b.landed {
+			animation: land 320ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+	}
+	@keyframes lamp {
+		50% {
+			filter: drop-shadow(0 0 7px color-mix(in oklab, var(--warn) 95%, transparent));
+		}
+	}
+	@keyframes land {
+		from {
+			translate: 0 4px;
+			opacity: 0;
+		}
+	}
+
+	/* The hint strip along the window's bottom, as the app's: an
+	   instruction at left, and at right the keys this screen offers, each
+	   a real shortcut and a button. The keys shown follow the selected
+	   option's kind. */
+	.foot {
+		display: flex;
+		align-items: center;
+		gap: var(--space-5);
+		padding: var(--space-2) var(--space-5);
+		border-top: 1px solid var(--rule);
+	}
+	.go {
+		flex: 1;
+		min-width: 0;
+		font-size: 0.9375rem;
+	}
+	.keys {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2) var(--space-5);
+		margin-left: auto;
+	}
+	.keys button {
+		display: none;
+		align-items: center;
+		gap: var(--space-2);
+		background: none;
+		border: 0;
+		padding: 0;
+		color: var(--muted);
+		font: 500 var(--step--1) / 1.5 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+	.keys button:not([data-for]),
+	.demo[data-kind='toggle'] [data-for='toggle'],
+	.demo[data-kind='text'] [data-for='text'],
+	.demo[data-kind='slider'] [data-for='slider'] {
+		display: flex;
+	}
+	.keys button:hover {
+		color: var(--ink);
+	}
+	.keys kbd {
+		font: inherit;
+		color: var(--ink);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		padding: 0 0.4em;
+		min-width: 1.6em;
+		text-align: center;
+	}
+	.keys kbd + kbd {
+		margin-left: calc(var(--space-2) * -1 + 2px);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.keys .pressed kbd {
+			animation: press 220ms cubic-bezier(0.16, 1, 0.3, 1);
+		}
+	}
+	@keyframes press {
+		30% {
+			translate: 0 2px;
+			border-color: var(--accent);
+			background: var(--select);
+			color: var(--accent);
+		}
+	}
+
+	/* The menu, as MCM Lexicon draws it, as SkyUI draws it. */
+	.menu {
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr) auto;
+		min-width: 0;
+	}
+	.head {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: baseline;
+		column-gap: var(--space-4);
+		padding: var(--space-4) var(--space-5) var(--space-3);
+	}
+	.head .name {
+		grid-column: 1 / -1;
+	}
+	.credit {
+		color: var(--muted);
+		font-size: 0.75rem;
+		text-align: right;
+	}
+	.name {
+		font-size: clamp(1.5rem, 1rem + 1vw, 2rem);
+		font-weight: 600;
+		line-height: 1.1;
+	}
+	.meta {
+		color: var(--muted);
+		font-size: 0.875rem;
+	}
+	.body {
+		display: grid;
+		grid-template-columns: 12rem minmax(0, 1fr);
+		height: var(--menu-height, 24rem);
+		min-height: 0;
+	}
+
+	.pages {
+		list-style: none;
+		margin: 0;
+		padding: 0 var(--space-3) var(--space-3) var(--space-3);
+		overflow-y: auto;
+		scrollbar-width: thin;
+	}
+	.pages button {
+		display: grid;
+		grid-template-columns: 1rem minmax(0, 1fr) auto;
+		align-items: center;
+		width: 100%;
+		padding: 0.3rem var(--space-2) 0.3rem 0;
+		background: none;
+		border: 0;
+		border-radius: var(--radius);
+		color: var(--muted);
+		font: 500 var(--step-0) / 1.25 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		text-align: left;
+		cursor: pointer;
+	}
+	.pname {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pages button:hover {
+		color: var(--ink);
+	}
+	.pages [aria-current] {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.count {
+		font: 400 0.75rem / 1 var(--font-text);
+		letter-spacing: 0;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+	.slot {
+		display: inline-flex;
+		align-items: center;
+	}
+	.slot :global(.diamond) {
+		display: none;
+		margin: 0;
+		color: var(--accent);
+	}
+	.pages [aria-current] :global(.diamond),
+	.row.sel .slot :global(.diamond) {
+		display: inline-block;
+	}
+
+	.options {
+		position: relative;
+		overflow-y: auto;
+		padding: 0 var(--space-5) var(--space-4) var(--space-2);
+		scrollbar-width: thin;
+		overscroll-behavior: contain;
+	}
+	/* The game's grid: two columns, each option in the row and column
+	   SkyUI's cursor gave it. */
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: var(--space-6);
+		align-content: start;
+	}
+	.grid[hidden] {
+		display: none;
+	}
+	.grid > * {
+		grid-row: var(--r);
+		grid-column: var(--c);
+	}
+	.header {
+		align-self: end;
+		color: var(--accent);
+		font-size: var(--step--1);
+		font-weight: 500;
+		padding: var(--space-4) var(--space-3) var(--space-1);
+		border-bottom: 1px solid var(--rule-strong);
+	}
+	.row {
+		display: grid;
+		grid-template-columns: 1rem minmax(0, 1fr) auto auto auto;
+		align-items: center;
+		gap: var(--space-2);
+		min-height: 2.5rem;
+		padding: 0.2rem var(--space-2) 0.2rem var(--space-2);
+		border-bottom: 1px solid var(--rule);
+		cursor: default;
+	}
+	.row[data-kind='toggle'],
+	.row[data-kind='text'] {
+		cursor: pointer;
+	}
+	.row:hover {
+		background: color-mix(in srgb, var(--select) 60%, transparent);
+	}
+	.row.sel {
+		background: var(--select);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+	}
+	/* The labels are the point, so a long one wraps rather than lose its
+	   end. */
+	.label {
+		font-size: 0.9375rem;
+		line-height: 1.3;
+		overflow-wrap: anywhere;
+	}
+
+	/* A step in the draft that isn't saved yet: the small amber diamond. */
+	.mark {
+		display: none;
+		color: var(--warn);
+	}
+	.mark svg {
+		display: block;
+	}
+	.row.rec .mark {
+		display: block;
+	}
+
+	/* Fields: the app's smoked field and hairline, so a value reads as
+	   editable before it's touched. Not recorded yet, the value is the
+	   mod's default, in muted ink. */
+	.field {
+		font: 400 0.9375rem / 1.2 var(--font-text);
+		font-variant-numeric: tabular-nums;
+		color: var(--muted);
+		background: var(--field);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		padding: 0.2rem var(--space-2);
+	}
+	.row.rec .field {
+		color: var(--ink);
+	}
+	.row.rec .field.changed {
+		color: var(--changed);
+	}
+	.field:hover {
+		border-color: var(--accent);
+	}
+	.num {
+		width: 4.5rem;
+		text-align: right;
+		appearance: textfield;
+		-moz-appearance: textfield;
+	}
+	.num::-webkit-inner-spin-button,
+	.num::-webkit-outer-spin-button {
+		appearance: none;
+		margin: 0;
+	}
+	/* A choice is as wide as the entry chosen, never cut short. */
+	select.field {
+		field-sizing: content;
+		max-width: 100%;
+		cursor: pointer;
+	}
+	select.field option {
+		background: var(--panel);
+		color: var(--ink);
+	}
+
+	/* A slider's knob is the diamond on a hairline, shown while its
+	   option is being edited. */
+	.range {
+		display: none;
+		width: 6.5rem;
+		margin: 0;
+		background: none;
+		appearance: none;
+		cursor: pointer;
+	}
+	.row.sel:focus-within .range {
+		display: block;
+	}
+	.range::-webkit-slider-runnable-track {
+		height: 1px;
+		background: var(--rule-strong);
+	}
+	.range::-moz-range-track {
+		height: 1px;
+		background: var(--rule-strong);
+	}
+	.range::-webkit-slider-thumb {
+		appearance: none;
+		width: 12px;
+		height: 12px;
+		margin-top: -6px;
+		background: var(--accent);
+		border: 0;
+		clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+	}
+	.range::-moz-range-thumb {
+		width: 12px;
+		height: 12px;
+		background: var(--accent);
+		border: 0;
+		border-radius: 0;
+		clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+	}
+
+	/* The switch, as the app's: a squared track whose knob slides right
+	   and lights in the accent, the track taking an accent edge and a
+	   faint accent wash. The knob is the light, so on is a lit knob and off
+	   a muted one. Not recorded yet (the default isn't known), it's dimmed. */
+	.switch {
+		position: relative;
+		width: 2.25rem;
+		height: 1.25rem;
+		padding: 0;
+		background: var(--field);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition:
+			background-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
+			border-color 140ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.knob {
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: calc(1.25rem - 6px);
+		height: calc(1.25rem - 6px);
+		background: var(--muted);
+		border-radius: 2px;
+		transition:
+			translate 140ms cubic-bezier(0.16, 1, 0.3, 1),
+			background-color 140ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.switch[aria-checked='true'] {
+		background: color-mix(in oklab, var(--accent) 22%, var(--field));
+		border-color: var(--accent);
+	}
+	.switch[aria-checked='true'] .knob {
+		translate: 1rem 0;
+		background: var(--accent);
+	}
+	.switch:hover {
+		border-color: var(--ink);
+	}
+	.switch[aria-checked='true']:hover {
+		border-color: var(--accent);
+	}
+	.switch.unset {
+		opacity: 0.45;
+	}
+	.row:hover .switch.unset,
+	.switch.unset:focus-visible {
+		opacity: 1;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.switch,
+		.knob {
+			transition: none;
+		}
+	}
+
+	/* A text option: a click, recorded as one. */
+	.click {
+		background: none;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		color: var(--muted);
+		font: 500 var(--step--1) / 1.4 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		padding: 0 var(--space-2);
+		cursor: pointer;
+	}
+	.click:hover {
+		border-color: var(--accent);
+		color: var(--ink);
+	}
+	.row.rec .click {
+		color: var(--ink);
+	}
+
+	/* SkyUI's info text: the selected option's help, and what the catalog
+	   knows about it. */
+	.info {
+		padding: var(--space-3) var(--space-5);
+		background: var(--panel);
+		border-top: 1px solid var(--rule);
+		min-height: 5.25rem;
+	}
+	.help {
+		font-size: 0.9375rem;
+		max-width: 75ch;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	.facts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--space-4);
+		margin-top: var(--space-1);
+		color: var(--muted);
+		font-size: 0.75rem;
+	}
+	.facts code {
+		font: 400 0.8125rem / 1.4 var(--font-file);
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--ink);
+		white-space: pre;
+	}
+	.facts b {
+		font-weight: 500;
+		color: var(--ink);
+	}
+
+	/* The step file, as Save would write it. */
+	.file {
+		display: grid;
+		grid-template-rows: auto minmax(0, 1fr) auto;
+		min-width: 0;
+		background: var(--panel);
+		border-left: 1px solid var(--rule-strong);
+		/* Beside the menu, the file is as tall as the menu and scrolls
+		   inside it, however many steps it holds. */
+		contain: size;
+	}
+	.file-head {
+		padding: var(--space-4) var(--space-4) var(--space-3);
+		border-bottom: 1px solid var(--rule);
+	}
+	.path {
+		min-width: 0;
+		font: 400 0.8125rem / 1.4 var(--font-file);
+		color: var(--ink);
+		overflow-wrap: anywhere;
+	}
+	.path span {
+		color: var(--muted);
+	}
+	.path b {
+		font-weight: 400;
+		white-space: nowrap;
+	}
+	pre {
+		position: relative;
+		margin: 0;
+		padding: var(--space-3) var(--space-4);
+		overflow: auto;
+		font: 400 0.8125rem / 1.55 var(--font-file);
+		color: var(--ink);
+		scrollbar-width: thin;
+		tab-size: 2;
+	}
+	/* The File Markup Rule: keys in the accent (what MCM Recorder reads),
+	   values in ink (what it fills in), punctuation muted. */
+	pre :global(.k) {
+		color: var(--accent);
+	}
+	pre :global(.p) {
+		color: var(--muted);
+	}
+	pre :global(.step) {
+		border-radius: var(--radius);
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		pre :global(.step.fresh) {
+			animation: fresh 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+	}
+	@keyframes fresh {
+		0%,
+		30% {
+			background: color-mix(in srgb, var(--accent) 22%, transparent);
+		}
+	}
+	.file-foot {
+		padding: var(--space-3) var(--space-4) var(--space-4);
+		border-top: 1px solid var(--rule);
+		color: var(--muted);
+		font-size: var(--step--1);
+	}
+
+	@media (max-width: 70rem) {
+		.shell {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.file {
+			border-left: 0;
+			border-top: 1px solid var(--rule-strong);
+			contain: none;
+		}
+		pre {
+			max-height: 18rem;
+		}
+	}
+
+	/* Narrow: the pages wrap above the options, and the options run in one
+	   column, the left column's first. */
+	@media (max-width: 48rem) {
+		.body {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-rows: auto minmax(0, 1fr);
+			height: 28rem;
+		}
+		.pages {
+			display: flex;
+			gap: var(--space-1) var(--space-2);
+			overflow-x: auto;
+			padding: 0 var(--space-4) var(--space-3);
+			border-bottom: 1px solid var(--rule);
+		}
+		.pages li {
+			flex: none;
+		}
+		.pages button {
+			grid-template-columns: 0.9rem auto;
+			white-space: nowrap;
+			font-size: var(--step-0);
+		}
+		.count {
+			display: none;
+		}
+		.options {
+			padding: 0 var(--space-3) var(--space-4);
+		}
+		.grid {
+			display: flex;
+			flex-direction: column;
+		}
+		.grid > * {
+			order: calc(var(--c) * 100 + var(--r));
+		}
+		.header {
+			align-self: stretch;
+		}
+		.head,
+		.info {
+			padding-inline: var(--space-4);
+		}
+		.row.sel:focus-within .range {
+			display: none;
+		}
+		/* On a narrow screen the help and the file wrap too. */
+		.help {
+			display: block;
+		}
+		pre {
+			white-space: pre-wrap;
+			overflow-wrap: anywhere;
+		}
+		.bar,
+		.foot {
+			padding-inline: var(--space-4);
+		}
+		.profile {
+			display: none;
+		}
+		.head {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.credit {
+			text-align: left;
+			margin-top: var(--space-1);
+		}
+	}
+
+	/* Keys are for keyboards; on touch screens the strip keeps only its
+	   instruction. */
+	@media (max-width: 60rem), (pointer: coarse) {
+		.keys {
+			display: none;
+		}
+	}
+</style>

@@ -1,0 +1,2872 @@
+{
+	"name": "WeaponThrowVR",
+	"mod": "Weapon Throw VR",
+	"plugin": "WeaponThrowVR.esp",
+	"pages": [
+		{
+			"name": "Presets",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Load Preset",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Special Presets",
+					"position": 1
+				},
+				{
+					"kind": "text",
+					"label": "Thor's Hammer Overpowered",
+					"position": 2,
+					"help": "Loads the setting values to make weapons act like Thor's hammer for people playing in Crazy Extreme mode or for people who want test the mod without stamina cost. These settings will make you very Over Powered. It returns to you after you press the button again after throwing.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Cangar's Selection",
+					"position": 3,
+					"help": "Loads the setting values selected by Cangar. It has real gravity. Daggers and Two handed weapons are not set to auto return, others are auto returned. It has low Auto-Aim. Also Stamina cost is set to 40. Basically a modified medium preset to make it harder.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Thor's Hammer Strong",
+					"position": 4,
+					"help": "Loads the setting values to make weapons act like Thor's hammer for people playing in Hard mode. These settings will make you very strong. It returns to you after you press the button again after throwing.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Arctal's Choices",
+					"position": 5,
+					"help": "Loads the setting values selected by Arctal. Intended for using the throwing mechanic as a main weapon. It is therefore free of cost, has normal damage and high velocity so it can be thrown and recalled often. Specifically useful in combination with the Spellsiphon Imbue system. 2-handed weapons (like the Spellsiphon Bound Axe) do not return, have lower velocity and are set to have a knockdown force and a stamina cost. The intention with those are to provide an occasional extra control mechanic.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Thor's Hammer Medium",
+					"position": 6,
+					"help": "Loads the setting values to make weapons act like Thor's hammer for people playing in Normal mode. It returns to you after you press the button again after throwing.",
+					"value": ""
+				},
+				{
+					"kind": "header",
+					"text": "Preset Saving/Loading",
+					"position": 7
+				},
+				{
+					"kind": "text",
+					"label": "Thor's Hammer Weak",
+					"position": 8,
+					"help": "Loads the setting values to make weapons act like Thor's hammer for people playing in Easy mode. It returns to you after you press the button again after throwing.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Save Preset",
+					"position": 9,
+					"help": "",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Load Preset",
+					"position": 11,
+					"help": "",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Classic Strong",
+					"position": 12,
+					"help": "Loads the Classic preset for people playing in Crazy Hard mode. These settings will make you very Over Powered. In this preset, Auto-Return mode is disabled and thrown weapons must be picked up from the ground/npc inventories like arrows.",
+					"value": ""
+				},
+				{
+					"kind": "header",
+					"text": "RESET",
+					"position": 13
+				},
+				{
+					"kind": "text",
+					"label": "Classic Medium",
+					"position": 14,
+					"help": "Loads the Classic preset for people playing in Normal mode. In this preset, Auto-Return mode is disabled and thrown weapons must be picked up from the ground/npc inventories like arrows.",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Reset Mod Settings",
+					"position": 15,
+					"help": "",
+					"value": ""
+				},
+				{
+					"kind": "text",
+					"label": "Classic Weak",
+					"position": 16,
+					"help": "Loads the Classic preset for people playing in Easy mode. In this preset, Auto-Return mode is disabled and thrown weapons must be picked up from the ground/npc inventories like arrows.",
+					"value": ""
+				}
+			]
+		},
+		{
+			"name": "General",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Allow Throw",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Materials",
+					"position": 1
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Dagger Throw",
+					"position": 2,
+					"help": "Allows throwing Daggers"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Elven Throw",
+					"position": 3,
+					"help": "Allows throwing weapons with Elven material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Mace Throw",
+					"position": 4,
+					"help": "Allows throwing Maces"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Glass Throw",
+					"position": 5,
+					"help": "Allows throwing weapons with Glass material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Axe Throw",
+					"position": 6,
+					"help": "Allows throwing One Handed Axes"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Stalhrim Throw",
+					"position": 7,
+					"help": "Allows throwing weapons with Stalhrim material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Sword Throw",
+					"position": 8,
+					"help": "Allows throwing One Handed Swords"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Ebony Throw",
+					"position": 9,
+					"help": "Allows throwing weapons with Ebony material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Two Hand Axe Throw",
+					"position": 10,
+					"help": "Allows throwing Two Handed Axes/Warhammers"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Daedric Throw",
+					"position": 11,
+					"help": "Allows throwing weapons with Daedric material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Two Hand Sword Throw",
+					"position": 12,
+					"help": "Allows throwing Two Handed Swords/BattleSwords"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Dragonbone Throw",
+					"position": 13,
+					"help": "Allows throwing weapons with Dragonbone material"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Shield Throw",
+					"position": 14,
+					"help": "Allows throwing Shields"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Torch Throw",
+					"position": 16,
+					"help": "Allows throwing Torches"
+				},
+				{
+					"kind": "header",
+					"text": "Button",
+					"position": 17
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Wood Axe and Pickaxe Throw",
+					"position": 18,
+					"help": "Allows throwing Wood Axe and Pick Axe."
+				},
+				{
+					"kind": "menu",
+					"label": "Hold Button Right",
+					"position": 19,
+					"help": "Changes the button used on right controller to press for going into throw mode. Hold the button, swing your hand, release it to throw.",
+					"default": 0,
+					"choices": [
+						"Trigger/Axis1 (33)",
+						"Grip/Knuckles A (2)",
+						"A (7)",
+						"System (0)",
+						"Application/Knuckles B (1)",
+						"Axis0/Touchpad (32)",
+						"Axis2 (34)",
+						"Axis3 (35)",
+						"Axis4 (36)"
+					]
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Unique Weapon Throw",
+					"position": 20,
+					"help": "Allows throwing Unique Weapons. Note that unique weapons are always in auto return mode."
+				},
+				{
+					"kind": "menu",
+					"label": "Hold Button Left",
+					"position": 21,
+					"help": "Changes the button used on left controller to press for going into throw mode. Hold the button, swing your hand, release it to throw.",
+					"default": 0,
+					"choices": [
+						"Trigger/Axis1 (33)",
+						"Grip/Knuckles A (2)",
+						"A (7)",
+						"System (0)",
+						"Application/Knuckles B (1)",
+						"Axis0/Touchpad (32)",
+						"Axis2 (34)",
+						"Axis3 (35)",
+						"Axis4 (36)"
+					]
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Kunai Throw",
+					"position": 22,
+					"help": "Allows throwing Kunai"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Shuriken Throw",
+					"position": 24,
+					"help": "Allows throwing Shuriken"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Spear Throw",
+					"position": 26,
+					"help": "Allows throwing Spear"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Chakram Throw",
+					"position": 28,
+					"help": "Allows throwing Chakram"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Boomerang Throw",
+					"position": 30,
+					"help": "Allows throwing Boomerang"
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Greanade and Other Throw",
+					"position": 32,
+					"help": "Allows throwing Grenades, Rock, Glass Bottles, Snowballs, Soulgem."
+				}
+			]
+		},
+		{
+			"name": "Impact",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Impact Force",
+					"position": 0
+				},
+				{
+					"kind": "slider",
+					"label": "Kunai Impact Force",
+					"position": 1,
+					"help": "Changes the impact force of thrown Kunai. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0.5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dagger Impact Force",
+					"position": 2,
+					"help": "Changes the impact force of thrown Daggers. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 2,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shuriken Impact Force",
+					"position": 3,
+					"help": "Changes the impact force of thrown Shuriken. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0.5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Axe Impact Force",
+					"position": 4,
+					"help": "Changes the impact force of thrown One Handed Axes. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Spear Impact Force",
+					"position": 5,
+					"help": "Changes the impact force of thrown Spear. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 2.5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Mace Impact Force",
+					"position": 6,
+					"help": "Changes the impact force of thrown Maces. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Chakram Impact Force",
+					"position": 7,
+					"help": "Changes the impact force of thrown Chakram. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 2,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Sword Impact Force",
+					"position": 8,
+					"help": "Changes the impact force of thrown One Handed Swords. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Impact Force",
+					"position": 9,
+					"help": "Changes the impact force of thrown Boomerang. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0.5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Axe Impact Force",
+					"position": 10,
+					"help": "Changes the impact force of thrown Two Handed Axes/Warhammers. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 7,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Grenade Impact Force",
+					"position": 11,
+					"help": "Changes the impact force of thrown Grenade. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Sword Impact Force",
+					"position": 12,
+					"help": "Changes the impact force of thrown Two Handed Swords/BattleSwords. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 7,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Poison Grenade Impact Force",
+					"position": 13,
+					"help": "Changes the impact force of thrown Poison Grenade. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shield Impact Force",
+					"position": 14,
+					"help": "Changes the impact force of thrown Shields. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Heal Grenade Impact Force",
+					"position": 15,
+					"help": "Changes the impact force of thrown Heal Grenade. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Torch Impact Force",
+					"position": 16,
+					"help": "Changes the impact force of thrown Torches. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 1,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Rock Impact Force",
+					"position": 17,
+					"help": "Changes the impact force of thrown Rock. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 1,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Skill Level Requirement",
+					"position": 18
+				},
+				{
+					"kind": "slider",
+					"label": "Glass Bottle Impact Force",
+					"position": 19,
+					"help": "Changes the impact force of thrown Glass bottles. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 1,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Half Impact Requirement",
+					"position": 20,
+					"help": "Impact force of 0.5 will require this skill requirement for the weapon.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Snowball Impact Force",
+					"position": 21,
+					"help": "Changes the impact force of thrown Snowballs. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0.5,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Full Impact Requirement",
+					"position": 22,
+					"help": "Impact force of 1.0 will require this skill requirement for the weapon.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Soulgem Impact Force",
+					"position": 23,
+					"help": "Changes the impact force of thrown Soulgem. Setting it to 0 disables stagger and throw-back effect. Setting it to 0.5 enables stagger only. Higher values cause throw-back effect.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "More Impact Requirement",
+					"position": 24,
+					"help": "Impact force of more than 1.0 will require this skill requirement for the weapon.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Full to More Gradual Increase",
+					"position": 26,
+					"help": "Impact force of more than 1.0 will require gradual increase of skill need between Full and More Impact Force skill requirements."
+				}
+			]
+		},
+		{
+			"name": "Cost",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Stamina Cost",
+					"position": 0
+				},
+				{
+					"kind": "slider",
+					"label": "Kunai Stamina Cost",
+					"position": 1,
+					"help": "Stamina cost/requirement for throwing Kunai.",
+					"default": 2.5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dagger Stamina Cost",
+					"position": 2,
+					"help": "Stamina cost/requirement for throwing Daggers.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shuriken Stamina Cost",
+					"position": 3,
+					"help": "Stamina cost/requirement for throwing Shuriken.",
+					"default": 2.5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Axe Stamina Cost",
+					"position": 4,
+					"help": "Stamina cost/requirement for throwing Axes.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Spear Stamina Cost",
+					"position": 5,
+					"help": "Stamina cost/requirement for throwing Spear.",
+					"default": 15,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Mace Stamina Cost",
+					"position": 6,
+					"help": "Stamina cost/requirement for throwing Maces.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Chakram Stamina Cost",
+					"position": 7,
+					"help": "Stamina cost/requirement for throwing Chakram.",
+					"default": 7.5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Sword Stamina Cost",
+					"position": 8,
+					"help": "Stamina cost/requirement for throwing Swords.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Stamina Cost",
+					"position": 9,
+					"help": "Stamina cost/requirement for throwing Boomerang.",
+					"default": 25,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Axe Stamina Cost",
+					"position": 10,
+					"help": "Stamina cost/requirement for throwing Two Hand Axes.",
+					"default": 20,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Grenade Stamina Cost",
+					"position": 11,
+					"help": "Stamina cost/requirement for throwing Grenade.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Sword Stamina Cost",
+					"position": 12,
+					"help": "Stamina cost/requirement for throwing Two Hand Swords.",
+					"default": 20,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Poison Grenade Stamina Cost",
+					"position": 13,
+					"help": "Stamina cost/requirement for throwing Poison Grenade.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shield Stamina Cost",
+					"position": 14,
+					"help": "Stamina cost/requirement for throwing Shields.",
+					"default": 15,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Heal Grenade Stamina Cost",
+					"position": 15,
+					"help": "Stamina cost/requirement for throwing Heal Grenade.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Torch Stamina Cost",
+					"position": 16,
+					"help": "Stamina cost/requirement for throwing Torches.",
+					"default": 10,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Rock Stamina Cost",
+					"position": 17,
+					"help": "Stamina cost/requirement for throwing Rock.",
+					"default": 7.5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Magicka Cost",
+					"position": 18
+				},
+				{
+					"kind": "slider",
+					"label": "Glass Bottle Stamina Cost",
+					"position": 19,
+					"help": "Stamina cost/requirement for throwing Glass bottles.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Early Recall Magicka Cost",
+					"position": 20,
+					"help": "Magicka cost/requirement for recalling thrown weapon in auto return mode before automatic return is activated.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Snowball Stamina Cost",
+					"position": 21,
+					"help": "Stamina cost/requirement for throwing Snowballs.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Soulgem Stamina Cost",
+					"position": 23,
+					"help": "Stamina cost/requirement for throwing Soulgem.",
+					"default": 5,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Refund",
+					"position": 25
+				},
+				{
+					"kind": "toggle",
+					"label": "Stamina Refund",
+					"position": 27,
+					"help": "Enables/Disables stamina refund when an unsuccessful power attack happens at the same time a weapon is thrown."
+				},
+				{
+					"kind": "toggle",
+					"label": "Power Attack Stamina Refund",
+					"position": 29,
+					"help": "On power attacks that didn't hit any npc, your stamina is refunded to you. This doesn't happen with spellsiphon imbuement applied, so it's compatible with that."
+				}
+			]
+		},
+		{
+			"name": "Damage",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Damage Multiplier",
+					"position": 0
+				},
+				{
+					"kind": "slider",
+					"label": "Kunai Damage Multiplier",
+					"position": 1,
+					"help": "Changes the damage multiplier for thrown Kunai. Base damage of the weapon is multiplied by this value.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dagger Damage Multiplier",
+					"position": 2,
+					"help": "Changes the damage multiplier for thrown Daggers. Base damage of the weapon is multiplied by this value.",
+					"default": 1,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shuriken Damage Multiplier",
+					"position": 3,
+					"help": "Changes the damage multiplier for thrown Shuriken. Base damage of the weapon is multiplied by this value.",
+					"default": 3,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Axe Damage Multiplier",
+					"position": 4,
+					"help": "Changes the damage multiplier for thrown One Handed Axes. Base damage of the weapon is multiplied by this value.",
+					"default": 1.5,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Spear Damage Multiplier",
+					"position": 5,
+					"help": "Changes the damage multiplier for thrown Spear. Base damage of the weapon is multiplied by this value.",
+					"default": 3,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Mace Damage Multiplier",
+					"position": 6,
+					"help": "Changes the damage multiplier for thrown Maces. Base damage of the weapon is multiplied by this value.",
+					"default": 1.5,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Chakram Damage Multiplier",
+					"position": 7,
+					"help": "Changes the damage multiplier for thrown Chakram. Base damage of the weapon is multiplied by this value.",
+					"default": 3,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Sword Damage Multiplier",
+					"position": 8,
+					"help": "Changes the damage multiplier for thrown One Handed Swords. Base damage of the weapon is multiplied by this value.",
+					"default": 1.5,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Damage Multiplier",
+					"position": 9,
+					"help": "Changes the damage multiplier for thrown Boomerang. Base damage of the weapon is multiplied by this value.",
+					"default": 3,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Axe Damage Multiplier",
+					"position": 10,
+					"help": "Changes the damage multiplier for thrown Two Handed Axes/Warhammers. Base damage of the weapon is multiplied by this value.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Grenade Damage Multiplier",
+					"position": 11,
+					"help": "Changes the damage multiplier for thrown Grenade. Base damage of the weapon is multiplied by this value.",
+					"default": 5,
+					"slider": {
+						"min": 0.1,
+						"max": 200,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Sword Damage Multiplier",
+					"position": 12,
+					"help": "Changes the damage multiplier for thrown Two Handed Swords/BattleSwords. Base damage of the weapon is multiplied by this value.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Poison Grenade Damage Multiplier",
+					"position": 13,
+					"help": "Changes the damage multiplier for thrown Poison Grenade. Base damage of the weapon is multiplied by this value.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 200,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Thrown Shield Damage",
+					"position": 14,
+					"help": "Changes the damage of thrown Shields. This is the damage applied.",
+					"default": 7,
+					"slider": {
+						"min": 0,
+						"max": 30,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Heal Grenade Multiplier",
+					"position": 15,
+					"help": "Changes the healing multiplier for thrown Heal Grenade.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 200,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Thrown Torch Damage",
+					"position": 16,
+					"help": "Changes the damage of thrown Torches. This is the damage applied.",
+					"default": 2,
+					"slider": {
+						"min": 0,
+						"max": 30,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Rock Damage Multiplier",
+					"position": 17,
+					"help": "Changes the damage multiplier for thrown Rock. Base damage of the weapon is multiplied by this value.",
+					"default": 2,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Glass Bottle Damage Multiplier",
+					"position": 19,
+					"help": "Changes the damage multiplier for thrown Glass bottles. Base damage of the weapon is multiplied by this value.",
+					"default": 1,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Snowball Damage Multiplier",
+					"position": 21,
+					"help": "Changes the damage multiplier for thrown Snowballs. Base damage of the weapon is multiplied by this value.",
+					"default": 1,
+					"slider": {
+						"min": 0.1,
+						"max": 20,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				}
+			]
+		},
+		{
+			"name": "Speed",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Speed Multiplier",
+					"position": 0
+				},
+				{
+					"kind": "slider",
+					"label": "Kunai Speed Multiplier",
+					"position": 1,
+					"help": "Changes the throwing speed coefficient for throwing Kunai. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 800,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dagger Speed Multiplier",
+					"position": 2,
+					"help": "Changes the throwing speed coefficient for throwing Daggers. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 1000,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shuriken Speed Multiplier",
+					"position": 3,
+					"help": "Changes the throwing speed coefficient for throwing Shuriken. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 800,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Axe Speed Multiplier",
+					"position": 4,
+					"help": "Changes the throwing speed coefficient for throwing One Handed Axes. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Spear Speed Multiplier",
+					"position": 5,
+					"help": "Changes the throwing speed coefficient for throwing Spear. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Mace Speed Multiplier",
+					"position": 6,
+					"help": "Changes the throwing speed coefficient for throwing Maces. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Chakram Speed Multiplier",
+					"position": 7,
+					"help": "Changes the throwing speed coefficient for throwing Chakram. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Sword Speed Multiplier",
+					"position": 8,
+					"help": "Changes the throwing speed coefficient for throwing One Handed Swords. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Speed Multiplier",
+					"position": 9,
+					"help": "Changes the throwing speed coefficient for throwing Boomerang. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 750,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Axe Speed Multiplier",
+					"position": 10,
+					"help": "Changes the throwing speed coefficient for throwing Two Handed Axes/Warhammers. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Grenade Speed Multiplier",
+					"position": 11,
+					"help": "Changes the throwing speed coefficient for throwing Grenade. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 500,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Sword Speed Multiplier",
+					"position": 12,
+					"help": "Changes the throwing speed coefficient for throwing Two Handed Swords/BattleSwords. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Poison Grenade Speed Multiplier",
+					"position": 13,
+					"help": "Changes the throwing speed coefficient for throwing Poison Grenade. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 500,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Shield Speed Multiplier",
+					"position": 14,
+					"help": "Changes the throwing speed coefficient for throwing Shields. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Heal Grenade Speed Multiplier",
+					"position": 15,
+					"help": "Changes the throwing speed coefficient for throwing Heal Grenade. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 500,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Torch Speed Multiplier",
+					"position": 16,
+					"help": "Changes the throwing speed coefficient for throwing Torches. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 900,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Rock Speed Multiplier",
+					"position": 17,
+					"help": "Changes the throwing speed coefficient for throwing Rock. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Glass Bottle Speed Multiplier",
+					"position": 19,
+					"help": "Changes the throwing speed coefficient for throwing Glass bottles. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Snowball Speed Multiplier",
+					"position": 21,
+					"help": "Changes the throwing speed coefficient for throwing Snowballs. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Soulgem Speed Multiplier",
+					"position": 23,
+					"help": "Changes the throwing speed coefficient for throwing Soulgem. Your hand movement speed/Minimum Velocity is multiplied by this value.",
+					"default": 700,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				}
+			]
+		},
+		{
+			"name": "Throw",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Minimum Throw Speed",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Minimum Travel Distance",
+					"position": 1
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Dagger",
+					"position": 2,
+					"help": "Minimum positional speed needed to throw a dagger. Any speed below this is ignored.",
+					"default": 75,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Dagger",
+					"position": 3,
+					"help": "Minimum positional travel distance needed to throw a dagger. Any distance below this is ignored.",
+					"default": 10,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Axe",
+					"position": 4,
+					"help": "Minimum positional speed needed to throw an axe. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Axe",
+					"position": 5,
+					"help": "Minimum positional travel distance needed to throw an axe. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Mace",
+					"position": 6,
+					"help": "Minimum positional speed needed to throw a mace. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Mace",
+					"position": 7,
+					"help": "Minimum positional travel distance needed to throw a mace. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Sword",
+					"position": 8,
+					"help": "Minimum positional speed needed to throw a sword. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Sword",
+					"position": 9,
+					"help": "Minimum positional travel distance needed to throw a sword. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed 2H Axe",
+					"position": 10,
+					"help": "Minimum positional speed needed to throw a two hand axe. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance 2H Axe",
+					"position": 11,
+					"help": "Minimum positional travel distance needed to throw a two hand axe. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed 2H Sword",
+					"position": 12,
+					"help": "Minimum positional speed needed to throw a two hand sword. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance 2H Sword",
+					"position": 13,
+					"help": "Minimum positional travel distance needed to throw a two hand sword. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Shield",
+					"position": 14,
+					"help": "Minimum positional speed needed to throw a shield. Any speed below this is ignored.",
+					"default": 85,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Shield",
+					"position": 15,
+					"help": "Minimum positional travel distance needed to throw a shield. Any distance below this is ignored.",
+					"default": 15,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Speed Torch",
+					"position": 16,
+					"help": "Minimum positional speed needed to throw a torch. Any speed below this is ignored.",
+					"default": 75,
+					"slider": {
+						"min": 5,
+						"max": 500,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Minimum Travel Distance Torch",
+					"position": 17,
+					"help": "Minimum positional travel distance needed to throw a torch. Any distance below this is ignored.",
+					"default": 7,
+					"slider": {
+						"min": 1,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Secondary Hand Multiplier",
+					"position": 18
+				},
+				{
+					"kind": "header",
+					"text": "Secondary Hand Multiplier",
+					"position": 19
+				},
+				{
+					"kind": "slider",
+					"label": "Secondary Multiplier",
+					"position": 20,
+					"help": "Minimum positional speed multiplier for throwing with secondary hand. So set this below 1.0 if you want secondary hand to be lower, set it above 1.0 if you want secondary hand to be higher.",
+					"default": 1,
+					"slider": {
+						"min": 0.1,
+						"max": 1.9,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Secondary Multiplier",
+					"position": 21,
+					"help": "Minimum positional travel distance multiplier for throwing with secondary hand. So set this below 1.0 if you want secondary hand to be lower, set it above 1.0 if you want secondary hand to be higher.",
+					"default": 1,
+					"slider": {
+						"min": 0.1,
+						"max": 1.9,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				}
+			]
+		},
+		{
+			"name": "Auto Return",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Auto Return Settings",
+					"position": 0
+				},
+				{
+					"kind": "toggle",
+					"label": "Kunai Auto Return",
+					"position": 1,
+					"help": "Kunai will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Hold Button To Summon",
+					"position": 2,
+					"help": "For Auto Return mode, makes the weapon to return when you press the button. If this is not selected, weapon returns after 5 seconds automatically."
+				},
+				{
+					"kind": "toggle",
+					"label": "Shuriken Auto Return",
+					"position": 3,
+					"help": "Shuriken will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "slider",
+					"label": "Weapon Recall Speed",
+					"position": 4,
+					"help": "Speed of the returning weapon in auto return mode.",
+					"default": 2000,
+					"slider": {
+						"min": 250,
+						"max": 5000,
+						"step": 25,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Spear Auto Return",
+					"position": 5,
+					"help": "Spear will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Timing correction",
+					"position": 6,
+					"help": "Disabling it delays right hand equiping on auto return. Enable it if right hand weapon is equipped before the weapon returns."
+				},
+				{
+					"kind": "toggle",
+					"label": "Chakram Auto Return",
+					"position": 7,
+					"help": "Chakram will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "slider",
+					"label": "Weapon Return Duration",
+					"position": 8,
+					"help": "This is the duration a thrown weapon stays on the ground before returning when Auto-Return mode is on (in seconds).",
+					"default": 30,
+					"slider": {
+						"min": 5,
+						"max": 600,
+						"step": 5,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Boomerang Auto Return",
+					"position": 9,
+					"help": "Boomerang will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Only Enchanted",
+					"position": 10,
+					"help": "Enabling this makes it that only enchanted weapons can be auto returned."
+				},
+				{
+					"kind": "toggle",
+					"label": "Grenade Auto Return",
+					"position": 11,
+					"help": "Grenade will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Equip Weapon On Auto Return",
+					"position": 12,
+					"help": "Enable/Disable equipping your thrown weapon automatically after you get it back in Auto-Return mode."
+				},
+				{
+					"kind": "toggle",
+					"label": "Poison Grenade Auto Return",
+					"position": 13,
+					"help": "Poison Grenade will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "slider",
+					"label": "Auto Return Max Distance",
+					"position": 14,
+					"help": "Auto Return only activates if the last position of the weapon is closer than this. Setting this to 0 disables distance check.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 10,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Heal Grenade Auto Return",
+					"position": 15,
+					"help": "Heal Grenade will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "header",
+					"text": "Auto Return",
+					"position": 16
+				},
+				{
+					"kind": "toggle",
+					"label": "Rock Auto Return",
+					"position": 17,
+					"help": "Rock will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Dagger Auto Return",
+					"position": 18,
+					"help": "Daggers will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Glass Bottle Auto Return",
+					"position": 19,
+					"help": "Glass bottles will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Mace Auto Return",
+					"position": 20,
+					"help": "Maces will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Snowball Auto Return",
+					"position": 21,
+					"help": "Snowballs will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Axe Auto Return",
+					"position": 22,
+					"help": "Axes will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Soulgem Auto Return",
+					"position": 23,
+					"help": "Soulgem will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Sword Auto Return",
+					"position": 24,
+					"help": "Swords will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Two Hand Axe Auto Return",
+					"position": 26,
+					"help": "Two handed axes will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Two Hand Sword Auto Return",
+					"position": 28,
+					"help": "Two handed swords will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Shield Auto Return",
+					"position": 30,
+					"help": "Shields will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				},
+				{
+					"kind": "toggle",
+					"label": "Torch Auto Return",
+					"position": 32,
+					"help": "Torches will return when you hold the button like Thor's hammer or 5 seconds after if you don't hold the button."
+				}
+			]
+		},
+		{
+			"name": "Special",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Auto Aim",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Auto Travel",
+					"position": 1
+				},
+				{
+					"kind": "slider",
+					"label": "Vertical Angle",
+					"position": 2,
+					"help": "Vertical Angle correction for Auto-Aim",
+					"default": 25,
+					"slider": {
+						"min": 0,
+						"max": 90,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Auto Travel Speed",
+					"position": 3,
+					"help": "Speed of teleport travel effect with and Auto Travel weapon.",
+					"default": 5000,
+					"slider": {
+						"min": 1000,
+						"max": 100000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Horizontal Angle",
+					"position": 4,
+					"help": "Horizontal Angle correction for Auto-Aim",
+					"default": 15,
+					"slider": {
+						"min": 0,
+						"max": 90,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Auto Travel Magicka Cost",
+					"position": 5,
+					"help": "Magicka cost/requirement for teleporting to thrown weapon location for auto travel weapons. If magicka requirements are not met, weapon just returns automatically to player.",
+					"default": 80,
+					"slider": {
+						"min": 0,
+						"max": 300,
+						"step": 0.5,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Max Distance",
+					"position": 6,
+					"help": "Max distance to select targets from for Auto-Aim",
+					"default": 1000,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Auto Travel Effect Type",
+					"position": 7,
+					"help": "Visual effect to be played on Auto Travel. 0 to disable it.",
+					"default": 1,
+					"slider": {
+						"min": 0,
+						"max": 5,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Non Hostile",
+					"position": 8,
+					"help": "Allows non-hostile targets to be chosen for Auto-Aim. For testing purposes etc."
+				},
+				{
+					"kind": "header",
+					"text": "Maximum Carnage",
+					"position": 9
+				},
+				{
+					"kind": "toggle",
+					"label": "Allow Non Hostile Animal",
+					"position": 10,
+					"help": "Allows non-hostile Animals and Creatures to be chosen for Auto-Aim."
+				},
+				{
+					"kind": "slider",
+					"label": "Maximum Carnage Chance",
+					"position": 11,
+					"help": "Chance of Maximum Carnage gore effects.",
+					"default": 100,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Boomerang",
+					"position": 12
+				},
+				{
+					"kind": "slider",
+					"label": "Humanoid Decapitation Chance",
+					"position": 13,
+					"help": "Humanoid Decapitation Chance of horizontal spinning weapons with blades.",
+					"default": 0,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Vertical Angle",
+					"position": 14,
+					"help": "Boomerang Vertical Angle correction for Auto-Aim",
+					"default": 75,
+					"slider": {
+						"min": 0,
+						"max": 90,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dismembering Framework Chance",
+					"position": 15,
+					"help": "Chance for dismembering with Dismembering Framework (for races DF handles). Set to 0 to disable DF integration.",
+					"default": 100,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Horizontal Angle",
+					"position": 16,
+					"help": "Boomerang Horizontal Angle correction for Auto-Aim",
+					"default": 45,
+					"slider": {
+						"min": 0,
+						"max": 90,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Draugrs Have Blood",
+					"position": 17,
+					"help": "Show blood explosions on draugr gore"
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Max Distance",
+					"position": 18,
+					"help": "Boomerang Max distance to select targets from for Auto-Aim",
+					"default": 5000,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Maximum Carnage Melee Chance",
+					"position": 19,
+					"help": "Enables Maximum Carnage Melee implementation. If you want to use this, make sure you delete the ini file from your Maximum Carnage installation first.",
+					"default": 100,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Boomerang Recall",
+					"position": 20,
+					"help": "Enabling this makes it that boomerang can be recalled manually or makes it return after auto return time passes. If this is disabled, it returns after hitting something only."
+				},
+				{
+					"kind": "toggle",
+					"label": "Melee Carnage only for Team",
+					"position": 21,
+					"help": "If you enable this, Maximum Carnage Melee implementation will only work for Player and Player teammates caused gore."
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Max Return Distance",
+					"position": 22,
+					"help": "Boomerang can only return if it's closer than this distance.",
+					"default": 5000,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Melee Carnage Fallback",
+					"position": 23,
+					"help": "Maximum Carnage Melee implementation will try to always show gore using fallback algorithms. So for example, for wolf gore, even if you hit its stomach, it would crush its head because there is no torso gore for wolves."
+				},
+				{
+					"kind": "toggle",
+					"label": "Melee Carnage Slow Time",
+					"position": 25,
+					"help": "If you enable this, Maximum Carnage Melee Gore by Player will apply Slow Time effect."
+				},
+				{
+					"kind": "toggle",
+					"label": "Melee Carnage Power Attack Only",
+					"position": 27,
+					"help": "If you enable this, Maximum Carnage Melee Gore will only work in power attacks"
+				},
+				{
+					"kind": "header",
+					"text": "Ricochet",
+					"position": 29
+				},
+				{
+					"kind": "toggle",
+					"label": "Ricochet Shield",
+					"position": 31,
+					"help": "Enabling this makes Shields ricochet back to player after hitting something."
+				},
+				{
+					"kind": "toggle",
+					"label": "Ricochet Chakram",
+					"position": 33,
+					"help": "Enabling this makes Chakrams ricochet back to player after hitting something."
+				},
+				{
+					"kind": "slider",
+					"label": "Ricochet Max Distance",
+					"position": 35,
+					"help": "This is the max distance for the weapon to ricochet back to the player",
+					"default": 800,
+					"slider": {
+						"min": 0,
+						"max": 10000,
+						"step": 50,
+						"format": ""
+					}
+				}
+			]
+		},
+		{
+			"name": "Effects/Perks",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "FX",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Perk Requirements",
+					"position": 1
+				},
+				{
+					"kind": "toggle",
+					"label": "Auto Return Visual and Sound FX",
+					"position": 2,
+					"help": "Enable/Disable visual and sound effects that happen when you recall your thrown weapon back in Auto-Return mode."
+				},
+				{
+					"kind": "toggle",
+					"label": "Throw Requires Perk",
+					"position": 3,
+					"help": "Makes weapon throw require a perk for that particular weapon type (One handed, Two handed, Shield->Blocking"
+				},
+				{
+					"kind": "toggle",
+					"label": "Thrown Weapon Glow",
+					"position": 4,
+					"help": "This enables a glow on thrown weapons so they are easy to detect."
+				},
+				{
+					"kind": "toggle",
+					"label": "Recall Requires Perk",
+					"position": 5,
+					"help": "Makes early weapon recall to require a perk for that particular weapon type (One handed, Two handed, Shield->Blocking"
+				},
+				{
+					"kind": "toggle",
+					"label": "Enchantment Art Effect",
+					"position": 6,
+					"help": "This enables enchantment art effect on thrown weapons."
+				},
+				{
+					"kind": "toggle",
+					"label": "Knockdown Requires Perk",
+					"position": 7,
+					"help": "Makes knockdown from impact forces of 1.0 or more to require a perk for that particular weapon type (One handed, Two handed, Shield->Blocking"
+				},
+				{
+					"kind": "header",
+					"text": "Haptics",
+					"position": 8
+				},
+				{
+					"kind": "slider",
+					"label": "Throw Haptics Strength",
+					"position": 10,
+					"help": "Haptic feedback strength on controllers when throwing a weapon. Set it to 0 to disable the effect.",
+					"default": 15,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Throw Haptics Frequency",
+					"position": 12,
+					"help": "Haptic feedback frequency when throwing a weapon.",
+					"default": 999,
+					"slider": {
+						"min": 1,
+						"max": 3999,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Catch Haptics Strength",
+					"position": 14,
+					"help": "Haptic feedback strength on controllers when catching the returning thrown weapon. Set it to 0 to disable the effect.",
+					"default": 20,
+					"slider": {
+						"min": 0,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Catch Haptics Frequency",
+					"position": 16,
+					"help": "Haptic feedback frequency when catching a returning weapon.",
+					"default": 1450,
+					"slider": {
+						"min": 1,
+						"max": 3999,
+						"step": 1,
+						"format": ""
+					}
+				}
+			]
+		},
+		{
+			"name": "Settings",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Gravity",
+					"position": 0
+				},
+				{
+					"kind": "header",
+					"text": "Auto-Equip when Picked Up",
+					"position": 1
+				},
+				{
+					"kind": "slider",
+					"label": "Gravity",
+					"position": 2,
+					"help": "You can adjust gravity from this slider. As a reference, real world gravity is 0.981, skyrim default arrow gravity is 0.273.",
+					"default": 0.273,
+					"slider": {
+						"min": 0,
+						"max": 0.975,
+						"step": 0.039,
+						"format": "{3}"
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Auto-Equip Picked Up",
+					"position": 3,
+					"help": "When you pick up a thrown weapon, it's equipped automatically if the hand is empty."
+				},
+				{
+					"kind": "header",
+					"text": "Prevent",
+					"position": 4
+				},
+				{
+					"kind": "toggle",
+					"label": "Equip All Picked Up Weapons",
+					"position": 5,
+					"help": "Equip all weapons after they are added to your inventory when menu is not open. Made to be used alongside HIGGS."
+				},
+				{
+					"kind": "toggle",
+					"label": "Prevent Upgraded/Enchanted",
+					"position": 6,
+					"help": "Prevents player upgraded, enchanted, named weapons from being thrown. Note that if you disable this, when being thrown, thrown weapon will lose its enchantments, upgrades, names. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "header",
+					"text": "Stagger",
+					"position": 7
+				},
+				{
+					"kind": "toggle",
+					"label": "Prevent Player Favorited",
+					"position": 8,
+					"help": "Prevents player favorited weapons from being thrown. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "slider",
+					"label": "Stagger Magnitude",
+					"position": 9,
+					"help": "Stagger magnitude applied when at least 0.5 impact force is set. Higher values make stagger longer.",
+					"default": 1,
+					"slider": {
+						"min": 0,
+						"max": 10,
+						"step": 0.1,
+						"format": "{1}"
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Reserve Last Weapon",
+					"position": 10
+				},
+				{
+					"kind": "header",
+					"text": "Other Settings",
+					"position": 11
+				},
+				{
+					"kind": "toggle",
+					"label": "Reserve Last Weapon",
+					"position": 12,
+					"help": "Only throws the weapon if you have at least 2 of them available in your inventory. This can be used to make sure unique weapons are never thrown. Note: Vanilla unique weapons are already not throwable. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "toggle",
+					"label": "Enable Torch Drop",
+					"position": 13,
+					"help": "Enabling it enables dropping thrown torches in Classic Mode. Note that after it hits an object, a thrown torch will be dropped but it won't burn the area when this is enabled. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "header",
+					"text": "Re-Equip After Throw",
+					"position": 14
+				},
+				{
+					"kind": "toggle",
+					"label": "Button Release when Untouched",
+					"position": 15,
+					"help": "Releasing the button requires you to untouch your finger from the button too."
+				},
+				{
+					"kind": "toggle",
+					"label": "Enable Re-Equip",
+					"position": 16,
+					"help": "Equips the thrown weapon again if you have one more in your inventory. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "toggle",
+					"label": "Enable Re-Equip Similar",
+					"position": 18,
+					"help": "Equips the same type of weapon again if you have more in your inventory. Doesn't work in Auto Return mode."
+				},
+				{
+					"kind": "toggle",
+					"label": "Equip Back Bound Spell",
+					"position": 20,
+					"help": "Equip back the corresponding bound spell after throwing a bound weapon."
+				},
+				{
+					"kind": "toggle",
+					"label": "Auto Re-Cast Bound Weapon",
+					"position": 22,
+					"help": "Conjures a bound weapon again automatically after throwing it, if you have enough magicka."
+				}
+			]
+		},
+		{
+			"name": "Spinning",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Spin Speed",
+					"position": 0
+				},
+				{
+					"kind": "toggle",
+					"label": "Kunai Spin",
+					"position": 1,
+					"help": "Spin thrown Kunai"
+				},
+				{
+					"kind": "slider",
+					"label": "Vertical Angle Multiplier",
+					"position": 2,
+					"help": "Multiplier to adjust spin speed of vertically thrown weapon.",
+					"default": 10,
+					"slider": {
+						"min": 1,
+						"max": 50,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Shuriken Spin",
+					"position": 3,
+					"help": "Spin thrown Shuriken"
+				},
+				{
+					"kind": "slider",
+					"label": "Horizontal Angle Multiplier",
+					"position": 4,
+					"help": "Multiplier to adjust spin speed of horizontally thrown weapon.",
+					"default": 10,
+					"slider": {
+						"min": 1,
+						"max": 50,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Spear Spin",
+					"position": 5,
+					"help": "Spin thrown Spear"
+				},
+				{
+					"kind": "header",
+					"text": "Orientation Angle",
+					"position": 6
+				},
+				{
+					"kind": "toggle",
+					"label": "Chakram Spin",
+					"position": 7,
+					"help": "Spin thrown Chakram"
+				},
+				{
+					"kind": "slider",
+					"label": "Spin Orientation Angle",
+					"position": 8,
+					"help": "Angle to adjust spin orientation to be vertical or horizontal. Positive values make vertical orientation angle wider, negative values make horizontal orientation angle wider.",
+					"default": 5,
+					"slider": {
+						"min": -45,
+						"max": 45,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Boomerang Spin",
+					"position": 9,
+					"help": "Spin thrown Boomerang"
+				},
+				{
+					"kind": "header",
+					"text": "Spin",
+					"position": 10
+				},
+				{
+					"kind": "toggle",
+					"label": "Grenade Spin",
+					"position": 11,
+					"help": "Spin thrown Grenade"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Dagger",
+					"position": 12,
+					"help": "Spin thrown Daggers"
+				},
+				{
+					"kind": "toggle",
+					"label": "Poison Grenade Spin",
+					"position": 13,
+					"help": "Spin thrown Poison Grenade"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Mace",
+					"position": 14,
+					"help": "Spin thrown Maces"
+				},
+				{
+					"kind": "toggle",
+					"label": "Heal Grenade Spin",
+					"position": 15,
+					"help": "Spin thrown Heal Grenade"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Axe",
+					"position": 16,
+					"help": "Spin thrown One Handed Axes"
+				},
+				{
+					"kind": "toggle",
+					"label": "Rock Spin",
+					"position": 17,
+					"help": "Spin thrown Rock"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Sword",
+					"position": 18,
+					"help": "Spin thrown One Handed Swords"
+				},
+				{
+					"kind": "toggle",
+					"label": "Glass Bottle Spin",
+					"position": 19,
+					"help": "Spin thrown Glass bottles"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Two Hand Axe",
+					"position": 20,
+					"help": "Spin thrown Two Handed Axes/Warhammers"
+				},
+				{
+					"kind": "toggle",
+					"label": "Snowball Spin",
+					"position": 21,
+					"help": "Spin thrown Snowballs"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Two Hand Sword",
+					"position": 22,
+					"help": "Spin thrown Two Handed Swords/BattleSwords"
+				},
+				{
+					"kind": "toggle",
+					"label": "Soulgem Spin",
+					"position": 23,
+					"help": "Spin thrown Soulgem"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Shield",
+					"position": 24,
+					"help": "Spin thrown Shields"
+				},
+				{
+					"kind": "toggle",
+					"label": "Spin Torch",
+					"position": 26,
+					"help": "Spin thrown Torches"
+				}
+			]
+		},
+		{
+			"name": "Advanced",
+			"rows": [
+				{
+					"kind": "header",
+					"text": "Logging",
+					"position": 0
+				},
+				{
+					"kind": "slider",
+					"label": "Kunai Offset",
+					"position": 1,
+					"help": "Changes the positional offset of thrown Kunai. It's used to fit the weapon to the object it is struck better.",
+					"default": -24,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "toggle",
+					"label": "Enable Log",
+					"position": 2,
+					"help": "Enable-disable logging (Beware: Keep it disabled. Logging causes performance issues for regular play)."
+				},
+				{
+					"kind": "slider",
+					"label": "Shuriken Offset",
+					"position": 3,
+					"help": "Changes the positional offset of thrown Shuriken. It's used to fit the weapon to the object it is struck better.",
+					"default": -22,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Spear Offset",
+					"position": 5,
+					"help": "Changes the positional offset of thrown Spear. It's used to fit the weapon to the object it is struck better.",
+					"default": -36,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "header",
+					"text": "Thrown Weapon Offset",
+					"position": 6
+				},
+				{
+					"kind": "slider",
+					"label": "Chakram Offset",
+					"position": 7,
+					"help": "Changes the positional offset of thrown Chakram. It's used to fit the weapon to the object it is struck better.",
+					"default": -15,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Dagger Offset",
+					"position": 8,
+					"help": "Changes the positional offset of thrown Daggers. It's used to fit the weapon to the object it is struck better.",
+					"default": -35,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Boomerang Offset",
+					"position": 9,
+					"help": "Changes the positional offset of thrown Boomerang. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Axe Offset",
+					"position": 10,
+					"help": "Changes the positional offset of thrown One Handed Axes. It's used to fit the weapon to the object it is struck better.",
+					"default": -40,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Grenade Offset",
+					"position": 11,
+					"help": "Changes the positional offset of thrown Grenade. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Mace Offset",
+					"position": 12,
+					"help": "Changes the positional offset of thrown Maces. It's used to fit the weapon to the object it is struck better.",
+					"default": -50,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Poison Grenade Offset",
+					"position": 13,
+					"help": "Changes the positional offset of thrown Poison Grenade. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Sword Offset",
+					"position": 14,
+					"help": "Changes the positional offset of thrown One Handed Swords. It's used to fit the weapon to the object it is struck better.",
+					"default": -50,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Heal Grenade Offset",
+					"position": 15,
+					"help": "Changes the positional offset of thrown Heal Grenade. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Axe Offset",
+					"position": 16,
+					"help": "Changes the positional offset of thrown Two Handed Axes/Warhammers. It's used to fit the weapon to the object it is struck better.",
+					"default": -50,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Rock Offset",
+					"position": 17,
+					"help": "Changes the positional offset of thrown Rock. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Two Hand Sword Offset",
+					"position": 18,
+					"help": "Changes the positional offset of thrown Two Handed Swords/BattleSwords. It's used to fit the weapon to the object it is struck better.",
+					"default": -50,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Glass Bottle Offset",
+					"position": 19,
+					"help": "Changes the positional offset of thrown Glass bottles. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Snowball Offset",
+					"position": 21,
+					"help": "Changes the positional offset of thrown Snowballs. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				},
+				{
+					"kind": "slider",
+					"label": "Soulgem Offset",
+					"position": 23,
+					"help": "Changes the positional offset of thrown Soulgem. It's used to fit the weapon to the object it is struck better.",
+					"default": 0,
+					"slider": {
+						"min": -100,
+						"max": 100,
+						"step": 1,
+						"format": ""
+					}
+				}
+			]
+		}
+	]
+}

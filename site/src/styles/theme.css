@@ -1,0 +1,219 @@
+/*
+ * The site's look is the app's: one more menu of the game you just closed,
+ * set larger. A smoked-glass ground, hairline rules, tracked condensed
+ * capitals for anything that labels, Jost for anything that's read, and one
+ * accent for selection and action: verdigris in dark, frost blue in light.
+ * Copper marks a value the player set that differs from the mod's default,
+ * and amber a step not saved yet. The values match the app's
+ * web/src/lib/ui/theme.css role for role; html's data-theme is "dark",
+ * "light", or absent (follow the OS).
+ */
+@import '@fontsource/jost/400.css';
+@import '@fontsource/jost/500.css';
+@import '@fontsource/jost/600.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/dm-mono/400.css';
+
+:root {
+	--font-text: 'Jost', system-ui, sans-serif;
+	--font-label: 'Barlow Condensed', 'Jost', sans-serif;
+	--font-file: 'DM Mono', ui-monospace, monospace; /* anything matched character for character */
+	--track: 0.12em;
+
+	--step--1: 0.8125rem;
+	--step-0: 1rem;
+	--step-1: 1.125rem;
+	--step-2: 1.375rem;
+	--step-4: clamp(2.25rem, 1.5rem + 3vw, 3.75rem); /* section titles */
+	--step-5: clamp(3.5rem, 2rem + 5vw, 6rem); /* the name */
+
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 2.5rem;
+	--space-8: 4rem;
+	--space-9: clamp(5rem, 3rem + 6vw, 9rem); /* between sections */
+
+	--gutter: clamp(1rem, 0.25rem + 3.5vw, 3.5rem);
+	--radius: 3px;
+}
+
+/* Dark: the game's menus. */
+:root,
+:root[data-theme='dark'] {
+	color-scheme: dark;
+	--ground: #0b0b0b;
+	--smoke: #1c1c1c;
+	--panel: #121212;
+	--ink: #f2efe6;
+	--muted: #a8a293;
+	--rule: #2a2a2a;
+	--rule-strong: #3a3a3a;
+	--accent: #7fb8a0; /* verdigris */
+	--on-accent: #0e1a15;
+	--changed: #d2996b; /* copper */
+	--select: rgb(242 239 230 / 0.07);
+	--field: rgb(0 0 0 / 0.38); /* the app's smoked field */
+	--warn: #d9a441;
+}
+
+/* Light: the same world in pale smoke. */
+:root[data-theme='light'] {
+	color-scheme: light;
+	--ground: #e4e3df;
+	--smoke: #f3f2ef;
+	--panel: #eceae6;
+	--ink: #1b1a17;
+	--muted: #5d5a52;
+	--rule: #cdcbc4;
+	--rule-strong: #b3b0a7;
+	--accent: #2a5f86; /* frost blue */
+	--on-accent: #eef4f9;
+	--changed: #9a4a20;
+	--select: rgb(27 26 23 / 0.06);
+	--field: rgb(255 255 255 / 0.55);
+	--warn: #8a5a00;
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme='dark']):not([data-theme='light']) {
+		color-scheme: light;
+		--ground: #e4e3df;
+		--smoke: #f3f2ef;
+		--panel: #eceae6;
+		--ink: #1b1a17;
+		--muted: #5d5a52;
+		--rule: #cdcbc4;
+		--rule-strong: #b3b0a7;
+		--accent: #2a5f86;
+		--on-accent: #eef4f9;
+		--changed: #9a4a20;
+		--select: rgb(27 26 23 / 0.06);
+		--field: rgb(255 255 255 / 0.55);
+		--warn: #8a5a00;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--ground);
+	scroll-padding-top: var(--space-6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html {
+		scroll-behavior: smooth;
+	}
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: radial-gradient(ellipse 70% 60% at 65% 25%, var(--smoke), var(--ground) 75%) fixed;
+	color: var(--ink);
+	font: 400 var(--step-0) / 1.55 var(--font-text);
+	font-variant-numeric: tabular-nums;
+	caret-color: var(--accent);
+	scrollbar-color: var(--rule-strong) transparent;
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+figure,
+blockquote {
+	margin: 0;
+}
+
+img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+/* Anything that labels rather than reads. */
+.caps {
+	font-family: var(--font-label);
+	text-transform: uppercase;
+	letter-spacing: var(--track);
+	font-variant-numeric: normal;
+}
+
+a {
+	color: inherit;
+	text-decoration-color: color-mix(in srgb, var(--accent) 75%, var(--ground));
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.25em;
+}
+
+a:hover {
+	text-decoration-color: var(--accent);
+}
+
+/* Outlined caps that light up in the accent; the primary fills with it. */
+.button {
+	display: inline-flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--space-4);
+	padding: var(--space-3) var(--space-5);
+	border: 1px solid var(--rule-strong);
+	border-radius: var(--radius);
+	background: transparent;
+	color: var(--ink);
+	font: 500 var(--step-1) / 1.2 var(--font-label);
+	text-transform: uppercase;
+	letter-spacing: var(--track);
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.button:hover {
+	border-color: var(--accent);
+}
+
+.button.primary {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--on-accent);
+	font-weight: 600;
+}
+
+.button small {
+	font: 400 var(--step--1) / 1 var(--font-text);
+	text-transform: none;
+	letter-spacing: 0;
+	opacity: 0.8;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
