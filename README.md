@@ -10,7 +10,7 @@ Yes, it's vibe-coded, but at least it's vibe-coded by a professional software en
 
 So why wouldn't you just use MCM Recorder to make these recordings? If you're asking, then you probably _should_ just use MCM Recorder. There's nothing wrong with it!
 
-But the recording has to be made in the game, by clicking.
+But the recording has to be made in the game.
 
 Personally, I play [Skyrim VR with 1700+ mods](https://synergyvr.org/mgo). A great many things involving menus are far less convenient in VR, and launching the game with so many mods takes a while. So if that's what it takes to add one more setting to one of my recordings, I'm probably just not going to bother. The next time I start a new playthrough (which I do far too often frankly), I'll probably wish I had.
 

@@ -237,7 +237,7 @@ Where the site departs from the app: a longer type scale (display, headline, and
 The app's near-monochrome palette, unchanged: off-white on near-black in dark, near-black on pale smoke in light, with one accent that changes material with the theme, verdigris in dark and frost blue in light. Every value matches the app's role for role; `data-theme` on the root is "dark", "light", or absent to follow the OS.
 
 ### Primary
-- **Verdigris** (`accent` / `accent-light`): selection and action. The primary download button's fill, the chosen theme option, the switch's knob, edge, and faint wash when on, the slider's diamond knob, the current page in the menu and in the docs list and their diamonds, the selected option's diamond and its outline, header rows in the menu and group headings in the item table, the keys in the step file, the "Start over" text button, the lit screen's title, link underlines (mixed 75% into the ground at rest, full on hover), outline buttons' and fields' hover border, focus rings, text selection, and the caret. The hook's promise, "with Skyrim closed", is set in it as text.
+- **Verdigris** (`accent` / `accent-light`): selection and action. The primary download button's fill, the chosen theme option, the switch's knob, edge, and faint wash when on, the slider's diamond knob, the current page in the menu and in the docs list and their diamonds, the selected option's diamond and its outline, header rows in the menu and group headings in the item table, the keys in the step file, the lit screen's title, link underlines (mixed 75% into the ground at rest, full on hover), outline buttons' and fields' hover border, focus rings, text selection, and the caret. The hook's promise, "with Skyrim closed", is set in it as text.
 - **Accent Ink** (`on-accent` / `on-accent-light`): text and the diamond on an accent fill.
 
 ### Secondary
@@ -281,13 +281,13 @@ The app's near-monochrome palette, unchanged: off-white on near-black in dark, n
 - **Headline** (Barlow Condensed 600, up to 3.75rem, line-height 1, label tracking, uppercase): section titles, the docs page title, and Windows in the download row. The menu's name in the demo runs smaller (1.5 to 2rem), as the app's headline caps.
 - **Title** (Barlow Condensed 600, 1.375rem, uppercase): screen captions, safety rule names, the name in the top bar, section headings inside a docs page, and the previous and next links at a docs page's foot.
 - **Lead** (Jost 400, 1.375rem, line-height 1.35, balanced): the hook under the name, whose promise is in Jost 600 in the accent and never breaks across lines.
-- **Body** (Jost 400, 1rem, line-height 1.55, tabular figures): prose, captions, table cells, aside text. Section leads run at 1.125rem in muted ink with a 60ch measure; rule text holds 44ch. The fine print runs at 0.8125rem in muted ink, opening with "Unofficial." in Jost 600 and full ink.
+- **Body** (Jost 400, 1rem, line-height 1.55, tabular figures): prose, captions, table cells, aside text. Section leads run at 1.125rem in muted ink with a 60ch measure; rule text holds 44ch. The fine print runs at 0.8125rem in muted ink, with nothing set apart in it.
 - **Prose** (Jost 400, 1.0625rem, line-height 1.65): the docs' reading column, at most 44rem wide.
 - **Option** (Jost 400, 0.9375rem, line-height 1.3): option labels, field values, and help text inside the hero's menu, at the app's own size. A long label wraps rather than lose its end.
 - **File** (DM Mono 400, 0.8125rem, line-height 1.55): the step file, its path, and the selector in the info area; code blocks in the docs at 0.875rem, inline code at 0.9em.
 - **Button** (Barlow Condensed 500, 1.125rem, label tracking, uppercase; 600 on the primary): buttons, section links, and docs page links.
 - **Hint** (Barlow Condensed 500, 1rem, label tracking, uppercase): the hint strip, the menu's page list, and the footer's links.
-- **Label** (Barlow Condensed 500, 0.8125rem, 0.12em tracking, uppercase): column heads, group heads, menu header rows, theme options, the Click control, "Start over", the docs list's heading, and provenance lines. The credit and the info area's facts run at 0.75rem.
+- **Label** (Barlow Condensed 500, 0.8125rem, 0.12em tracking, uppercase): column heads, group heads, menu header rows, theme options, the Click control, the window's key hints, the docs list's heading, and provenance lines. The credit and the info area's facts run at 0.75rem.
 
 ### Named Rules
 **The Label Versus Read Rule.** As in the app: anything that labels is tracked condensed caps; anything that's read is Jost in sentence case. A note inside a button (such as "64-bit") switches back to Jost at 0.8125rem with no tracking; a page count beside a caps page name is Jost figures.
@@ -330,7 +330,6 @@ Outlined caps that light up in the accent, larger than the app's.
 - **Shape:** gently squared (3px radius), 1px strong-hairline border, padding 0.75rem by 1.5rem.
 - **Default:** transparent, ink text, button typography; hover turns the border the accent.
 - **Primary:** accent fill and border, accent-ink text at weight 600, with the diamond, and a short Jost note ("64-bit") at its far end. One per group: Download for Windows in the hero, full width of its column, and Download in the download row.
-- **Text button:** "Start over" in the file's head is label caps in the accent, underlined as a link is.
 - **Focus:** a 2px accent outline offset by 2px, on every control.
 
 ### Theme Switch
@@ -360,7 +359,7 @@ The hero is MCM Lexicon's own window, running, in front of the page: the one thi
 Rows a click acts on (toggles and text options) show a pointer.
 
 ### Step File (signature)
-The file the menu writes, beside it on Pane Glass behind a strong hairline: its path above in DM Mono (the folders muted, the file name in ink) with "Start over" opposite, the file, and a muted foot saying every label is spelled as the mod spells it. The file is written as MCM Lexicon writes it (lowercase keys in JContainers' order, two-space indents, a slider's value always with a decimal point). A step just written flashes the accent at 22% behind it and fades over 1.6s, unless reduced motion is set.
+The file the menu writes, beside it on Pane Glass behind a strong hairline: its path above in DM Mono (the folders muted, the file name in ink) the file, and a muted foot saying every label is spelled as the mod spells it. The file is written as MCM Lexicon writes it (lowercase keys in JContainers' order, two-space indents, a slider's value always with a decimal point). A step just written flashes the accent at 22% behind it and fades over 1.6s, unless reduced motion is set.
 
 **The File Markup Rule.** As in the app: keys in the accent, since they're the words MCM Recorder reads; values in ink, since they're what it fills in; punctuation muted.
 

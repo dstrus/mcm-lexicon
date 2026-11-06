@@ -4,7 +4,7 @@ description: How to create or change an MCM Recorder recording, check it, and sa
 order: 2
 ---
 
-A recording is what MCM Recorder plays on a new game: a list of steps, each one setting one option in one menu. MCM Lexicon lets you build that list by picking values in the menus, the way you would in the game.
+A recording is what MCM Recorder plays when you start a new game: a list of steps, each one setting one option in one menu. MCM Lexicon lets you build that list by picking values in the menus, the way you would in the game.
 
 ## Turn on editing
 

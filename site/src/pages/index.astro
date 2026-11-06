@@ -53,19 +53,19 @@ const screens = [
 // The rest of what MCM Lexicon does.
 const rest = [
 	{
-		group: 'In the app',
-		pages: [
-			['Compare', 'Two versions of a list’s catalog, side by side: which MCMs changed between releases, and which recorded steps those changes break.'],
-			['Backups', 'Every save and delete keeps a copy first. A recording’s Backups tab lists them and puts one back.'],
-			['Settings', 'Choose or change the mod list, the theme, and the name of the folder recordings save to.']
-		]
-	},
-	{
 		group: 'On the command line',
 		pages: [
 			['scan', 'Print the mods MCM Lexicon reads and the files it reads from each, or write the whole catalog to a file.'],
 			['diff', 'The differences between two catalog files, for when a list updates.'],
 			['snapshot', 'Copy just the part of a list MCM Lexicon reads, to test on a machine that doesn’t have the list.']
+		]
+	},
+	{
+		group: 'In the app',
+		pages: [
+			['Compare', `Two versions of a list’s catalog, side by side. (Use <a href="${base}/docs/command-line/#commands">the command line</a> to save the catalog alongside each release!) See which MCMs changed between releases, and which recorded steps those changes break.`],
+			['Backups', 'Every save and delete keeps a copy first. A recording’s Backups tab lists them and puts one back.'],
+			['Settings', 'Choose or change the mod list (if you manage more than one) and set the name of the mod folder recordings get saved to.']
 		]
 	}
 ];
@@ -91,18 +91,18 @@ const safety = [
 	},
 	{
 		rule: 'Nothing until you save',
-		text: 'Every change goes into a draft. The Changes page shows each file as it will be written, next to what’s on disk, and nothing is written until you click Save.'
+		text: 'Every change goes into a draft. The Changes page shows each file as it will be written, next to what’s currently on disk (if anything), and nothing is written until you click Save.'
 	},
 	{
-		rule: 'A backup first',
+		rule: 'Automatic backup first',
 		text: 'Before a file is replaced or removed, a copy goes to lexicon-backups, beside your list. The recording’s Backups tab can put it back.'
 	},
 	{
 		rule: 'All or nothing',
-		text: 'If a save can’t finish completely, the old recording stays exactly as it was. You can never end up with half a recording.'
+		text: 'If a save can’t finish completely, the old recording stays exactly as it was. You can never end up with half a recording. Translation for nerds: writes are atomic.'
 	},
 	{
-		rule: 'Other mods’ recordings stay put',
+		rule: 'Other recordings stay put',
 		text: 'MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to a mod folder of its own.'
 	},
 	{
@@ -155,15 +155,18 @@ const safety = [
 
 		<section class="block why" id="why" aria-labelledby="why-title">
 			<div class="intro">
-				<h2 id="why-title" class="caps">Because Skyrim takes a while to launch</h2>
+				<h2 id="why-title" class="caps">Because menus are a pain in VR</h2>
+				<p>
+					(Also, huge mod lists take awhile to launch, VR or not.)
+				</p>
 				<p>
 					<a href={mcmRecorder}>MCM Recorder</a> records your clicks in Mod Configuration Menus and replays them on a new game, so you don’t have to change dozens
-					of settings by hand every time. It’s great! But the recording has to be made in the game, by clicking.
+					of settings by hand every time. It’s great! But the recording has to be made in the game.
 				</p>
 				<p>
 					I play Skyrim VR with <a href="https://synergyvr.org/mgo">1,700+ mods</a>. A great many things involving menus are far less convenient in VR, and launching
 					the game with that many mods takes a while. So if that’s what it takes to add one more setting to a recording, I’m probably just not going to
-					bother. Then the next time I start a new playthrough (which I do far too often, frankly), I wish I had.
+					bother.
 				</p>
 				<p>
 					You can edit recordings by hand, since they’re just JSON files, but every label and value has to be exactly what each mod expects, and they’re pretty
@@ -175,13 +178,7 @@ const safety = [
 					<p id="btw-recorder" class="btw-title caps">By the way…</p>
 					<p>
 						If you’re happy making recordings in the game, you should probably just use MCM Recorder. There’s nothing wrong with it! MCM Lexicon is for when
-						launching the game is the part you’d rather skip.
-					</p>
-				</aside>
-				<aside class="btw" aria-labelledby="btw-name">
-					<p id="btw-name" class="btw-title caps">Why “Lexicon”?</p>
-					<p>
-						In Skyrim, a Dwemer lexicon is a cube the Dwemer stored their knowledge in. This one stores the exact label of every option in your list.
+						you don't want to launch the game or, for my fellow VR players, operate menus with motion controls.
 					</p>
 				</aside>
 			</div>
@@ -191,7 +188,7 @@ const safety = [
 			<div class="intro">
 				<h2 id="screens-title" class="caps">Every menu, every option</h2>
 				<p>
-					MCM Lexicon reads your mod list from disk, with Skyrim closed, and builds a catalog of every MCM in it: each menu’s name as SkyUI lists it, its pages,
+					MCM Lexicon reads your mod list from disk, with Skyrim closed, and builds a catalog of every MCM in it: each menu’s name as it appears in SkyUI, its pages,
 					its options, the values they allow, and their defaults. Then it lets you do things with that catalog.
 				</p>
 			</div>
@@ -216,8 +213,8 @@ const safety = [
 
 		<section class="block" id="rest" aria-labelledby="rest-title">
 			<div class="intro">
-				<h2 id="rest-title" class="caps">And for list authors</h2>
-				<p>When a list updates, menus change under its recordings. These are for finding out what broke before your players do.</p>
+				<h2 id="rest-title" class="caps">For list authors</h2>
+				<p>When a list updates, menus change, and recordings break. Find out what broke before your players do.</p>
 			</div>
 			<table class="items">
 				<caption class="visually-hidden">What else MCM Lexicon does</caption>
@@ -240,7 +237,7 @@ const safety = [
 									<th scope="row" class="caps">
 										{name}
 									</th>
-									<td>{text}</td>
+									<td set:html={text} />
 								</tr>
 							))}
 						</tbody>
@@ -252,7 +249,7 @@ const safety = [
 		<section class="block" id="safety" aria-labelledby="safety-title">
 			<div class="intro">
 				<h2 id="safety-title" class="caps">Before you point it at your list</h2>
-				<p>MCM Lexicon writes files MCM Recorder plays on a new game, so I’ve tried hard not to break anything. Here’s how.</p>
+				<p>MCM Lexicon writes files that MCM Recorder plays on a new game, so I’ve tried hard not to break anything. Here’s how.</p>
 			</div>
 			<dl class="rules">
 				{
