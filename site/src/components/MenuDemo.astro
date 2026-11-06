@@ -946,8 +946,9 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 		color: var(--ink);
 	}
 
-	/* A slider's knob is the diamond on a hairline, shown while its
-	   option is being edited. */
+	/* A slider's knob is the diamond on a 1px track, shown while its option
+	   is being edited. The track is muted ink, not a rule, as in the app: a
+	   control's line needs 3:1 against the ground to be seen. */
 	.range {
 		display: none;
 		width: 6.5rem;
@@ -961,11 +962,11 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 	}
 	.range::-webkit-slider-runnable-track {
 		height: 1px;
-		background: var(--rule-strong);
+		background: color-mix(in srgb, var(--muted) 80%, var(--ground));
 	}
 	.range::-moz-range-track {
 		height: 1px;
-		background: var(--rule-strong);
+		background: color-mix(in srgb, var(--muted) 80%, var(--ground));
 	}
 	.range::-webkit-slider-thumb {
 		appearance: none;
