@@ -1,7 +1,9 @@
 <!-- On or off, as a sliding switch: a squared track (the system's one 3px
-     radius, never a pill) with a square knob that slides right and fills
-     the track with the accent when on. dim draws it at rest, for a value
-     shown but not yet set (an option not recorded yet). -->
+     radius, never a pill) with a square knob that slides right and lights
+     in the accent when on, the track taking an accent edge and a faint
+     wash. The knob is the light: lit means on, muted means off, so the
+     two never read as each other inverted. dim draws it at rest, for a
+     value shown but not yet set (an option not recorded yet). -->
 <script lang="ts">
 	let {
 		checked,
@@ -63,11 +65,11 @@
 			background-color 140ms cubic-bezier(0.16, 1, 0.3, 1);
 	}
 	.switch[aria-checked='true'] {
-		background: var(--accent);
+		background: color-mix(in oklab, var(--accent) 22%, var(--glass-strong));
 		border-color: var(--accent);
 	}
 	.switch[aria-checked='true'] .knob {
-		background: var(--on-accent);
+		background: var(--accent);
 		transform: translate(calc(1.75rem - 0.6rem - 6px), -50%);
 	}
 	.switch:hover:not(:disabled) {
