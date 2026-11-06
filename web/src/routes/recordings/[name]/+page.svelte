@@ -12,6 +12,7 @@
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
+	import { inVR } from '#lib/menus/keys.ts';
 	import Selector from '#lib/menus/Selector.svelte';
 	import { hex } from '#lib/menus/values.ts';
 	import { invalidate } from '$app/navigation';
@@ -270,7 +271,7 @@
 								<dt class="caps">{t.selector}</dt><dd class="raw">{s.option}</dd>
 								<dt class="caps">{t.type}</dt><dd>{m.option.types[kindType[s.kind]]}</dd>
 								<dt class="caps">{t.value}</dt>
-								<dd class:changed={changed(s, c.option)}>{value(s, c.option)}<span class="raw muted small">{t.asWritten}: {s.kind} {s.value}</span>{#if canEdit && s.kind === 'shortcut'}<span class="muted small note">{m.editor.controllerNote}</span>{/if}</dd>
+								<dd class:changed={changed(s, c.option)}>{value(s, c.option)}<span class="raw muted small">{t.asWritten}: {s.kind} {s.value}</span>{#if canEdit && s.kind === 'shortcut'}<span class="muted small note">{m.editor.controllerNote}{#if inVR((page.data.status as Status).source?.game)}{' '}{m.editor.vrNote}{/if}</span>{/if}</dd>
 								{#if s.index}<dt class="caps">{t.index}</dt><dd>{s.index}</dd>{/if}
 								{#if s.state}<dt class="caps">{t.state}</dt><dd class="raw">{s.state}</dd>{/if}
 								{#if s.side}<dt class="caps">{t.foundBy}</dt><dd>{t.byItsValue}</dd>{/if}

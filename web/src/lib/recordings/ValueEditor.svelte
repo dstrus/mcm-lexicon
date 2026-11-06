@@ -6,7 +6,10 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { gamepadButtons, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import { page } from '$app/state';
+	import type { Status } from '#lib/api/types/api.ts';
+	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import ControllerOptions from './ControllerOptions.svelte';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import Segmented from '#lib/ui/Segmented.svelte';
@@ -28,6 +31,8 @@
 	} = $props();
 
 	const t = m.editor;
+	// In Skyrim VR the controller list names the motion controllers' buttons.
+	let vr = $derived(inVR((page.data.status as Status | undefined)?.source?.game));
 
 	let range = $derived(option?.slider);
 	let choices = $derived(option?.choices ?? []);
@@ -135,10 +140,10 @@
 			<span class="caps label">{t.controllerButton}</span>
 			<select value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => (value = e.currentTarget.value)}>
 				<option value="" disabled>{t.chooseButton}</option>
-				{#each gamepadButtons as b (b.code)}<option value={String(b.code)}>{b.name}</option>{/each}
+				<ControllerOptions {vr} />
 			</select>
 		</label>
-		<p class="muted small">{t.pressKeyHint}</p>
+		<p class="muted small">{t.pressKeyHint}{#if vr}{' '}{t.vrHint}{/if}</p>
 	{:else if kind === 'color'}
 		<label class="color">
 			<span class="caps label">{t.color}</span>

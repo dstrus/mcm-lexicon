@@ -20,6 +20,7 @@
 	import type { Step } from '#lib/api/types/recordings.ts';
 	import { known, recordable, stepFor, changed as stepChanged, value as stepValue } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
+	import { inVR } from '#lib/menus/keys.ts';
 	import Path from '#lib/ui/Path.svelte';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import { aboveHints } from '#lib/ui/fit.ts';
@@ -531,7 +532,7 @@
 					{:else if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
 					{#if recording && stepper(o) && canEdit(o)}<p class="notice">{m.adding.stepperNote({ start: cycled(o, 0) })}</p>
 					{:else if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>
-					{:else if recording && o.type === 'keymap' && canEdit(o)}<p class="notice">{m.editor.controllerNote}</p>{/if}
+					{:else if recording && o.type === 'keymap' && canEdit(o)}<p class="notice">{m.editor.controllerNote}{#if inVR(data.status.source?.game)}{' '}{m.editor.vrNote}{/if}</p>{/if}
 					{#if recording && !canEdit(o) && o.disabled !== 'always' && !o.inert}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}

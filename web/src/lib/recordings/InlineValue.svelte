@@ -7,7 +7,10 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { gamepadButtons, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import { page } from '$app/state';
+	import type { Status } from '#lib/api/types/api.ts';
+	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import ControllerOptions from './ControllerOptions.svelte';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -31,6 +34,7 @@
 	} = $props();
 
 	const t = m.editor;
+	let vr = $derived(inVR((page.data.status as Status | undefined)?.source?.game));
 	let draft = $state('');
 	let field = $state<HTMLElement>();
 	// The field is filled before its text is selected, so typing replaces it.
@@ -185,9 +189,9 @@
 			<button type="button" bind:this={field} class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 				{t.pressKey}<span class="muted">{keyName(Number(value))}</span>
 			</button>
-			<select class="pad" aria-label={t.controllerButton} title={t.controllerNote} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => end(() => apply(e.currentTarget.value))} onkeydown={keys}>
+			<select class="pad" aria-label={t.controllerButton} title={vr ? `${t.controllerNote} ${t.vrNote}` : t.controllerNote} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => end(() => apply(e.currentTarget.value))} onkeydown={keys}>
 				<option value="" disabled>{t.chooseButtonShort}</option>
-				{#each gamepadButtons as b (b.code)}<option value={String(b.code)}>{b.name}</option>{/each}
+				<ControllerOptions {vr} />
 			</select>
 		</span>
 	{:else if kind === 'color'}

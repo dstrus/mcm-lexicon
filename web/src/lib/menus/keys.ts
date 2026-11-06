@@ -92,6 +92,57 @@ export const gamepadButtons: { code: number; name: string; index: number }[] = [
 ];
 for (const b of gamepadButtons) names[b.code] = b.name;
 
+// In Skyrim VR the game presents the motion controllers to the menus as a
+// gamepad, so each controller button is one of the gamepad's codes. Which
+// button is which code is the engine's doing, per controller family, and
+// this table is provisional until confirmed in game: an entry that's wrong
+// mislabels a button, but the code it writes is still a real one.
+export interface VRButton {
+	code: number;
+	name: string; // the controller's own name for the button
+}
+export interface VRFamily {
+	name: string;
+	buttons: VRButton[];
+}
+export const vrFamilies: VRFamily[] = [
+	{
+		name: k.vrTouch,
+		buttons: [
+			{ code: 276, name: k.vrA },
+			{ code: 277, name: k.vrB },
+			{ code: 278, name: k.vrX },
+			{ code: 279, name: k.vrY },
+			{ code: 274, name: k.vrLeftGrip },
+			{ code: 275, name: k.vrRightGrip },
+			{ code: 280, name: k.vrLeftTrigger },
+			{ code: 281, name: k.vrRightTrigger },
+			{ code: 272, name: k.vrLeftStick },
+			{ code: 273, name: k.vrRightStick },
+			{ code: 270, name: k.vrMenu }
+		]
+	},
+	{
+		name: k.vrWands,
+		buttons: [
+			{ code: 280, name: k.vrLeftTrigger },
+			{ code: 281, name: k.vrRightTrigger },
+			{ code: 274, name: k.vrLeftGrip },
+			{ code: 275, name: k.vrRightGrip },
+			{ code: 272, name: k.vrLeftPad },
+			{ code: 273, name: k.vrRightPad },
+			{ code: 270, name: k.vrLeftMenu },
+			{ code: 271, name: k.vrRightMenu }
+		]
+	}
+];
+
+// inVR reports whether the list's game is Skyrim VR, as Mod Organizer
+// names it, so the controller list can speak of motion controllers.
+export function inVR(game: string | undefined): boolean {
+	return /\bVR\b/i.test(game ?? '');
+}
+
 // The rows of letters and digits, which DirectX numbers in keyboard order.
 const rows: [number, string][] = [
 	[2, '1234567890'],

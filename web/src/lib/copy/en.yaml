@@ -371,6 +371,28 @@ keys:
   padDown: D-pad down
   padLeft: D-pad left
   padRight: D-pad right
+  # Motion controllers, as Skyrim VR presents them to the menus (a gamepad's
+  # buttons); the gamepad name follows each, since that's the code written.
+  gamepadGroup: Gamepad
+  vrTouch: Quest, Index, and similar controllers
+  vrWands: Vive wands
+  vrA: A
+  vrB: B
+  vrX: X
+  vrY: Y
+  vrLeftGrip: Left grip
+  vrRightGrip: Right grip
+  vrLeftTrigger: Left trigger
+  vrRightTrigger: Right trigger
+  vrLeftStick: Left stick (press)
+  vrRightStick: Right stick (press)
+  vrMenu: Menu
+  vrLeftPad: Left touchpad (press)
+  vrRightPad: Right touchpad (press)
+  vrLeftMenu: Left menu button
+  vrRightMenu: Right menu button
+  # A VR button in the list: its name, then the gamepad button it writes.
+  vrAs: "{button} · {pad}"
 
 # Controls many pages share.
 ui:
@@ -732,12 +754,14 @@ editor:
   byValue: Value
   foundByNote: With nothing to click on the left, MCM Recorder finds the option by the value shown on its right.
   pressKey: Press the key to use
-  pressKeyHint: Focus the box, then press a key, a mouse button other than the left one, or a button on a controller plugged into this PC. For a controller button, the list below is the sure way; in VR, the game maps your motion controllers’ buttons onto these.
+  pressKeyHint: Focus the box, then press a key, a mouse button other than the left one, or a button on a controller plugged into this PC. For a controller button, the list below is the sure way.
+  vrHint: Skyrim VR presents your motion controllers to menus as a gamepad, so each controller button writes a gamepad button’s code. Which button is which is the game’s doing, and the names here are provisional until confirmed in the headset.
   controllerButton: Or a controller button
   chooseButton: Choose a button…
   chooseButtonShort: Controller button…
   # Beside a key step, where the capture box has no room for the hint.
-  controllerNote: A controller button is chosen from the list beside the key box; a controller plugged into this PC can press it too. In VR, the game maps your motion controllers’ buttons onto these.
+  controllerNote: A controller button is chosen from the list beside the key box; a controller plugged into this PC can press it too.
+  vrNote: In Skyrim VR, each motion controller button writes a gamepad button’s code; the list names them by controller, provisionally until confirmed in the headset.
   noKeyYet: Press a key first.
   noChoice: Choose an entry.
   notANumber: The value is a number.
