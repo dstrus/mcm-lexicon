@@ -204,7 +204,9 @@ select {
 }
 
 /* A slider: a hairline track with the diamond as its knob, in the accent,
-   drawn the same in every browser. Focus turns the knob to ink. */
+   drawn the same in every browser. Focus turns the knob to ink. The track
+   is muted ink, not a rule: a control's line needs 3:1 against the ground
+   to be seen, which the rule colors don't give. */
 input[type='range'] {
 	appearance: none;
 	height: 1.25rem;
@@ -216,11 +218,11 @@ input[type='range'] {
 }
 input[type='range']::-webkit-slider-runnable-track {
 	height: 1px;
-	background: var(--rule-strong);
+	background: color-mix(in srgb, var(--muted) 80%, var(--ground));
 }
 input[type='range']::-moz-range-track {
 	height: 1px;
-	background: var(--rule-strong);
+	background: color-mix(in srgb, var(--muted) 80%, var(--ground));
 }
 input[type='range']::-webkit-slider-thumb {
 	appearance: none;
