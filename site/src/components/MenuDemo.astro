@@ -33,6 +33,9 @@ const steps: Step[] = [
 	{ page: 'General', option: 'Allow Boomerang Throw', kind: 'toggle', value: 'off' }
 ];
 const selected = { page: 'General', option: 'Allow Greanade and Other Throw' };
+// The invitation sits on a switch not recorded yet, two rows up, so the
+// visitor's first flip adds a step and the lamp counts up.
+const invite = { page: 'General', option: 'Allow Chakram Throw' };
 
 // A slider's value as SkyUI shows it: {1} is one decimal place.
 function shown(n: number, format = '') {
@@ -53,7 +56,9 @@ function recorded(page: string, r: Row) {
 const first = menu.pages[start].rows.find((r: Row) => r.label === selected.option) as Row;
 ---
 
-<div class="demo" data-demo data-mod={menu.name} data-steps={JSON.stringify(steps)} data-kind={first.kind}>
+<div class="live" data-live>
+	<p class="tag caps"><Diamond /> Try it</p>
+	<div class="demo" data-demo data-mod={menu.name} data-steps={JSON.stringify(steps)} data-kind={first.kind}>
 	<div class="bar">
 		<p class="brand caps"><Mark size="1.2em" /> MCM Lexicon</p>
 		<div class="state">
@@ -117,6 +122,12 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 											<Diamond />
 										</span>
 										<span class="label">{r.label}</span>
+										{p.name === invite.page && r.label === invite.option && (
+											<button type="button" class="invite caps" data-invite>
+												Flip<span class="this"> this</span>
+												<svg width="12" height="10" viewBox="0 0 12 10" aria-hidden="true"><path d="M1 5h9M7 1.5 10.5 5 7 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+											</button>
+										)}
 										<span class="mark" title="In the draft, not saved yet">
 											<svg width="7" height="7" viewBox="0 0 10 10" aria-hidden="true">
 												<path d="M5 0 10 5 5 10 0 5Z" fill="currentColor" />
@@ -203,7 +214,6 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 	</div>
 	</div>
 	<div class="foot">
-		<p class="go">Go ahead, flip something.</p>
 		<nav class="keys caps" aria-label="Keys that work in this menu">
 			<button type="button" data-hint="move"><kbd>↑</kbd><kbd>↓</kbd>Move</button>
 			<button type="button" data-hint="space" data-for="toggle"><kbd>Space</kbd>On / off</button>
@@ -211,6 +221,7 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 			<button type="button" data-hint="enter" data-for="slider"><kbd>Enter</kbd>Apply</button>
 			<button type="button" data-hint="again"><kbd>R</kbd>Start over</button>
 		</nav>
+	</div>
 	</div>
 </div>
 
@@ -443,6 +454,22 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 			said.textContent = 'The draft is empty.';
 		}
 
+		// The invitation: it flips the switch it points at, and leaves for
+		// good the first time the visitor touches anything in the window.
+		const live = document.querySelector<HTMLElement>('[data-live]')!;
+		const inviteButton = demo.querySelector<HTMLButtonElement>('[data-invite]');
+		const accepted = () => {
+			settle(); // the visitor has the list now
+			live.classList.add('touched');
+			setTimeout(() => inviteButton?.remove(), 400);
+		};
+		inviteButton?.addEventListener('click', (e) => {
+			e.stopPropagation();
+			accepted();
+			inviteButton.closest<HTMLElement>('.row')!.querySelector<HTMLButtonElement>('.switch')!.click();
+		});
+		for (const type of ['pointerdown', 'keydown']) demo.addEventListener(type, accepted, { once: true, capture: true });
+
 		// The strip: every hint is a real key, and clicking it does the same.
 		// A key runs while focus is inside the window and not in a field.
 		const control = () => demo!.querySelector<HTMLElement>('.row.sel button, .row.sel input.num, .row.sel select');
@@ -484,15 +511,102 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 </script>
 
 <style>
-	/* The app's window: its top bar, the menu screen beside the details
-	   pane, and its hint strip, inside one hairline on the game's ground. */
+	/* The app's window, running, in front of the page: outlined in the
+	   accent as the selected row is, since it's the thing to use, and
+	   lifted as the app lifts what floats. A tab on its top edge names it. */
+	.live {
+		position: relative;
+		border: 1px solid var(--accent);
+		border-radius: var(--radius);
+		box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45);
+	}
+	.tag {
+		position: absolute;
+		top: 0;
+		left: var(--space-5);
+		translate: 0 -50%;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 0.15rem var(--space-3);
+		background: var(--accent);
+		border-radius: var(--radius);
+		color: var(--on-accent);
+		font-size: var(--step--1);
+		font-weight: 600;
+		line-height: 1.4;
+		z-index: 1;
+	}
+	.tag :global(.diamond) {
+		display: inline-block;
+		margin: 0;
+		color: var(--on-accent);
+	}
 	.demo {
 		display: grid;
 		grid-template-rows: auto minmax(0, 1fr) auto;
-		border: 1px solid var(--rule-strong);
 		border-radius: var(--radius);
 		overflow: hidden;
 		background: var(--ground);
+	}
+
+	/* The invitation: an accent chip in a row, arriving after a beat and
+	   nudging toward its switch, gone once the visitor touches anything. */
+	.invite {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: 0.1rem var(--space-2) 0.1rem var(--space-3);
+		background: var(--accent);
+		border: 0;
+		border-radius: var(--radius);
+		color: var(--on-accent);
+		font: 600 var(--step--1) / 1.4 var(--font-label);
+		letter-spacing: var(--track);
+		text-transform: uppercase;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: opacity 320ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+	.invite svg {
+		display: block;
+	}
+	.invite:hover {
+		color: var(--ink);
+	}
+	.touched .invite {
+		opacity: 0;
+		pointer-events: none;
+	}
+	@media (prefers-reduced-motion: no-preference) {
+		.invite {
+			animation:
+				arrive 320ms cubic-bezier(0.16, 1, 0.3, 1) 700ms backwards,
+				beckon 1.4s cubic-bezier(0.16, 1, 0.3, 1) 1.4s 3;
+		}
+	}
+	@keyframes arrive {
+		from {
+			opacity: 0;
+			translate: -6px 0;
+		}
+	}
+	/* Where the menu's columns are narrow but the pane still sits beside
+	   them, the chip keeps its arrow and loses a word. */
+	@media (min-width: 70.01rem) and (max-width: 86rem) {
+		.invite .this {
+			display: none;
+		}
+	}
+	@keyframes beckon {
+		0%,
+		60%,
+		100% {
+			translate: 0 0;
+		}
+		30% {
+			translate: 5px 0;
+		}
 	}
 	.shell {
 		display: grid;
@@ -590,14 +704,8 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 	.foot {
 		display: flex;
 		align-items: center;
-		gap: var(--space-5);
 		padding: var(--space-2) var(--space-5);
 		border-top: 1px solid var(--rule);
-	}
-	.go {
-		flex: 1;
-		min-width: 0;
-		font-size: 0.9375rem;
 	}
 	.keys {
 		display: flex;
@@ -1162,10 +1270,9 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 		}
 	}
 
-	/* Keys are for keyboards; on touch screens the strip keeps only its
-	   instruction. */
+	/* Keys are for keyboards; on touch screens the window has no strip. */
 	@media (max-width: 60rem), (pointer: coarse) {
-		.keys {
+		.foot {
 			display: none;
 		}
 	}

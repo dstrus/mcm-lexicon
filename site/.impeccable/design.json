@@ -484,6 +484,12 @@
         "duration": "360ms",
         "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
         "purpose": "The page's hint strip slides down and fades while the window is on screen, since the window carries its own; none under reduced motion."
+      },
+      {
+        "name": "invite",
+        "duration": "320ms + 3 × 1.4s",
+        "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The FLIP THIS chip arrives 700ms after the page and nudges toward its switch three times; it fades out over 320ms once the visitor touches the window; none under reduced motion."
       }
     ],
     "breakpoints": [
