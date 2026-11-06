@@ -1,6 +1,8 @@
 // MCM Recorder's keymap steps hold DirectX scan codes (A is 30, F1 is 59),
-// as the game does, with mouse buttons from 256 up. These name them, and
-// turn a key pressed in the browser into one.
+// as the game does, with mouse buttons from 256 up and a gamepad's from
+// 266 (SkyUI's own: Back is 271, LB 274). In VR the game maps the motion
+// controllers' buttons onto the gamepad's. These name them, and turn a key
+// pressed in the browser, or a gamepad button, into one.
 import { m } from '#lib/copy/messages.ts';
 
 const k = m.keys;
@@ -67,6 +69,28 @@ const names: Record<number, string> = {
 	264: k.wheelUp,
 	265: k.wheelDown
 };
+
+// A gamepad's buttons, in SkyUI's order from 266, with the index each has
+// in the browser's standard gamepad layout.
+export const gamepadButtons: { code: number; name: string; index: number }[] = [
+	{ code: 276, name: k.padA, index: 0 },
+	{ code: 277, name: k.padB, index: 1 },
+	{ code: 278, name: k.padX, index: 2 },
+	{ code: 279, name: k.padY, index: 3 },
+	{ code: 274, name: k.padLB, index: 4 },
+	{ code: 275, name: k.padRB, index: 5 },
+	{ code: 280, name: k.padLT, index: 6 },
+	{ code: 281, name: k.padRT, index: 7 },
+	{ code: 270, name: k.padStart, index: 9 },
+	{ code: 271, name: k.padBack, index: 8 },
+	{ code: 272, name: k.padLeftStick, index: 10 },
+	{ code: 273, name: k.padRightStick, index: 11 },
+	{ code: 266, name: k.padUp, index: 12 },
+	{ code: 267, name: k.padDown, index: 13 },
+	{ code: 268, name: k.padLeft, index: 14 },
+	{ code: 269, name: k.padRight, index: 15 }
+];
+for (const b of gamepadButtons) names[b.code] = b.name;
 
 // The rows of letters and digits, which DirectX numbers in keyboard order.
 const rows: [number, string][] = [
@@ -158,4 +182,32 @@ export function scanCodeOf(e: KeyboardEvent): number | undefined {
 // middle 258, then the side buttons.
 export function mouseCodeOf(e: MouseEvent): number | undefined {
 	return [256, 258, 257, 259, 260][e.button];
+}
+
+// watchGamepads calls onPress with the code of each gamepad button pressed
+// (a press, not a hold) on any gamepad the browser sees, until the
+// returned function is called. Browsers see a gamepad only after a button
+// is pressed on it, and some see none; the list of buttons is the sure way.
+export function watchGamepads(onPress: (code: number) => void): () => void {
+	if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return () => {};
+	const was = new Map<number, boolean[]>();
+	let frame = 0;
+	const poll = () => {
+		for (const g of navigator.getGamepads()) {
+			if (!g) continue;
+			const before = was.get(g.index) ?? [];
+			g.buttons.forEach((b, i) => {
+				if (!b.pressed || before[i]) return;
+				const button = gamepadButtons.find((x) => x.index === i);
+				if (button) onPress(button.code);
+			});
+			was.set(
+				g.index,
+				g.buttons.map((b) => b.pressed)
+			);
+		}
+		frame = requestAnimationFrame(poll);
+	};
+	frame = requestAnimationFrame(poll);
+	return () => cancelAnimationFrame(frame);
 }

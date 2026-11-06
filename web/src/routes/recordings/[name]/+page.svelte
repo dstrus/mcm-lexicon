@@ -270,7 +270,7 @@
 								<dt class="caps">{t.selector}</dt><dd class="raw">{s.option}</dd>
 								<dt class="caps">{t.type}</dt><dd>{m.option.types[kindType[s.kind]]}</dd>
 								<dt class="caps">{t.value}</dt>
-								<dd class:changed={changed(s, c.option)}>{value(s, c.option)}<span class="raw muted small">{t.asWritten}: {s.kind} {s.value}</span></dd>
+								<dd class:changed={changed(s, c.option)}>{value(s, c.option)}<span class="raw muted small">{t.asWritten}: {s.kind} {s.value}</span>{#if canEdit && s.kind === 'shortcut'}<span class="muted small note">{m.editor.controllerNote}</span>{/if}</dd>
 								{#if s.index}<dt class="caps">{t.index}</dt><dd>{s.index}</dd>{/if}
 								{#if s.state}<dt class="caps">{t.state}</dt><dd class="raw">{s.state}</dd>{/if}
 								{#if s.side}<dt class="caps">{t.foundBy}</dt><dd>{t.byItsValue}</dd>{/if}

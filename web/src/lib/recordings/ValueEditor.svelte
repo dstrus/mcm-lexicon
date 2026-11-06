@@ -6,11 +6,12 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
+	import { gamepadButtons, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import Segmented from '#lib/ui/Segmented.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
+	import { onDestroy } from 'svelte';
 
 	let {
 		kind,
@@ -76,6 +77,15 @@
 		e.preventDefault();
 		value = String(code);
 	}
+	// A gamepad the browser sees is watched while the box has focus; the
+	// list beside it is the sure way to a controller button.
+	let stopWatching: (() => void) | undefined;
+	const watch = () => (stopWatching = watchGamepads((code) => (value = String(code))));
+	const unwatch = () => {
+		stopWatching?.();
+		stopWatching = undefined;
+	};
+	onDestroy(unwatch);
 
 	// A color as the game writes it is a number; the picker speaks #rrggbb.
 	let colorHex = $derived(value === '' || Number.isNaN(Number(value)) ? '#000000' : hex(Number(value)).toLowerCase());
@@ -118,9 +128,16 @@
 		{#if !choices.length}<p class="muted small">{t.entriesUnknown}</p>{/if}
 	{:else if kind === 'shortcut'}
 		<span class="caps label">{t.key}</span>
-		<button type="button" class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()}>
+		<button type="button" class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 			{value === '' ? t.pressKey : keyName(Number(value))}{#if value !== ''}<span class="muted code">{value}</span>{/if}
 		</button>
+		<label>
+			<span class="caps label">{t.controllerButton}</span>
+			<select value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => (value = e.currentTarget.value)}>
+				<option value="" disabled>{t.chooseButton}</option>
+				{#each gamepadButtons as b (b.code)}<option value={String(b.code)}>{b.name}</option>{/each}
+			</select>
+		</label>
 		<p class="muted small">{t.pressKeyHint}</p>
 	{:else if kind === 'color'}
 		<label class="color">

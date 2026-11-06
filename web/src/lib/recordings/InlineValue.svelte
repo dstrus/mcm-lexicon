@@ -7,10 +7,10 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { keyName, mouseCodeOf, scanCodeOf } from '#lib/menus/keys.ts';
+	import { gamepadButtons, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 
 	let {
 		kind,
@@ -121,6 +121,22 @@
 		e.preventDefault();
 		apply(String(code));
 	}
+	// A gamepad the browser sees is watched while the box has focus; the
+	// list beside it is the sure way to a controller button. Choosing one
+	// in the list applies it, as a key pressed does.
+	let stopWatching: (() => void) | undefined;
+	const watch = () => (stopWatching = watchGamepads((code) => end(() => apply(String(code)))));
+	const unwatch = () => {
+		stopWatching?.();
+		stopWatching = undefined;
+	};
+	onDestroy(unwatch);
+	// Moving from the box to the list isn't leaving the editor.
+	function leftKey(e: FocusEvent) {
+		const to = e.relatedTarget;
+		if (to instanceof Node && (e.currentTarget as HTMLElement).contains(to)) return;
+		end(cancel);
+	}
 
 	let colorHex = $derived(value === '' || Number.isNaN(Number(value)) ? '#000000' : hex(Number(value)).toLowerCase());
 </script>
@@ -165,9 +181,15 @@
 	{:else if kind === 'choose' || kind === 'text'}
 		<input bind:this={field} bind:value={draft} aria-label={kind === 'text' ? t.text : t.entry} onkeydown={keys} onblur={cancel} autocomplete="off" spellcheck="false" />
 	{:else if kind === 'shortcut'}
-		<button type="button" bind:this={field} class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onblur={cancel}>
-			{t.pressKey}<span class="muted">{keyName(Number(value))}</span>
-		</button>
+		<span class="pair key" onfocusout={leftKey}>
+			<button type="button" bind:this={field} class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
+				{t.pressKey}<span class="muted">{keyName(Number(value))}</span>
+			</button>
+			<select class="pad" aria-label={t.controllerButton} title={t.controllerNote} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => end(() => apply(e.currentTarget.value))} onkeydown={keys}>
+				<option value="" disabled>{t.chooseButtonShort}</option>
+				{#each gamepadButtons as b (b.code)}<option value={String(b.code)}>{b.name}</option>{/each}
+			</select>
+		</span>
 	{:else if kind === 'color'}
 		<input bind:this={field} type="color" value={colorHex} aria-label={t.color} onchange={(e) => apply(String(parseInt(e.currentTarget.value.slice(1), 16)))} onkeydown={keys} />
 	{/if}
@@ -252,6 +274,16 @@
 	.choice button:focus-visible {
 		background: var(--select);
 		outline: none;
+	}
+	/* The box and the list, which drops under the box where the cell is
+	   narrow rather than squeezing the table's other columns. */
+	.pair.key {
+		flex-wrap: wrap;
+		max-width: 15rem;
+	}
+	.pair select.pad {
+		width: 10rem;
+		flex: none;
 	}
 	.capture {
 		display: inline-flex;

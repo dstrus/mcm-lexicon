@@ -354,6 +354,23 @@ keys:
   mouseButton: Mouse {n}
   wheelUp: Wheel Up
   wheelDown: Wheel Down
+  # A gamepad's buttons, by their Xbox names, which the game uses too.
+  padA: A button
+  padB: B button
+  padX: X button
+  padY: Y button
+  padLB: LB
+  padRB: RB
+  padLT: LT
+  padRT: RT
+  padStart: Start
+  padBack: Back
+  padLeftStick: Left stick (press)
+  padRightStick: Right stick (press)
+  padUp: D-pad up
+  padDown: D-pad down
+  padLeft: D-pad left
+  padRight: D-pad right
 
 # Controls many pages share.
 ui:
@@ -715,7 +732,12 @@ editor:
   byValue: Value
   foundByNote: With nothing to click on the left, MCM Recorder finds the option by the value shown on its right.
   pressKey: Press the key to use
-  pressKeyHint: Focus the box, then press a key or a mouse button other than the left one.
+  pressKeyHint: Focus the box, then press a key, a mouse button other than the left one, or a button on a controller plugged into this PC. For a controller button, the list below is the sure way; in VR, the game maps your motion controllers’ buttons onto these.
+  controllerButton: Or a controller button
+  chooseButton: Choose a button…
+  chooseButtonShort: Controller button…
+  # Beside a key step, where the capture box has no room for the hint.
+  controllerNote: A controller button is chosen from the list beside the key box; a controller plugged into this PC can press it too. In VR, the game maps your motion controllers’ buttons onto these.
   noKeyYet: Press a key first.
   noChoice: Choose an entry.
   notANumber: The value is a number.
