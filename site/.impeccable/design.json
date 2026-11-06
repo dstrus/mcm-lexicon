@@ -393,6 +393,36 @@
           "#e9c290",
           "#ffebd3"
         ]
+      },
+      "invite": {
+        "role": "secondary",
+        "displayName": "Frost Invitation",
+        "canonical": "#8ec9f5",
+        "tonalRamp": [
+          "#06111a",
+          "#0d2a3f",
+          "#154362",
+          "#1f5d87",
+          "#2f7bae",
+          "#5ba0d4",
+          "#8ec9f5",
+          "#d3ecff"
+        ]
+      },
+      "on-invite": {
+        "role": "secondary",
+        "displayName": "Invitation Ink",
+        "canonical": "#08161f",
+        "tonalRamp": [
+          "#08161f",
+          "#0f2a3a",
+          "#1b4259",
+          "#2b5c7a",
+          "#3e789c",
+          "#6a9dbd",
+          "#a2c6de",
+          "#dbeaf5"
+        ]
       }
     },
     "typographyMeta": {
@@ -490,6 +520,12 @@
         "duration": "320ms + 3 × 1.4s",
         "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
         "purpose": "The FLIP THIS chip arrives 700ms after the page and nudges toward its switch three times; it fades out over 320ms once the visitor touches the window; none under reduced motion."
+      },
+      {
+        "name": "try-nudge",
+        "duration": "1.4s × 3",
+        "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "TRY IT's arrow nudges 0.3rem toward the window three times, a second after the page loads; none under reduced motion."
       }
     ],
     "breakpoints": [

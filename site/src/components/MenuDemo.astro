@@ -24,18 +24,20 @@ type Row = {
 	value?: string;
 };
 
-// The menu opens on General, scrolled to the toggle whose label is spelled
-// as the mod spells it, with it and its neighbor already in the draft, so
-// both steps in the file are on screen beside them at any window height.
+// The menu opens at the top of General with the first toggle recorded and
+// selected, and the toggle whose label is spelled as the mod spells it
+// recorded further down the page, so the file holds the typo from the
+// start.
 const start = menu.pages.findIndex((p) => p.name === 'General');
 const steps: Step[] = [
-	{ page: 'General', option: 'Allow Greanade and Other Throw', kind: 'toggle', value: 'on' },
-	{ page: 'General', option: 'Allow Boomerang Throw', kind: 'toggle', value: 'off' }
+	{ page: 'General', option: 'Allow Dagger Throw', kind: 'toggle', value: 'on' },
+	{ page: 'General', option: 'Allow Greanade and Other Throw', kind: 'toggle', value: 'on' }
 ];
-const selected = { page: 'General', option: 'Allow Greanade and Other Throw' };
-// The invitation sits on a switch not recorded yet, two rows up, so the
-// visitor's first flip adds a step and the lamp counts up.
-const invite = { page: 'General', option: 'Allow Chakram Throw' };
+const selected = { page: 'General', option: 'Allow Dagger Throw' };
+// The invitation sits on a switch not recorded yet, two rows under the
+// selected one, so the visitor's first flip adds a step and the lamp counts
+// up. An axe, since every player knows what one is.
+const invite = { page: 'General', option: 'Allow Axe Throw' };
 
 // A slider's value as SkyUI shows it: {1} is one decimal place.
 function shown(n: number, format = '') {
@@ -57,7 +59,6 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 ---
 
 <div class="live" data-live>
-	<p class="tag caps"><Diamond /> Try it</p>
 	<div class="demo" data-demo data-mod={menu.name} data-steps={JSON.stringify(steps)} data-kind={first.kind}>
 	<div class="bar">
 		<p class="brand caps"><Mark size="1.2em" /> MCM Lexicon</p>
@@ -512,35 +513,13 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 
 <style>
 	/* The app's window, running, in front of the page: outlined in the
-	   accent as the selected row is, since it's the thing to use, and
-	   lifted as the app lifts what floats. A tab on its top edge names it. */
+	   invitation's hue, since it's the thing to touch, and lifted as the
+	   app lifts what floats. */
 	.live {
 		position: relative;
-		border: 1px solid var(--accent);
+		border: 1px solid var(--invite);
 		border-radius: var(--radius);
 		box-shadow: 0 1.5rem 3rem rgb(0 0 0 / 0.45);
-	}
-	.tag {
-		position: absolute;
-		top: 0;
-		left: var(--space-5);
-		translate: 0 -50%;
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2);
-		padding: 0.15rem var(--space-3);
-		background: var(--accent);
-		border-radius: var(--radius);
-		color: var(--on-accent);
-		font-size: var(--step--1);
-		font-weight: 600;
-		line-height: 1.4;
-		z-index: 1;
-	}
-	.tag :global(.diamond) {
-		display: inline-block;
-		margin: 0;
-		color: var(--on-accent);
 	}
 	.demo {
 		display: grid;
@@ -550,17 +529,17 @@ const first = menu.pages[start].rows.find((r: Row) => r.label === selected.optio
 		background: var(--ground);
 	}
 
-	/* The invitation: an accent chip in a row, arriving after a beat and
+	/* The invitation: a frost chip in a row, arriving after a beat and
 	   nudging toward its switch, gone once the visitor touches anything. */
 	.invite {
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
 		padding: 0.1rem var(--space-2) 0.1rem var(--space-3);
-		background: var(--accent);
+		background: var(--invite);
 		border: 0;
 		border-radius: var(--radius);
-		color: var(--on-accent);
+		color: var(--on-invite);
 		font: 600 var(--step--1) / 1.4 var(--font-label);
 		letter-spacing: var(--track);
 		text-transform: uppercase;

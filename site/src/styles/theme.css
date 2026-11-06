@@ -4,7 +4,8 @@
  * capitals for anything that labels, Jost for anything that's read, and one
  * accent for selection and action: verdigris in dark, frost blue in light.
  * Copper marks a value the player set that differs from the mod's default,
- * and amber a step not saved yet. The values match the app's
+ * and amber a step not saved yet. Frost (the other theme's accent) is the
+ * site's own: it marks what the page invites you to touch. The values match the app's
  * web/src/lib/ui/theme.css role for role; html's data-theme is "dark",
  * "light", or absent (follow the OS).
  */
@@ -59,6 +60,8 @@
 	--select: rgb(242 239 230 / 0.07);
 	--field: rgb(0 0 0 / 0.38); /* the app's smoked field */
 	--warn: #d9a441;
+	--invite: #8ec9f5; /* frost: Skyrim's cold light, for what the page asks you to touch */
+	--on-invite: #08161f;
 }
 
 /* Light: the same world in pale smoke. */
@@ -77,6 +80,8 @@
 	--select: rgb(27 26 23 / 0.06);
 	--field: rgb(255 255 255 / 0.55);
 	--warn: #8a5a00;
+	--invite: #2e7d5f; /* verdigris, deepened for pale smoke */
+	--on-invite: #eef8f3;
 }
 
 @media (prefers-color-scheme: light) {
@@ -95,6 +100,8 @@
 		--select: rgb(27 26 23 / 0.06);
 		--field: rgb(255 255 255 / 0.55);
 		--warn: #8a5a00;
+		--invite: #2e7d5f;
+		--on-invite: #eef8f3;
 	}
 }
 
