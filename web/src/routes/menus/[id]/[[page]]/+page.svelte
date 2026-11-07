@@ -192,7 +192,12 @@
 	const open = new OpenRecording();
 	let chooser = $state<ChooseRecording>();
 	const choose = () => chooser?.choose() ?? Promise.resolve(null);
-	let recording = $derived(open.editing && !!open.name);
+	// While editing, the rows' values can be changed whether or not a
+	// recording is chosen: the first change asks which one it goes to.
+	let recording = $derived(open.editing);
+	// The recording a change goes to: the open one, else the one chosen in
+	// the dialog; null when the dialog closes without a choice.
+	const target = async () => open.name || (await choose());
 	// An option's step as this page makes it, and as the recording has it:
 	// on a landing page, a step on the default page is the same option, and
 	// a change to it stays on the page it's on.
@@ -229,16 +234,21 @@
 	let live = $state<{ i: number; field: boolean } | null>(null);
 
 	// record puts the option in the open recording with this value: a new
-	// step, or its step changed.
-	async function record(o: Option, value: string) {
-		if (working) return;
+	// step, or its step changed. It says whether it did, so a control can
+	// go back to what it showed when no recording was chosen.
+	async function record(o: Option, value: string): Promise<boolean> {
+		if (working) return false;
+		const name = await target();
+		if (!name) return false;
 		working = true;
 		error = '';
 		try {
-			await addStep(open.name, { ...base(o), value });
+			await addStep(name, { ...base(o), value });
 			await invalidate(recordingsDependency);
+			return true;
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
+			return false;
 		} finally {
 			working = false;
 		}
@@ -256,10 +266,12 @@
 	const cycled = (o: Option, n: number) => o.choices![(startOf(o) + n) % o.choices!.length]!.text;
 	async function cycle(o: Option) {
 		if (working) return;
+		const name = await target();
+		if (!name) return;
 		working = true;
 		error = '';
 		try {
-			await setClicks(open.name, base(o), (clicksOf(o) + 1) % o.choices!.length);
+			await setClicks(name, base(o), (clicksOf(o) + 1) % o.choices!.length);
 			await invalidate(recordingsDependency);
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : String(e);
@@ -280,7 +292,7 @@
 	async function add() {
 		const r = current;
 		if (!r || !canEdit(r.option) || working) return;
-		if (!open.name && !(await choose())) return;
+		if (!(await target())) return;
 		if (recorded(r.option)) return;
 		if (stepper(r.option)) return cycle(r.option);
 		if (flippable(r.option) || known(r.option) || r.option.type === 'text') return record(r.option, valueNow(r.option).value);
@@ -328,14 +340,15 @@
 
 	async function recordAll() {
 		if (working) return;
-		if (!open.name && !(await choose())) return;
+		const name = await target();
+		if (!name) return;
 		working = true;
 		error = '';
 		note = '';
 		try {
-			const r = await addAll(open.name, recordableNow.map(base));
+			const r = await addAll(name, recordableNow.map(base));
 			const skipped = options.length - recordableNow.length;
-			note = [t.recordedAdded({ count: r.added, recording: open.name }), r.kept ? t.recordedKept({ count: r.kept }) : '', skipped ? t.recordedSkipped({ count: skipped }) : '']
+			note = [t.recordedAdded({ count: r.added, recording: name }), r.kept ? t.recordedKept({ count: r.kept }) : '', skipped ? t.recordedSkipped({ count: skipped }) : '']
 				.filter(Boolean)
 				.join(' ');
 			await invalidate(recordingsDependency);
@@ -434,7 +447,7 @@
 			{:else if o.type === 'text'}
 				<!-- A text option can only be clicked: its value is the menu's,
 				     and a click on it is the step. -->
-				<button type="button" class="click" title={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.clickTitle({ recording: open.name })} aria-label={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
+				<button type="button" class="click" title={rec ? m.adding.clickRecorded({ recording: open.name }) : open.name ? m.adding.clickTitle({ recording: open.name }) : m.adding.clickTitleAny} aria-label={rec ? m.adding.clickRecorded({ recording: open.name }) : m.adding.recordThis({ option: o.text })} onclick={(e) => (e.stopPropagation(), edit({ option: o, i }))}>
 					{#if rec}<span class="caps word click-word">{m.steps.click}</span>{/if}{#if o.valueText || o.value}{o.valueText || o.value}{:else}<span class="muted">—</span>{/if}
 				</button>
 			{:else}
@@ -517,7 +530,7 @@
 						<span class="sep">·</span> {allowed(o)}
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
-						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if recording && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
+						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if open.name && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
 					</p>
 					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}

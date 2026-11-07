@@ -259,7 +259,9 @@
 				<label class="adding">
 					<span class="caps">{editing ? m.shell.recording : m.shell.recordingReadOnly}</span>
 					<select value={openRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
-						{#if !openRecording}<option value="" disabled>{m.shell.chooseRecording}</option>{/if}
+						<!-- None is a choice too: browsing while editing adds nothing,
+						     and the first change asks which recording it goes to. -->
+						<option value="">{m.shell.noRecording}</option>
 						{#each recordings as r (r.name)}
 							<option value={r.name}>{r.unlisted ? m.shell.disabledOption({ name: r.name }) : r.name}</option>
 						{/each}

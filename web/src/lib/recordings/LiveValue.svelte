@@ -31,7 +31,9 @@
 		value: string; // the recorded value, else the option's own; "" for none
 		recorded: boolean;
 		label: string; // the option's name, which each control is named by
-		apply: (value: string) => void;
+		// Records the value; false when it wasn't (no recording was chosen),
+		// and the control goes back to what it showed.
+		apply: (value: string) => Promise<boolean> | void;
 		onfocus?: (focused: boolean, field: boolean) => void; // field: Enter applies there
 	} = $props();
 
@@ -72,11 +74,19 @@
 		const v = range ? snapped(n, range) : n;
 		draft = plain(v, range?.format);
 		if (recorded && value.trim() !== '' && Number(value) === v) return;
-		apply(draft);
+		send(draft);
 	}
 	function commitText() {
 		if (draft === value && recorded) return;
-		apply(draft);
+		send(draft);
+	}
+	// send records a value, and puts the control back as it was when it
+	// wasn't recorded: a field's text, or a select's or color's own value,
+	// which the page's unchanged value doesn't reset.
+	async function send(v: string, el?: HTMLInputElement | HTMLSelectElement, was?: string) {
+		if ((await apply(v)) !== false) return;
+		draft = kind === 'slider' ? shownNumber(value) : value;
+		if (el && was !== undefined) el.value = was;
 	}
 	function fieldKeys(e: KeyboardEvent, commit: () => void) {
 		if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
@@ -108,13 +118,13 @@
 		e.preventDefault();
 		e.stopPropagation();
 		const code = scanCodeOf(e);
-		if (code !== undefined) apply(String(code));
+		if (code !== undefined) send(String(code));
 	}
 	function captureMouse(e: MouseEvent) {
 		const code = mouseCodeOf(e);
 		if (e.button === 0 || code === undefined) return;
 		e.preventDefault();
-		apply(String(code));
+		send(String(code));
 	}
 	let stopWatching: (() => void) | undefined;
 	// The box asks for the key only while it has focus; at rest without a
@@ -122,7 +132,7 @@
 	let capturing = $state(false);
 	const watch = () => {
 		capturing = true;
-		stopWatching = watchGamepads((code) => apply(String(code)));
+		stopWatching = watchGamepads((code) => send(String(code)));
 	};
 	const unwatch = () => {
 		capturing = false;
@@ -145,13 +155,17 @@
 
 	let colorHex = $derived(value === '' || Number.isNaN(Number(value)) ? '#000000' : hex(Number(value)).toLowerCase());
 	let known = $derived(choices.some((c) => c.raw.toLowerCase() === value.toLowerCase()));
+	// What the selects show: the entry the value names, in the menu's own
+	// case, or the value itself when the menu doesn't list it.
+	let selected = $derived(choices.find((c) => c.raw.toLowerCase() === value.toLowerCase())?.raw ?? value);
+	let padValue = $derived(gamepadButtons.some((b) => String(b.code) === value) ? value : '');
 </script>
 
 <span class="live" class:unrecorded={!recorded} bind:this={box} onfocusin={focusIn} onfocusout={focusOut}>
 	{#if kind === 'choose' && choices.length}
 		<!-- The entry the option has, selected, with a placeholder when none
 		     is known; choosing one records it. -->
-		<select class="field" use:clipped aria-label={label} value={known ? choices.find((c) => c.raw.toLowerCase() === value.toLowerCase())!.raw : value && !known ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
+		<select class="field" use:clipped aria-label={label} value={selected} onchange={(e) => send(e.currentTarget.value, e.currentTarget, selected)} onkeydown={escapeLeaves}>
 			<option value="" disabled>{t.chooseEntry}</option>
 			{#each choices as c, i (i)}
 				<option value={c.raw}>{c.text}{option.default?.kind === 'number' && option.default.number === i && !/default/i.test(c.text) ? ` ${t.defaultMark}` : ''}</option>
@@ -172,13 +186,13 @@
 			<button type="button" class="capture" aria-label={t.keyFor({ option: label, key: value ? keyName(Number(value)) : t.noKey })} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 				{#if value}{keyName(Number(value))}{:else if capturing}<span class="muted">{t.pressKey}</span>{:else}—{/if}
 			</button>
-			<select class="field pad" use:clipped aria-label={t.padFor({ option: label })} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => apply(e.currentTarget.value)} onkeydown={escapeLeaves}>
+			<select class="field pad" use:clipped aria-label={t.padFor({ option: label })} value={padValue} onchange={(e) => send(e.currentTarget.value, e.currentTarget, padValue)} onkeydown={escapeLeaves}>
 				<option value="" disabled>{t.chooseButtonShort}</option>
 				<ControllerOptions {vr} />
 			</select>
 		</span>
 	{:else if kind === 'color'}
-		<input type="color" value={colorHex} aria-label={label} onchange={(e) => apply(String(parseInt(e.currentTarget.value.slice(1), 16)))} onkeydown={escapeLeaves} />
+		<input type="color" value={colorHex} aria-label={label} onchange={(e) => send(String(parseInt(e.currentTarget.value.slice(1), 16)), e.currentTarget, colorHex)} onkeydown={escapeLeaves} />
 	{:else}
 		<input class="field" type="text" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, commitText)} onblur={commitText} autocomplete="off" spellcheck="false" />
 	{/if}

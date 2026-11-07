@@ -23,7 +23,7 @@ common:
 shell:
   name: MCM Lexicon
   recording: Adding to
-  chooseRecording: Choose a recording
+  noRecording: None
   disabledOption: "{name} (mod disabled)"
   recordingTitle: The recording A adds steps to, from any menu or search result
   recordingReadOnly: Recording
@@ -711,6 +711,7 @@ adding:
   readOnly: Grayed out in the menu, so MCM Lexicon leaves it out of recordings.
   inert: Clicking it does nothing, so MCM Lexicon leaves it out of recordings.
   clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.
+  clickTitleAny: Click to record a click on this option, in the recording you choose. Its value is the menu’s own.
   clickRecorded: "{recording} clicks this option"
   # A stepper: clicked as many times as it takes to reach a value.
   clicksShort:
