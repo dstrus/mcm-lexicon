@@ -1,6 +1,7 @@
 // MCM Lexicon catalogs every Mod Configuration Menu option in a mod list and
 // edits MCM Recorder recordings, with Skyrim closed. It starts a small web
-// server on this machine and opens it in the browser.
+// server on this machine and opens it in the browser, or, built with -tags
+// window on Windows, in a window of its own.
 package main
 
 import (
@@ -87,7 +88,7 @@ func main() {
 		if *list != "" || *profile != "" {
 			fmt.Println("To use different options, close that copy first, then start MCM Lexicon again.")
 		}
-		if !*noBrowser {
+		if !*noBrowser && !focusWindow() {
 			openBrowser(running)
 		}
 		return
@@ -96,12 +97,13 @@ func main() {
 		exit("Could not start MCM Lexicon: %v", err)
 	}
 	actualPort := ln.Addr().(*net.TCPAddr).Port
+	token := sessionToken()
 	handler, err := server.New(server.Options{
 		Source:   source,
 		Catalog:  saved.CatalogFile,
 		Prefs:    remembered,
 		Running:  gamecheck.Running,
-		Token:    sessionToken(),
+		Token:    token,
 		Port:     actualPort,
 		Files:    web.Files(),
 		Version:  version,
@@ -130,6 +132,19 @@ func main() {
 		fmt.Printf("Catalog:  %s\n", saved.CatalogFile)
 	default:
 		fmt.Println("Mod list: not found yet; choose it in the browser, or pass -list")
+	}
+	if windowed && !*noBrowser {
+		// The window is the program: closing it stops the server.
+		go func() {
+			if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				exit("%v", err)
+			}
+		}()
+		runWindow(url, token)
+		shutdown, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdown)
+		return
 	}
 	fmt.Println("Close this window or press Ctrl+C to stop.")
 	fmt.Println()
@@ -176,9 +191,14 @@ func openBrowser(url string) {
 
 // exit reports a startup error. On Windows the console window closes as soon
 // as the program ends when it was started by double-clicking, so wait for Enter.
+// Started from Explorer, the window build has no console, so a message box
+// says it instead.
 func exit(format string, a ...any) {
+	if showError(fmt.Sprintf(format, a...)) {
+		os.Exit(1)
+	}
 	fmt.Fprintf(os.Stderr, format+"\n", a...)
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !windowed {
 		fmt.Fprint(os.Stderr, "Press Enter to close.")
 		bufio.NewReader(os.Stdin).ReadString('\n')
 	}

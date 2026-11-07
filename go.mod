@@ -2,13 +2,17 @@ module lexicon
 
 go 1.26.0
 
-require golang.org/x/sys v0.49.0
+require (
+	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
+	golang.org/x/sys v0.49.0
+)
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/gzuidhof/tygo v0.2.21 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/cobra v1.3.0 // indirect

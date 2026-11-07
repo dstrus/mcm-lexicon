@@ -4,7 +4,7 @@
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GOBUILD = CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 
-.PHONY: build windows release release-notes web notices types test dev icons clean
+.PHONY: build windows windows-app release release-notes web notices types test dev icons clean
 
 # The program, for this machine.
 build: web
@@ -17,6 +17,16 @@ windows: web
 		--product-name "MCM Lexicon" --file-description "MCM Lexicon, a catalog of MCM options and an editor for MCM Recorder recordings" \
 		--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
 	GOOS=windows GOARCH=amd64 $(GOBUILD) -o MCMLexicon.exe ./cmd/lexicon
+
+# The same program in a window of its own (WebView2) instead of the browser,
+# as MCMLexicon-window.exe, from any OS: built with -tags window, and linked
+# as a GUI program, with a GUI program's manifest, so no console opens.
+windows-app: web
+	go tool go-winres simply --arch amd64 --manifest gui --icon cmd/lexicon/lexicon.ico \
+		--product-name "MCM Lexicon" --file-description "MCM Lexicon, a catalog of MCM options and an editor for MCM Recorder recordings" \
+		--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -tags window \
+		-ldflags "-s -w -H windowsgui -X main.version=$(VERSION)" -o MCMLexicon-window.exe ./cmd/lexicon
 
 # A release's download, into dist/: a zip for Windows, with LICENSE and
 # THIRD_PARTY_NOTICES.txt, plus its SHA256SUMS. Its name carries no version,
