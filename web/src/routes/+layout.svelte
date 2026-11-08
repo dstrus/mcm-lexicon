@@ -519,10 +519,13 @@
 	}
 	/* The sections on one row, in the session's label size, so they read as
 	   a way out rather than the column's subject. */
+	/* Its rule heads the menus, so it has to be seen: mixed from the muted
+	   ink, as the slider's track is, since even the strong rule is lost
+	   against the column's dark. */
 	.sections {
 		flex: none;
 		padding: var(--space-2) var(--space-4) var(--space-2) var(--space-6);
-		border-bottom: 1px solid var(--rule);
+		border-bottom: 1px solid color-mix(in srgb, var(--muted) 40%, var(--ground));
 	}
 	.sections ul {
 		display: flex;
