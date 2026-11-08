@@ -8,6 +8,7 @@
 	import { column } from '#lib/menus/column.svelte.ts';
 	import { recordingHref, recordingsDependency, redo, saveAll, setOpen, undo } from '#lib/recordings/api.ts';
 	import QuickFind from '#lib/ui/QuickFind.svelte';
+	import Cog from '#lib/ui/Cog.svelte';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import Mark from '#lib/ui/Mark.svelte';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
@@ -249,16 +250,19 @@
 	{#if !open}
 		<main class="solo"><SourceForm /></main>
 	{:else}
-		<!-- The column, as SkyUI's MCM lays its left side out: the session at
-		     the top, where to go, then the menus, which take the rest. -->
+		<!-- The column, as SkyUI's MCM lays its left side out: Settings on its
+		     own at the top, as Hermaeus's Config is, then the session, where
+		     to go, and the menus, which take the rest. -->
 		<div class="column" use:fitToViewport>
+			<a class="config caps" href="/settings" aria-current={here('/settings') ? 'page' : undefined}><Cog size="0.8em" />{m.nav.settings}</a>
 			<section class="session" class:editing aria-label={m.shell.session}>
 				<span title={modeError || (editing ? m.shell.editingTitle : m.shell.readOnlyTitle)}>
 					<Segmented bind:value={modeValue} options={[{ value: 'read', label: m.shell.readOnly, quiet: true }, { value: 'editing', label: m.shell.editing }]} label={m.shell.mode} onchange={chooseMode} />
 				</span>
-				<label class="adding">
-					<span class="caps">{editing ? m.shell.recording : m.shell.recordingReadOnly}</span>
-					<select value={openRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
+				<div class="adding">
+					<label class="caps" for="adding-to">{editing ? m.shell.recording : m.shell.recordingReadOnly}</label>
+					<span class="pick">
+						<select id="adding-to" value={openRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
 						<!-- None is a choice too: browsing while editing adds nothing,
 						     and the first change asks which recording it goes to. -->
 						<option value="">{m.shell.noRecording}</option>
@@ -267,22 +271,24 @@
 						{/each}
 						{#if editing}<option value={newValue}>{m.adding.newRecording}</option>{/if}
 					</select>
-				</label>
-				{#if chosen}
-					{@const unsaved = editing && (chosen.drafted || chosen.deleted)}
-					<a class="caps rec" class:unsaved class:disabled={chosen.unlisted} href={recordingHref(chosen.name)} title={[m.nav.openRecording({ name: chosen.name }), chosen.unlisted ? m.nav.disabledHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')} aria-current={here(recordingHref(chosen.name)) ? 'page' : undefined}>
-						<span class="marker"><Diamond hollow /></span>
-						<span class="clip">{chosen.name}</span>
-						{#if unsaved}<span class="visually-hidden">{m.nav.unsavedHere}</span>{/if}
-						{#if chosen.unlisted}<span class="visually-hidden">{m.nav.disabledHere}</span>{/if}
-					</a>
-				{/if}
+					<!-- The way to the chosen recording's page, beside it: in
+					     full ink while it has unsaved changes, amber while its
+					     mod is disabled. -->
+					{#if chosen}
+						{@const unsaved = editing && (chosen.drafted || chosen.deleted)}
+						{@const says = [m.nav.openRecording({ name: chosen.name }), chosen.unlisted ? m.nav.disabledHere : '', unsaved ? m.nav.unsavedHere : ''].filter(Boolean).join(' · ')}
+						<a class="open" class:unsaved class:disabled={chosen.unlisted} href={recordingHref(chosen.name)} title={says} aria-label={says} aria-current={here(recordingHref(chosen.name)) ? 'page' : undefined}>
+							<svg viewBox="0 0 8 12" width="6" height="9" aria-hidden="true"><path d="M1.5 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+						</a>
+					{/if}
+					</span>
+				</div>
 				{#if editing && pending > 0}
 					<div class="saving">
 						{#key pending}<button type="button" class="button save" disabled={saving} onclick={saveNow}>{m.nav.save}</button>{/key}
-						<a class="caps review" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>{m.nav.review}</a>
+						<a class="caps review" href="/changes" title={m.nav.changesTitle({ count: pending })} aria-current={here('/changes') ? 'page' : undefined}>{m.nav.review}<span class="count">{pending}</span></a>
 					</div>
-					<p class="note" role="status">{m.nav.changesTitle({ count: pending })}</p>
+					<p class="visually-hidden" role="status">{m.nav.changesTitle({ count: pending })}</p>
 					{#if saveError}<p class="note error" role="alert">{saveError}</p>{/if}
 				{:else if editing}
 					<a class="changes caps" href="/changes" aria-current={here('/changes') ? 'page' : undefined}>
@@ -291,17 +297,19 @@
 					{#if savedCount}<p class="note" role="status">{m.nav.savedNote({ count: savedCount })}</p>{/if}
 				{/if}
 			</section>
+			<!-- Where else to go, on one row, so the menus start high: they're
+			     where the time is spent. -->
 			<nav class="sections" aria-label={m.nav.sections}>
 				<ul>
 					<li><a class="caps" href="/search" aria-current={here('/search') ? 'page' : undefined}>{m.nav.search}</a></li>
-					<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
 					<li><a class="caps" href="/recordings" aria-current={here('/recordings') ? 'page' : undefined}>{m.nav.recordings}</a></li>
-					<li><a class="caps" href="/settings" aria-current={here('/settings') ? 'page' : undefined}>{m.nav.settings}</a></li>
+					<li><a class="caps" href="/compare" aria-current={here('/compare') ? 'page' : undefined}>{m.nav.compare}</a></li>
 				</ul>
 			</nav>
+			<!-- The filter heads the menus and counts them; the list's home is
+			     the mark in the top bar. -->
 			<nav class="menus" class:active={column.active} aria-label={m.nav.menus}>
-				<a class="caps group" href="/menus" aria-current={page.url.pathname === '/menus' ? 'page' : undefined}>{m.nav.menus}<span class="count">{allMenus.length}</span></a>
-				<input type="search" bind:value={filter} placeholder={m.nav.menusFilter} aria-label={m.nav.menusFilter} spellcheck="false" autocomplete="off" />
+				<input type="search" bind:value={filter} placeholder={m.nav.menusFilter({ count: allMenus.length })} aria-label={m.nav.menusFilter({ count: allMenus.length })} spellcheck="false" autocomplete="off" />
 				{#if allMenus.length && !menus.length}
 					<p class="note">{m.common.noMatch({ query: filter })}</p>
 				{:else}
@@ -426,6 +434,27 @@
 		min-height: 0;
 		border-right: 1px solid var(--rule);
 	}
+	/* Settings heads the column on its own, in full ink after a drawn cog,
+	   as Hermaeus's Config does: MCM Lexicon's own settings, not one of
+	   the list's sections. */
+	.config {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+		border-bottom: 1px solid var(--rule);
+		font-size: var(--step-1);
+		text-decoration: none;
+		color: var(--ink);
+	}
+	.config:hover {
+		color: var(--accent);
+	}
+	.config[aria-current='page'] {
+		color: var(--accent);
+		font-weight: 600;
+	}
 	/* The editing session: the mode, the recording, and while editing the
 	   way to the draft. */
 	.session {
@@ -444,16 +473,62 @@
 		font-size: var(--step--1);
 		color: var(--muted);
 	}
+	/* The recording's select, and the way to its page beside it, a square
+	   of the field's own glass and height. */
+	.pick {
+		display: flex;
+		gap: var(--space-1);
+		min-width: 0;
+	}
 	.adding select {
-		width: 100%;
+		flex: 1 1 auto;
+		min-width: 0;
 		--chevron-inset: var(--space-2);
 		padding-block: var(--space-1);
 		padding-left: var(--space-2);
 	}
+	.open {
+		flex: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		background: var(--glass-strong);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		color: var(--muted);
+	}
+	.open:hover {
+		border-color: var(--accent);
+		color: var(--ink);
+	}
+	.open:focus-visible {
+		border-color: var(--accent);
+		outline: 1px solid var(--accent);
+		outline-offset: -1px;
+	}
+	.open.unsaved {
+		color: var(--ink);
+	}
+	.open.disabled {
+		color: var(--warn);
+	}
+	.open[aria-current='page'] {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	/* The sections on one row, in the session's label size, so they read as
+	   a way out rather than the column's subject. */
 	.sections {
 		flex: none;
-		padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+		padding: var(--space-2) var(--space-4) var(--space-2) var(--space-6);
 		border-bottom: 1px solid var(--rule);
+	}
+	.sections ul {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: 0 var(--space-3);
 	}
 	.sections ul,
 	.menus ul {
@@ -463,22 +538,22 @@
 	}
 	.sections a,
 	.menus a,
-	.changes,
-	.session .rec {
+	.changes {
 		display: block;
 		padding: var(--space-1) 0;
 		font-size: var(--step-1);
 		text-decoration: none;
 		color: var(--muted);
 	}
+	.sections a {
+		font-size: var(--step-0);
+	}
 	.sections a:hover,
-	.menus a:hover,
-	.session .rec:hover {
+	.menus a:hover {
 		color: var(--ink);
 	}
 	.sections a[aria-current='page'],
-	.menus a[aria-current='page'],
-	.session .rec[aria-current='page'] {
+	.menus a[aria-current='page'] {
 		color: var(--accent);
 		font-weight: 600;
 	}
@@ -489,10 +564,10 @@
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		padding: var(--space-4) var(--space-4) var(--space-4) var(--space-6);
+		padding: var(--space-3) var(--space-4) var(--space-4) var(--space-6);
 	}
 	.menus input {
-		margin: var(--space-2) 0 var(--space-2);
+		margin: 0 0 var(--space-2);
 		padding: var(--space-1) var(--space-2);
 	}
 	.menus ul {
@@ -517,8 +592,7 @@
 		outline: 1px solid var(--keys);
 		outline-offset: -1px;
 	}
-	.menus a.menu,
-	.session a.rec {
+	.menus a.menu {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
@@ -538,8 +612,8 @@
 	.menu.inactive {
 		opacity: 0.55;
 	}
-	/* The group label over the inactive menus, and the MENUS label itself,
-	   never as bright as the current item. */
+	/* The group label over the inactive menus, never as bright as the
+	   current item. */
 	.group {
 		margin: 0;
 		padding: 0;
@@ -549,25 +623,6 @@
 	li.group {
 		margin-top: var(--space-3);
 		padding-bottom: var(--space-1);
-	}
-	a.group {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-	}
-	a.group[aria-current='page'] {
-		color: var(--accent);
-	}
-	/* The recording chosen: a hollow diamond, its name. Unsaved changes are
-	   full ink, as CHANGES is; a mod the profile has disabled is amber. */
-	.session .rec.unsaved {
-		color: var(--ink);
-	}
-	.session .rec.disabled {
-		color: var(--warn);
-	}
-	.session .rec[aria-current='page'] {
-		color: var(--accent);
 	}
 	.visually-hidden {
 		position: absolute;
@@ -593,7 +648,11 @@
 		align-items: center;
 		gap: var(--space-4);
 	}
+	/* Review, with how many recordings the draft changes beside it. */
 	.review {
+		display: inline-flex;
+		align-items: baseline;
+		gap: var(--space-2);
 		font-size: var(--step-0);
 		text-decoration: none;
 		color: var(--muted);
@@ -610,8 +669,7 @@
 	.note.error {
 		color: var(--danger);
 	}
-	/* A count in the link's own ink: how many menus, or how many recordings
-	   the draft changes. */
+	/* A count in the link's own ink: how many recordings the draft changes. */
 	.count {
 		font-variant-numeric: tabular-nums;
 		font-weight: 400;
@@ -671,7 +729,11 @@
 		}
 		.sections ul {
 			display: flex;
+			justify-content: flex-start;
 			gap: var(--space-5);
+		}
+		.config {
+			padding: var(--space-2) var(--space-6);
 		}
 		.menus {
 			flex: none;

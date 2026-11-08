@@ -81,7 +81,10 @@ nav:
   savedNote:
     one: Saved {count} recording.
     other: Saved {count} recordings.
-  menusFilter: Filter menus
+  # The menus' filter, which heads them in the column.
+  menusFilter:
+    one: Filter {count} menu
+    other: Filter {count} menus
   inactiveMenus: Inactive
   openRecording: Open {name}
   # The count beside Changes is of recordings, not steps.
