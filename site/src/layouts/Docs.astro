@@ -87,11 +87,12 @@ const previous = pages[at - 1];
 
 <style>
 	.docs {
+		--docs-rail: calc(16rem + clamp(var(--space-6), 5vw, var(--space-9)));
 		display: grid;
 		grid-template-columns: 16rem minmax(0, 1fr);
 		gap: clamp(var(--space-6), 5vw, var(--space-9));
 		padding: var(--space-7) var(--gutter) 0;
-		max-width: 84rem;
+		max-width: 100rem;
 	}
 
 	/* The pages, as the app lists a menu's pages. */
@@ -236,6 +237,78 @@ const previous = pages[at - 1];
 	.prose :global(.btw a) {
 		color: var(--ink);
 	}
+	/* Screenshots: the app in a hairline frame, with a caption under it,
+	   as the landing page frames its screens; a themed figure holds both
+	   themes' images and shows the page's. The frame may run wider than
+	   the column, since a whole window at 44rem would be too small to read. */
+	.prose :global(figure.shot) {
+		margin: var(--space-6) 0 0;
+		/* A whole window is unreadable at the column's width, so a figure
+		   may run past the column to the page's edge, up to its own 1x size
+		   (--w), never enlarged. A crop stays at its own size. */
+		width: min(var(--w, 1280px), calc(100vw - var(--gutter) * 2 - var(--docs-rail)), 68rem);
+		max-width: none;
+	}
+	.prose :global(figure.shot img) {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius);
+		background: var(--ground);
+	}
+	.prose :global(figure.shot.themed img.light) {
+		display: none;
+	}
+	:global(:root[data-theme='light']) .prose :global(figure.shot.themed img.dark) {
+		display: none;
+	}
+	:global(:root[data-theme='light']) .prose :global(figure.shot.themed img.light) {
+		display: block;
+	}
+	@media (prefers-color-scheme: light) {
+		:global(:root:not([data-theme='dark'])) .prose :global(figure.shot.themed img.dark) {
+			display: none;
+		}
+		:global(:root:not([data-theme='dark'])) .prose :global(figure.shot.themed img.light) {
+			display: block;
+		}
+	}
+	.prose :global(figcaption) {
+		margin-top: var(--space-3);
+		color: var(--muted);
+		font-size: var(--step-0);
+		line-height: 1.5;
+		max-width: 44rem;
+	}
+	/* A numbered caption lists its callouts, each number in the badge's
+	   rose so it reads with the picture. */
+	.prose :global(figcaption ol) {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		counter-reset: callout;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+		gap: var(--space-1) var(--space-5);
+	}
+	.prose :global(figcaption li) {
+		counter-increment: callout;
+		display: grid;
+		grid-template-columns: 1.5rem minmax(0, 1fr);
+		gap: var(--space-2);
+		margin: 0;
+	}
+	.prose :global(figcaption li::before) {
+		content: counter(callout);
+		width: 1.5rem;
+		height: 1.5rem;
+		border-radius: 50%;
+		background: var(--invite);
+		color: var(--on-invite);
+		font: 700 0.8125rem / 1.5rem var(--font-label);
+		text-align: center;
+	}
 	.prose :global(table) {
 		width: 100%;
 		border-collapse: collapse;
@@ -290,6 +363,7 @@ const previous = pages[at - 1];
 
 	@media (max-width: 60rem) {
 		.docs {
+			--docs-rail: 0px;
 			grid-template-columns: minmax(0, 1fr);
 			gap: var(--space-6);
 			padding-top: var(--space-5);

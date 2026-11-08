@@ -241,7 +241,7 @@ The app's near-monochrome palette, unchanged: off-white on near-black in dark, n
 - **Accent Ink** (`on-accent` / `on-accent-light`): text and the diamond on an accent fill.
 
 ### Secondary
-- **Rose Invitation** (`invite` / `invite-light`): the site's own color, for what the page asks you to touch: the TRY IT and its arrow above the window, the window's outline, and the FLIP THIS chip in the menu. Chosen for how it looks beside the rest, not for the world: the page's palette is warm (cream, warm gray, amber, copper) with one cool-leaning green, and rose is the warm hue it lacks and the near-complement of that green, so it pulls the eye and still belongs. A warm pink in dark (`#f0a3b5`) and the same rose deepened to raspberry for pale smoke in light (`#b0325a`). Never a fill larger than a chip, and never on anything the app itself shows.
+- **Rose Invitation** (`invite` / `invite-light`): the site's own color, for what the page asks you to touch: the TRY IT and its arrow above the window, the window's outline, the FLIP THIS chip in the menu, and the numbered callouts on the docs' screenshots. Chosen for how it looks beside the rest, not for the world: the page's palette is warm (cream, warm gray, amber, copper) with one cool-leaning green, and rose is the warm hue it lacks and the near-complement of that green, so it pulls the eye and still belongs. A warm pink in dark (`#f0a3b5`) and the same rose deepened to raspberry for pale smoke in light (`#b0325a`). Never a fill larger than a chip, and never on anything the app itself shows.
 - **Invitation Ink** (`on-invite` / `on-invite-light`): text and the arrow on an invitation fill.
 - **Copper Changed** (`changed` / `changed-light`): in the hero's menu, a recorded value that differs from the mod's default (a slider's number or a menu's chosen entry), as the app shows it. The value only, never a row or a fill.
 
@@ -365,6 +365,9 @@ The file the menu writes, beside it on Pane Glass behind a strong hairline: its 
 
 ### Screens
 A screen of the app in both themes, showing the one that matches the page, in a 1px strong-hairline frame with 3px corners and no shadow. Each has a caption with a title-step caps name over a strong hairline and a muted description; the screen dims until it's lit, its caption never does; when lit, its name turns the accent and shows the diamond. A provenance line in muted label caps follows the list.
+
+### Docs Figure
+A screenshot in the docs is the app in a strong-hairline frame with 3px corners on the game's ground, as the landing page frames its screens, with its caption in muted Jost under it. Both themes' captures ship and the page shows the one matching its theme. A figure may run past the reading column toward the page's edge, up to its own 1x size (a whole window at 1280px, a crop at its own width) and never enlarged, since a window at the column's 44rem is unreadable. Callouts are numbered badges in Rose Invitation drawn into the capture; their caption is a numbered list in two columns, each number in the same rose badge, so the list reads with the picture.
 
 ### By the Way… Aside
 Tangents, caveats, and jokes pulled out of the main flow, on the landing page and in the docs alike: Pane Glass, a strong hairline, 3px corners, padding 1rem by 1.5rem, a short title in ink in 1.125rem caps at weight 600, then muted Jost. Links inside are ink. Load-bearing text (download steps, safety rules) never goes in an aside.

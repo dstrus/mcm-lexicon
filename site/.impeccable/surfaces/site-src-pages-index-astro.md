@@ -7,7 +7,7 @@ related_targets: ["site/src/components/MenuDemo.astro","site/src/layouts/Docs.as
 
 # Landing page (site/src/pages/index.astro)
 
-Mode: Persuade. Code-led (no image generation in this harness). The docs under site/src/pages/docs are a Read surface framed by the same world.
+Mode: Persuade. Code-led (no image generation in this harness). The docs under site/src/pages/docs are a Read surface framed by the same world, with annotated screenshots of the app (public/docs/shots, captured from the Synergy snapshot; their origins are in .impeccable/provenance/docs-shots).
 
 Audience: Skyrim VR players and mod list authors who use MCM Recorder. Job: understand that MCM Lexicon writes MCM Recorder recordings without launching Skyrim, trust it with their list, and download the Windows build. Proof: WeaponThrowVR's real menu (shown with Shizof's permission), real screens from the Synergy list, and the exact file it writes. No invented claims.
 

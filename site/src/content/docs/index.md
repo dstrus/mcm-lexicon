@@ -31,13 +31,19 @@ With Mod Organizer 2, MCM Lexicon reads the profile that's currently selected in
 
 By the way…
 
-A small terminal-style window stays open while MCM Lexicon runs. Close it (or press Ctrl+C in it) when you're done to quite. Closing the browser tab doesn't stop it.
+A small terminal-style window stays open while MCM Lexicon runs. Close it (or press Ctrl+C in it) when you're done to quit. Closing the browser tab doesn't stop it.
 
 </div>
 
 ## Looking around
 
 Everything starts out read-only, so you can't break anything just by poking around. The column on the left lists every menu in your list as it appears in SkyUI, and picking one draws it the way SkyUI draws it, with each option's help text, its exact label, and what values it allows.
+
+<figure class="shot themed" style="--w: 1280px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/getting-started-dark.webp" alt="MCM Lexicon with WeaponThrowVR's General page open, its parts numbered." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/getting-started-light.webp" alt="MCM Lexicon with WeaponThrowVR's General page open, its parts numbered." loading="lazy" decoding="async" />
+  <figcaption><ol><li>The list you're reading, its MO2 profile, when it was last scanned, and whether Skyrim is running.</li><li>Settings.</li><li>The editing session: read-only or editing, and which recording you're adding to.</li><li>Search, Recordings, and Compare.</li><li>Every menu in your list, with a filter.</li><li>The menu's pages.</li><li>The selected option's help text, its exact label, and what it allows.</li></ol></figcaption>
+</figure>
 
 Press `/` anywhere to find a menu by name, or use the Search page to find an option in any menu.
 

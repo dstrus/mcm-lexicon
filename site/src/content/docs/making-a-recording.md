@@ -8,13 +8,35 @@ A recording is what MCM Recorder plays when you start a new game (if autorun is 
 
 ## Turn on editing
 
-At the top of the column, switch from **Read-only** to **Editing**. Then choose the which recording to add to under **Adding to**, or pick **New recording…** at the bottom of that list and give it a name.
+Near the top of the column, switch from **Read-only** to **Editing**. Then choose which recording to add to under **Adding to**, or pick **New recording…** at the bottom of that list and give it a name. (You can also leave it at **None** and just start changing things. The first change asks which recording it should go to.)
+
+<figure class="shot themed" style="--w: 300px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/editing-controls-dark.webp" alt="The top of the column while editing, its parts numbered." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/editing-controls-light.webp" alt="The top of the column while editing, its parts numbered." loading="lazy" decoding="async" />
+  <figcaption><ol><li>Read-only or Editing.</li><li>The recording you're adding to, with a button to open its page.</li><li>Once something has changed, Save and Review appear here.</li></ol></figcaption>
+</figure>
 
 ## Set some values
 
-Open a menu and set options the way you would in SkyUI: switches for toggles, a number (or a slider) for sliders, a list for menus, and a click for text options. Each value you set becomes a step in the recording.
+Open a menu and set options the way you would in SkyUI. While you're editing, every option shows an appropriate control: a toggle switch, a slider, a dropdown, etc. You can also press `E` to edit the selected option from the keyboard. In either case, changing one records it in your draft recording.
 
-A small amber diamond before a value means it's in the recording but not saved to disk yet. A value in copper is different from the mod's default, in cases where MCM Lexicon knows the default.
+A value in copper is already saved in the recording and differs from the mod's default (when MCM Lexicon knows the default). A small amber diamond before a value means it's in the draft recording but not saved to disk yet.
+
+<figure class="shot themed" style="--w: 1280px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/menu-editing-dark.webp" alt="WeaponThrowVR's Impact page while editing, its parts numbered." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/menu-editing-light.webp" alt="WeaponThrowVR's Impact page while editing, its parts numbered." loading="lazy" decoding="async" />
+  <figcaption><ol><li>The amber diamond: this step is in the recording, but not saved yet.</li><li>The value, in copper because it differs from the mod's default of 2.0.</li><li>The menu's pages.</li><li>The selected option's help, its exact label, what it allows, its default, and which step of the recording it is.</li></ol></figcaption>
+</figure>
+
+### Hotkeys
+
+To record a hotkey, click into the key box and press the key you want, a mouse button (other than the left one), or a button on a controller that's plugged into your PC. In Skyrim VR, your motion controllers show up to menus as a regular gamepad, and those mappings may or may not make sense. So a list beside the box names each VR controller button by its controller and shows the gamepad button it gets translated to.
+
+<figure class="shot themed" style="--w: 400px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/controller-buttons-dark.webp" alt="The controller button list open beside a hotkey, listing Quest-style controllers' buttons with pictures, then Vive wands." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/controller-buttons-light.webp" alt="The controller button list open beside a hotkey, listing Quest-style controllers' buttons with pictures, then Vive wands." loading="lazy" decoding="async" />
+  <figcaption>Choosing a controller button for a hotkey. The names are provisional until I've confirmed each one in the headset.</figcaption>
+</figure>
 
 **Record all settings on this page** adds a step for every option on the page at once, which is handy when you want to be sure that a whole page of options will match what you see in MCM Lexicon.
 
@@ -41,9 +63,21 @@ A recording's page lists its steps, grouped by file, and checks each one against
 
 A step that matches what's installed says nothing at all. The **Files** tab shows each file exactly as it will be written.
 
+<figure class="shot themed" style="--w: 1280px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/steps-dark.webp" alt="A recording's page, listing its steps with one selected and its details beside it." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/steps-light.webp" alt="A recording's page, listing its steps with one selected and its details beside it." loading="lazy" decoding="async" />
+  <figcaption>A recording's steps, grouped by step file. The selected step's details say what the catalog found for it.</figcaption>
+</figure>
+
 ## Save it
 
 Nothing is written until you save. **Review** (or the Changes page) shows every change as it will be written, compared with what's on disk now. Click **Save** when you're ready.
+
+<figure class="shot themed" style="--w: 1280px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/changes-dark.webp" alt="The Changes page, showing a new recording's two files as they will be written." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/changes-light.webp" alt="The Changes page, showing a new recording's two files as they will be written." loading="lazy" decoding="async" />
+  <figcaption>Before you save, every file as it will be written, next to what's on disk now (nothing, for a new recording).</figcaption>
+</figure>
 
 If you changed a recording that came with another mod, the change saves as a copy, in a mod folder of its own. The original stays untouched. See [Where things go](../where-things-go/).
 

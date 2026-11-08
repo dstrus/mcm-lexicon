@@ -10,6 +10,12 @@ MCM Lexicon reads your whole list, but it only writes to a few places. Here they
 
 With Mod Organizer 2, recordings save to a mod folder of their own in your MO2 instance, called `[NoDelete] MCM Lexicon Recordings` unless you change it in Settings. The `[NoDelete] ` prefix keeps a Wabbajack update from deleting it.
 
+<figure class="shot themed" style="--w: 1280px">
+  <img class="dark" src="/mcm-lexicon/docs/shots/settings-dark.webp" alt="The Settings page: the mod list in use, and the save folder's name and [NoDelete] prefix." loading="lazy" decoding="async" />
+  <img class="light" src="/mcm-lexicon/docs/shots/settings-light.webp" alt="The Settings page: the mod list in use, and the save folder's name and [NoDelete] prefix." loading="lazy" decoding="async" />
+  <figcaption>Settings, at the top of the column: change the list MCM Lexicon reads, and name the mod folder recordings save to.</figcaption>
+</figure>
+
 MO2 lists that folder as a new mod, disabled, the first time. Enable it so MCM Recorder actually plays your recordings in the game.
 
 With a plain `Data` folder instead, recordings save there.
