@@ -97,9 +97,13 @@ for (const b of gamepadButtons) names[b.code] = b.name;
 // button is which code is the engine's doing, per controller family, and
 // this table is provisional until confirmed in game: an entry that's wrong
 // mislabels a button, but the code it writes is still a real one.
+// The Quest-style controllers' pictures, in static/controller/, each at
+// twice its size too (touch-a@2x.png).
+export type Glyph = `touch-${'a' | 'b' | 'x' | 'y' | 'left-stick' | 'right-stick' | 'left-grip' | 'right-grip' | 'left-trigger' | 'right-trigger'}`;
 export interface VRButton {
 	code: number;
 	name: string; // the controller's own name for the button
+	glyph?: Glyph;
 }
 export interface VRFamily {
 	name: string;
@@ -109,16 +113,16 @@ export const vrFamilies: VRFamily[] = [
 	{
 		name: k.vrTouch,
 		buttons: [
-			{ code: 276, name: k.vrA },
-			{ code: 277, name: k.vrB },
-			{ code: 278, name: k.vrX },
-			{ code: 279, name: k.vrY },
-			{ code: 274, name: k.vrLeftGrip },
-			{ code: 275, name: k.vrRightGrip },
-			{ code: 280, name: k.vrLeftTrigger },
-			{ code: 281, name: k.vrRightTrigger },
-			{ code: 272, name: k.vrLeftStick },
-			{ code: 273, name: k.vrRightStick },
+			{ code: 276, name: k.vrA, glyph: 'touch-a' },
+			{ code: 277, name: k.vrB, glyph: 'touch-b' },
+			{ code: 278, name: k.vrX, glyph: 'touch-x' },
+			{ code: 279, name: k.vrY, glyph: 'touch-y' },
+			{ code: 274, name: k.vrLeftGrip, glyph: 'touch-left-grip' },
+			{ code: 275, name: k.vrRightGrip, glyph: 'touch-right-grip' },
+			{ code: 280, name: k.vrLeftTrigger, glyph: 'touch-left-trigger' },
+			{ code: 281, name: k.vrRightTrigger, glyph: 'touch-right-trigger' },
+			{ code: 272, name: k.vrLeftStick, glyph: 'touch-left-stick' },
+			{ code: 273, name: k.vrRightStick, glyph: 'touch-right-stick' },
 			{ code: 270, name: k.vrMenu }
 		]
 	},

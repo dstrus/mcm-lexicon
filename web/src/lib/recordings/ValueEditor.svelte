@@ -8,8 +8,8 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { page } from '$app/state';
 	import type { Status } from '#lib/api/types/api.ts';
-	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
-	import ControllerOptions from './ControllerOptions.svelte';
+	import { inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import ControllerPicker from './ControllerPicker.svelte';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import Segmented from '#lib/ui/Segmented.svelte';
@@ -136,13 +136,11 @@
 		<button type="button" class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 			{value === '' ? t.pressKey : keyName(Number(value))}{#if value !== ''}<span class="muted code">{value}</span>{/if}
 		</button>
-		<label>
+		<!-- Not a label: a click in the open list would go to its button. -->
+		<div class="labeled">
 			<span class="caps label">{t.controllerButton}</span>
-			<select value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => (value = e.currentTarget.value)}>
-				<option value="" disabled>{t.chooseButton}</option>
-				<ControllerOptions {vr} />
-			</select>
-		</label>
+			<ControllerPicker {value} {vr} label={t.controllerButton} placeholder={t.chooseButton} size="full" choose={(code) => void (value = code)} />
+		</div>
 		<p class="muted small">{t.pressKeyHint}{#if vr}{' '}{t.vrHint}{/if}</p>
 	{:else if kind === 'color'}
 		<label class="color">
@@ -175,7 +173,8 @@
 		gap: var(--space-2);
 		justify-items: start;
 	}
-	label {
+	label,
+	.labeled {
 		display: grid;
 		gap: var(--space-1);
 		width: 100%;

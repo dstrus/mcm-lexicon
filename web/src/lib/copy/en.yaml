@@ -756,6 +756,8 @@ editor:
   keyFor: "{option}: {key}"
   noKey: no key
   padFor: "{option}: controller button"
+  # The controller button's name for assistive technology, with its choice.
+  padChosen: "{label}, {choice}"
   slideFor: "{option}: slide to a value"
   chooseButton: Choose a button…
   chooseButtonShort: Controller button…

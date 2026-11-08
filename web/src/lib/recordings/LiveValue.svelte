@@ -10,12 +10,12 @@
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import { inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
 	import { hex, plain, snapped } from '#lib/menus/values.ts';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy } from 'svelte';
-	import ControllerOptions from './ControllerOptions.svelte';
+	import ControllerPicker from './ControllerPicker.svelte';
 
 	let {
 		kind,
@@ -158,7 +158,6 @@
 	// What the selects show: the entry the value names, in the menu's own
 	// case, or the value itself when the menu doesn't list it.
 	let selected = $derived(choices.find((c) => c.raw.toLowerCase() === value.toLowerCase())?.raw ?? value);
-	let padValue = $derived(gamepadButtons.some((b) => String(b.code) === value) ? value : '');
 </script>
 
 <span class="live" class:unrecorded={!recorded} bind:this={box} onfocusin={focusIn} onfocusout={focusOut}>
@@ -186,10 +185,7 @@
 			<button type="button" class="capture" aria-label={t.keyFor({ option: label, key: value ? keyName(Number(value)) : t.noKey })} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 				{#if value}{keyName(Number(value))}{:else if capturing}<span class="muted">{t.pressKey}</span>{:else}—{/if}
 			</button>
-			<select class="field pad" use:clipped aria-label={t.padFor({ option: label })} value={padValue} onchange={(e) => send(e.currentTarget.value, e.currentTarget, padValue)} onkeydown={escapeLeaves}>
-				<option value="" disabled>{t.chooseButtonShort}</option>
-				<ControllerOptions {vr} />
-			</select>
+			<span class="pad"><ControllerPicker {value} {vr} label={t.padFor({ option: label })} placeholder={t.chooseButtonShort} choose={(code) => apply(code)} onkeydown={escapeLeaves} /></span>
 		</span>
 	{:else if kind === 'color'}
 		<input type="color" value={colorHex} aria-label={label} onchange={(e) => send(String(parseInt(e.currentTarget.value.slice(1), 16)), e.currentTarget, colorHex)} onkeydown={escapeLeaves} />
@@ -269,19 +265,18 @@
 		flex: none;
 		font-variant-numeric: tabular-nums;
 	}
-	.pair.key select {
+	.pair.key .pad {
 		display: none;
 	}
-	.pair.key:focus-within select {
-		display: block;
+	/* Its open list counts too: focus passes through nowhere on its way
+	   into the list, and a hidden list can't take it. */
+	.pair.key:focus-within .pad,
+	.pair.key .pad:has(:global(:popover-open)) {
+		display: inline-flex;
 	}
 	.capture {
 		cursor: pointer;
 		white-space: nowrap;
-	}
-	.live select.pad {
-		width: 10rem;
-		flex: none;
 	}
 	input[type='color'] {
 		width: 2.5rem;

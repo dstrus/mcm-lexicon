@@ -9,8 +9,8 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { page } from '$app/state';
 	import type { Status } from '#lib/api/types/api.ts';
-	import { gamepadButtons, inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
-	import ControllerOptions from './ControllerOptions.svelte';
+	import { inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
+	import ControllerPicker from './ControllerPicker.svelte';
 	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -189,10 +189,7 @@
 			<button type="button" bind:this={field} class="capture" aria-label={t.pressKey} onkeydown={captureKey} onmousedown={captureMouse} oncontextmenu={(e) => e.preventDefault()} onfocus={watch} onblur={unwatch}>
 				{t.pressKey}<span class="muted">{keyName(Number(value))}</span>
 			</button>
-			<select class="pad" aria-label={t.controllerButton} title={vr ? `${t.controllerNote} ${t.vrNote}` : t.controllerNote} value={gamepadButtons.some((b) => String(b.code) === value) ? value : ''} onchange={(e) => end(() => apply(e.currentTarget.value))} onkeydown={keys}>
-				<option value="" disabled>{t.chooseButtonShort}</option>
-				<ControllerOptions {vr} />
-			</select>
+			<ControllerPicker {value} {vr} label={t.controllerButton} placeholder={t.chooseButtonShort} choose={(code) => end(() => apply(code))} onkeydown={keys} />
 		</span>
 	{:else if kind === 'color'}
 		<input bind:this={field} type="color" value={colorHex} aria-label={t.color} onchange={(e) => apply(String(parseInt(e.currentTarget.value.slice(1), 16)))} onkeydown={keys} />
@@ -284,10 +281,6 @@
 	.pair.key {
 		flex-wrap: wrap;
 		max-width: 15rem;
-	}
-	.pair select.pad {
-		width: 10rem;
-		flex: none;
 	}
 	.capture {
 		display: inline-flex;
