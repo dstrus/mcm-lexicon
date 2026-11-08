@@ -12,7 +12,7 @@ import (
 
 // The picker lists one folder at a time: for a mod list, marking the
 // subfolders that are one, or lead to one; for a catalog file, marking the
-// files that are one.
+// files that are one; for a folder to save in, marking nothing.
 
 // Mark says how a folder relates to a mod list.
 type Mark string
@@ -55,6 +55,7 @@ type Looking string
 const (
 	LookingList    Looking = "list"    // a mod list: a folder
 	LookingCatalog Looking = "catalog" // a catalog file
+	LookingFolder  Looking = "folder"  // a folder to save a file in
 )
 
 // Browse lists what's in dir, or in the folder MCM Lexicon runs from when

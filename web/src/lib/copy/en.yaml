@@ -128,6 +128,7 @@ source:
     browse: Browse…
     title: Choose your mod list
     titleCatalog: Choose a catalog file
+    titleFolder: Choose a folder to save in
     catalog: Catalog file
     noCatalogs: There’s no catalog file in this folder.
     drive: Drive
@@ -787,6 +788,8 @@ compare:
   lead: What changed between a catalog saved before and the list now, and which recorded steps that changes breaks.
   file: Older catalog file
   run: Compare
+  noFile: No catalog file yet? Save one from this list in {settings}, then compare against it after the list changes.
+  inSettings: Settings
   current: Now
   older: Before
   scannedFrom: "{list}, profile {profile}, scanned {when}"
@@ -836,3 +839,22 @@ settings:
   moved: Recordings already saved stay where they are. A recording can still be saved to another folder from its own page.
   dataFolder: With a Data folder open, recordings save into the Data folder. This applies to an MO2 instance.
   catalogFile: With a catalog file open, each recording is saved to a folder chosen on its page. This applies to an MO2 instance.
+  # Saving a copy of what was read: the catalog, and a snapshot.
+  catalogTitle: Catalog file
+  catalogLead: Save this list’s catalog as a file, every menu, page, and option MCM Lexicon read from it. Open it on a machine without the list, or compare the list against it after the list changes.
+  saveCatalog: Save catalog file
+  savingCatalog: Saving…
+  catalogSaved:
+    one: "{count} menu."
+    other: "{count} menus."
+  snapshotTitle: Snapshot for testing
+  snapshotLead: A zip of everything MCM Lexicon reads from this list, as a small MO2 instance it can open on another machine. It holds other authors’ mod files, so it’s for testing on your own machines. Don’t post or share it. For a large list it takes a minute or more, and the zip can run to gigabytes.
+  makeSnapshot: Make snapshot
+  makingSnapshot: Making snapshot…
+  snapshotSaved: "{mods} mods, {files} files, {steps} recorded steps, {mb} MB."
+  copy:
+    folder: Folder
+    name: File name
+    replace: Replace
+    exists: There’s already a file named {file} in that folder. Replace it?
+    saved: Saved {path}.

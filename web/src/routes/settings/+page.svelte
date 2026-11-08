@@ -2,15 +2,17 @@
      recordings are saved to in an MO2 instance. A save folder change is
      kept as it's made, editing or not, since it changes no recording;
      another list is chosen in its form, since it rescans and can discard
-     the draft. -->
+     the draft. Under them, copies of what was read, saved to files: the
+     list's catalog, and for an MO2 instance a snapshot. -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
-	import { setSaveFolder } from '#lib/api/status.ts';
+	import { exportCatalog, exportSnapshot, setSaveFolder } from '#lib/api/status.ts';
 	import type { Status } from '#lib/api/types/api.ts';
 	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
+	import SaveCopy from '#lib/source/SaveCopy.svelte';
 	import SourceForm from '#lib/source/SourceForm.svelte';
 	import Path from '#lib/ui/Path.svelte';
 	import { leave, param, setParams } from '#lib/ui/address.svelte.ts';
@@ -59,6 +61,17 @@
 	function keys(e: KeyboardEvent) {
 		if (e.key === 'Escape') name = folder.name;
 	}
+
+	// The names suggested for a copy: the list's folder, its profile, and
+	// when, without the characters a file name can't hold.
+	const safe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
+	const two = (n: number) => String(n).padStart(2, '0');
+	const now = new Date();
+	const day = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+	let listName = $derived(source?.path.split(/[\\/]/).filter(Boolean).pop() ?? '');
+	let catalogName = $derived(safe([listName, source?.kind === 'mo2' ? source.profile : '', day].filter(Boolean).join(' ')));
+	let snapshotName = $derived(safe(`snapshot-${listName}-${day.replaceAll('-', '')}-${two(now.getHours())}${two(now.getMinutes())}`));
+	const megabytes = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
 </script>
 
 <h1 class="caps">{t.title}</h1>
@@ -105,6 +118,21 @@
 	{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 </section>
 
+{#if source}
+	<section class="settings" id="catalog-file" aria-labelledby="catalog-file-title">
+		<h2 id="catalog-file-title" class="caps">{t.catalogTitle}</h2>
+		<p class="lead">{t.catalogLead}</p>
+		<SaveCopy name={catalogName} ext=".json" action={t.saveCatalog} working={t.savingCatalog} save={exportCatalog} done={(r) => t.catalogSaved({ count: r.menus })} />
+	</section>
+{/if}
+{#if source?.kind === 'mo2'}
+	<section class="settings" id="snapshot" aria-labelledby="snapshot-title">
+		<h2 id="snapshot-title" class="caps">{t.snapshotTitle}</h2>
+		<p class="lead">{t.snapshotLead}</p>
+		<SaveCopy name={snapshotName} ext=".zip" action={t.makeSnapshot} working={t.makingSnapshot} save={exportSnapshot} done={(r) => t.snapshotSaved({ mods: r.mods, files: r.files, steps: r.steps, mb: megabytes(r.bytes) })} />
+	</section>
+{/if}
+
 <style>
 	h1 {
 		font-size: var(--step-3);
@@ -149,6 +177,9 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2);
+	}
+	.lead {
+		max-width: 60ch;
 	}
 	.note {
 		font-size: var(--step--1);

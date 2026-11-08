@@ -68,6 +68,25 @@ type SourceRequest struct {
 	Catalog string `json:"catalog,omitempty"` // a catalog file to open instead of a list
 }
 
+// ExportRequest saves a copy of what MCM Lexicon read to a file the player
+// names, in a folder they choose: the list's catalog, or a snapshot of the
+// list. A file already there is replaced only with Replace.
+type ExportRequest struct {
+	Folder  string `json:"folder"`
+	Name    string `json:"name"`    // the file's name; the extension is added when it's missing
+	Replace bool   `json:"replace"` // replace a file already there
+}
+
+// ExportReply says what was written.
+type ExportReply struct {
+	Path  string `json:"path"`
+	Menus int    `json:"menus"` // a catalog's
+	Mods  int    `json:"mods"`  // a snapshot's, and its files and recorded steps
+	Files int    `json:"files"`
+	Steps int    `json:"steps"`
+	Bytes int64  `json:"bytes"` // the snapshot's size on disk
+}
+
 type ThemeRequest struct {
 	Theme string `json:"theme"` // "system", "dark" or "light"
 }

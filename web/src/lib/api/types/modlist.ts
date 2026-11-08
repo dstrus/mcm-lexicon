@@ -40,7 +40,8 @@ export interface Listing {
  */
 export const LookingList = "list"; // a mod list: a folder
 export const LookingCatalog = "catalog"; // a catalog file
-export type Looking = typeof LookingList | typeof LookingCatalog;
+export const LookingFolder = "folder"; // a folder to save a file in
+export type Looking = typeof LookingList | typeof LookingCatalog | typeof LookingFolder;
 
 //////////
 // source: modlist.go

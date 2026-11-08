@@ -10,7 +10,9 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -21,6 +23,7 @@ import (
 	"lexicon/internal/modlist"
 	"lexicon/internal/prefs"
 	"lexicon/internal/recordings"
+	"lexicon/internal/snapshot"
 )
 
 // Placeholders in index.html (see app.html): the session's token, and the
@@ -120,10 +123,55 @@ func (s *Server) routes() {
 	}))
 	m.Handle("GET /api/folders", httpapi.JSON(func(r *http.Request, _ httpapi.None) (modlist.Listing, error) {
 		looking := modlist.LookingList
-		if r.URL.Query().Get("for") == string(modlist.LookingCatalog) {
-			looking = modlist.LookingCatalog
+		switch l := modlist.Looking(r.URL.Query().Get("for")); l {
+		case modlist.LookingCatalog, modlist.LookingFolder:
+			looking = l
 		}
 		return modlist.Browse(r.URL.Query().Get("path"), looking)
+	}))
+	// A copy of what was read, to a file the player names: the catalog, to
+	// open on another machine or compare against later, and a snapshot, the
+	// list's files MCM Lexicon reads, for testing. Neither changes the list.
+	m.Handle("POST /api/export/catalog", httpapi.JSON(func(r *http.Request, req ExportRequest) (ExportReply, error) {
+		if src, _ := s.catalog.Source(); src == nil {
+			return ExportReply{}, apperr.New(apperr.Unavailable, "A catalog file is open, and it's a file already; open a mod list to save its catalog")
+		}
+		c, err := s.catalog.Catalog(r)
+		if err != nil {
+			return ExportReply{}, err
+		}
+		p, err := exportPath(req, ".json")
+		if err != nil {
+			return ExportReply{}, err
+		}
+		if err := catalog.WriteFile(p, c); err != nil {
+			return ExportReply{}, err
+		}
+		return ExportReply{Path: p, Menus: len(c.Menus)}, nil
+	}))
+	m.Handle("POST /api/export/snapshot", httpapi.JSON(func(r *http.Request, req ExportRequest) (ExportReply, error) {
+		l, err := s.catalog.List(r)
+		if err != nil {
+			return ExportReply{}, err
+		}
+		if l == nil {
+			return ExportReply{}, apperr.New(apperr.Unavailable, "A catalog file is open; a snapshot is made from a mod list")
+		}
+		p, err := exportPath(req, ".zip")
+		if err != nil {
+			return ExportReply{}, err
+		}
+		sum, err := snapshot.Write(l, p, snapshot.Options{Tool: "MCM Lexicon " + s.Version})
+		if err != nil {
+			return ExportReply{}, err
+		}
+		// The zip's own size, which is what the player has to find room
+		// for, rather than its files' before compression.
+		reply := ExportReply{Path: sum.Out, Mods: sum.Mods, Files: sum.Files, Steps: sum.Steps, Bytes: sum.Bytes}
+		if info, err := os.Stat(sum.Out); err == nil {
+			reply.Bytes = info.Size()
+		}
+		return reply, nil
 	}))
 	// What's at a folder, without choosing it: for the list form's profiles.
 	m.Handle("GET /api/source", httpapi.JSON(func(r *http.Request, _ httpapi.None) (modlist.Source, error) {
@@ -273,4 +321,31 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store") // it carries this session's token
 	w.Write(bytes.Replace(s.index, themePlaceholder, []byte(s.Prefs.Get().ThemeOf()), 1))
+}
+
+// exportPath is where an export goes: the named file in the chosen folder,
+// with the extension it needs. A name with a folder in it is refused, so
+// the file lands where the player looked, and a file already there is
+// replaced only when the request says so.
+func exportPath(req ExportRequest, ext string) (string, error) {
+	folder, name := strings.TrimSpace(req.Folder), strings.TrimSpace(req.Name)
+	if folder == "" || !modlist.IsDir(folder) {
+		return "", apperr.New(apperr.NotFound, "Folder not found: %s", folder)
+	}
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, `/\:*?"<>|`) {
+		return "", apperr.New(apperr.Invalid, "Give the file a name, without a folder or any of / \\ : * ? \" < > |")
+	}
+	if !strings.EqualFold(filepath.Ext(name), ext) {
+		name += ext
+	}
+	p := filepath.Join(folder, name)
+	if info, err := os.Stat(p); err == nil {
+		if info.IsDir() {
+			return "", apperr.New(apperr.Invalid, "%s is a folder", p)
+		}
+		if !req.Replace {
+			return "", apperr.New(apperr.Conflict, "%s is already there", p)
+		}
+	}
+	return p, nil
 }

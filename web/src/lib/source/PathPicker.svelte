@@ -1,9 +1,11 @@
 <!-- A dialog that browses one folder at a time, starting where MCM Lexicon
-     runs from, for a mod list or a catalog file. For a list, folders that
-     are one (an MO2 instance, or a Data folder), or lead to one (a game
-     folder), are marked, one that leads to one opens straight onto it, and
-     the folder listed is chosen. For a catalog, the files that are one are
-     marked, and one is chosen by clicking it. -->
+     runs from, for a mod list, a catalog file, or a folder to save a file
+     in. For a list, folders that are one (an MO2 instance, or a Data
+     folder), or lead to one (a game folder), are marked, one that leads to
+     one opens straight onto it, and the folder listed is chosen. For a
+     catalog, the files that are one are marked, and one is chosen by
+     clicking it. For a folder, nothing is marked, and the one listed is
+     chosen. -->
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { ApiError } from '#lib/api/client.ts';
@@ -81,7 +83,7 @@
 </script>
 
 <dialog bind:this={dialog} aria-labelledby="{id}-title" oncancel={cancel} {...closeOnBackdrop(cancel)}>
-	<h2 id="{id}-title" class="caps">{looking === 'catalog' ? t.titleCatalog : t.title}</h2>
+	<h2 id="{id}-title" class="caps">{looking === 'catalog' ? t.titleCatalog : looking === 'folder' ? t.titleFolder : t.title}</h2>
 	{#if listing}
 		<div class="where">
 			{#if listing.roots.length > 1}
@@ -129,8 +131,8 @@
 	{/if}
 	{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 	<div class="buttons">
-		{#if looking === 'list'}
-			<button type="button" class={['button', listing?.mark === 'here' && 'primary']} disabled={!listing} onclick={() => listing && onpick(listing.path)}>{t.choose}</button>
+		{#if looking === 'list' || looking === 'folder'}
+			<button type="button" class={['button', (looking === 'folder' || listing?.mark === 'here') && 'primary']} disabled={!listing} onclick={() => listing && onpick(listing.path)}>{t.choose}</button>
 		{:else if listing && !listing.files.some((f) => f.mark === 'here')}
 			<p class="muted small">{t.noCatalogs}</p>
 		{/if}

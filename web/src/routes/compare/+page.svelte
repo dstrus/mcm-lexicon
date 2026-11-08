@@ -6,9 +6,11 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import type { ListInfo, OptionDiff } from '#lib/api/types/catalog.ts';
 	import type { CompareReply } from '#lib/api/types/recordings.ts';
+	import Fill from '#lib/copy/Fill.svelte';
 	import { m } from '#lib/copy/messages.ts';
 	import { count } from '#lib/format.ts';
 	import { compare, recordingHref } from '#lib/recordings/api.ts';
+	import PathPicker from '#lib/source/PathPicker.svelte';
 	import { sentence, word } from '#lib/recordings/steps.ts';
 	import Diamond from '#lib/ui/Diamond.svelte';
 	import { param, setParams } from '#lib/ui/address.svelte.ts';
@@ -20,6 +22,14 @@
 	const t = m.compare;
 
 	let path = $state(page.url.searchParams.get('path') ?? '');
+	// The older file, found in the picker: it opens on the folder of the
+	// one typed, if any.
+	let browsing = $state(false);
+	let startFolder = $derived(path.replace(/[\\/][^\\/]*$/, ''));
+	function endBrowse(picked?: string) {
+		browsing = false;
+		if (picked) path = picked;
+	}
 	let reply = $state<CompareReply | null>(null);
 	let error = $state('');
 	let working = $state(false);
@@ -119,8 +129,13 @@
 		<span class="caps">{t.file}</span>
 		<input bind:value={path} required autocomplete="off" spellcheck="false" />
 	</label>
+	<button type="button" class="button" aria-expanded={browsing} onclick={() => (browsing = true)}>{m.source.picker.browse}</button>
 	<button class="button primary" disabled={working}>{t.run}</button>
+	{#if browsing}<PathPicker looking="catalog" start={startFolder} onpick={endBrowse} oncancel={() => endBrowse()} />{/if}
 </form>
+<!-- A catalog file is made in Settings, so there's something to compare
+     against once the list changes. -->
+{#if !reply}<p class="muted small none-yet"><Fill text={t.noFile.text}>{#snippet settings()}<a href="/settings#catalog-file">{t.inSettings}</a>{/snippet}</Fill></p>{/if}
 {#if error}<p class="notice error" role="alert">{error}</p>{/if}
 
 {#if reply}
@@ -204,6 +219,10 @@
 	}
 	.choose .button {
 		padding-block: var(--space-2);
+	}
+	.none-yet {
+		margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+		font-size: var(--step--1);
 	}
 	.split {
 		display: grid;

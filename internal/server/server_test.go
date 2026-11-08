@@ -295,3 +295,52 @@ func TestDevPagesGoToVite(t *testing.T) {
 		t.Errorf("the API under dev: %d", w.Code)
 	}
 }
+
+func TestExports(t *testing.T) {
+	h := newHarness(t)
+	body, _ := json.Marshal(SourceRequest{Path: h.list})
+	h.call(200, "PUT", "/api/source", string(body), nil)
+	out := t.TempDir()
+	export := func(kind string, req ExportRequest, want int) ExportReply {
+		t.Helper()
+		b, _ := json.Marshal(req)
+		w := h.request("POST", "/api/export/"+kind, string(b))
+		if w.Code != want {
+			t.Fatalf("%s %+v: status %d, want %d: %s", kind, req, w.Code, want, w.Body)
+		}
+		var r ExportReply
+		json.Unmarshal(w.Body.Bytes(), &r)
+		return r
+	}
+
+	// The extension is added, and the file is a catalog the app can open.
+	r := export("catalog", ExportRequest{Folder: out, Name: "my list"}, 200)
+	if want := filepath.Join(out, "my list.json"); r.Path != want {
+		t.Errorf("path = %s, want %s", r.Path, want)
+	}
+	if _, err := catalog.ReadFile(r.Path); err != nil {
+		t.Errorf("the saved catalog doesn't open: %v", err)
+	}
+	// One already there is replaced only when asked.
+	export("catalog", ExportRequest{Folder: out, Name: "my list.json"}, 409)
+	export("catalog", ExportRequest{Folder: out, Name: "my list.json", Replace: true}, 200)
+	// The name can't lead elsewhere, and the folder has to be there.
+	export("catalog", ExportRequest{Folder: out, Name: "../away"}, 400)
+	export("catalog", ExportRequest{Folder: out, Name: ""}, 400)
+	export("catalog", ExportRequest{Folder: filepath.Join(out, "missing"), Name: "x"}, 404)
+
+	r = export("snapshot", ExportRequest{Folder: out, Name: "snap"}, 200)
+	if want := filepath.Join(out, "snap.zip"); r.Path != want {
+		t.Errorf("snapshot = %+v", r)
+	}
+	if _, err := os.Stat(r.Path); err != nil {
+		t.Errorf("no snapshot written: %v", err)
+	}
+	export("snapshot", ExportRequest{Folder: out, Name: "snap"}, 409)
+
+	// With a catalog file open, there's no list to save or snapshot.
+	body, _ = json.Marshal(SourceRequest{Catalog: filepath.Join(out, "my list.json")})
+	h.call(200, "PUT", "/api/source", string(body), nil)
+	export("catalog", ExportRequest{Folder: out, Name: "again"}, 503)
+	export("snapshot", ExportRequest{Folder: out, Name: "again"}, 503)
+}

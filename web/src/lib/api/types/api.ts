@@ -80,6 +80,27 @@ export interface SourceRequest {
   profile?: string; // an MO2 profile; "" means the one MO2 has selected
   catalog?: string; // a catalog file to open instead of a list
 }
+/**
+ * ExportRequest saves a copy of what MCM Lexicon read to a file the player
+ * names, in a folder they choose: the list's catalog, or a snapshot of the
+ * list. A file already there is replaced only with Replace.
+ */
+export interface ExportRequest {
+  folder: string;
+  name: string; // the file's name; the extension is added when it's missing
+  replace: boolean; // replace a file already there
+}
+/**
+ * ExportReply says what was written.
+ */
+export interface ExportReply {
+  path: string;
+  menus: number /* int */; // a catalog's
+  mods: number /* int */; // a snapshot's, and its files and recorded steps
+  files: number /* int */;
+  steps: number /* int */;
+  bytes: number /* int64 */; // the snapshot's size on disk
+}
 export interface ThemeRequest {
   theme: string; // "system", "dark" or "light"
 }

@@ -1,5 +1,5 @@
 import { request } from './client.ts';
-import type { EditingRequest, SaveFolder, SourceRequest, Status } from './types/api.ts';
+import type { EditingRequest, ExportReply, ExportRequest, SaveFolder, SourceRequest, Status } from './types/api.ts';
 import type { Listing, Looking, Source } from './types/modlist.ts';
 
 export function getStatus(fetchFn?: typeof fetch): Promise<Status> {
@@ -35,4 +35,14 @@ export function browseFolders(path = '', looking: Looking = 'list'): Promise<Lis
 // for an MO2 instance its profiles and the one MO2 has selected.
 export function checkSource(path: string): Promise<Source> {
 	return request<Source>('GET', `/api/source?path=${encodeURIComponent(path)}`);
+}
+
+// exportCatalog saves the list's catalog to a file the player names, in a
+// folder they chose; exportSnapshot saves a snapshot of the list there.
+// Either refuses a file already there (409) unless replace is set.
+export function exportCatalog(req: ExportRequest): Promise<ExportReply> {
+	return request<ExportReply>('POST', '/api/export/catalog', req);
+}
+export function exportSnapshot(req: ExportRequest): Promise<ExportReply> {
+	return request<ExportReply>('POST', '/api/export/snapshot', req);
 }

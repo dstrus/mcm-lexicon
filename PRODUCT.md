@@ -43,7 +43,7 @@ Constraints:
 
 - **Local web UI in a browser:** one program per OS that serves only `127.0.0.1` and opens the browser; every view has its own bookmarkable address, and Back and Forward work.
 - **Offline only:** nothing that needs the game running belongs here.
-- **Safety:** writes are refused while Skyrim is running (browsing still works); backups precede changes; writes are atomic; requests carry a per-session token. Nothing is written anywhere but the chosen recordings folder, the backups folder, and the output paths a command is given.
+- **Safety:** writes are refused while Skyrim is running (browsing still works); backups precede changes; writes are atomic; requests carry a per-session token. Nothing is written anywhere but the chosen recordings folder, the backups folder, and the files the player names: a catalog file or a snapshot saved from Settings, or a command's output path. A file already there is replaced only when the player says so.
 - **Unofficial:** MCM Lexicon is not part of MCM Recorder, SkyUI, MCM Helper, or any mod list, and ships none of their files.
 
 Terminology: menu (an MCM, as SkyUI lists it), page, option, selector (the raw label MCM Recorder matches), text (what the player reads), recording, step, step file, catalog, list, profile, source, certainty (exact, pattern, unknown).
