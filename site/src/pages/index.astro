@@ -63,9 +63,9 @@ const rest = [
 	{
 		group: 'In the app',
 		pages: [
-			['Compare', `Two versions of a list’s catalog, side by side. (Use <a href="${base}/docs/command-line/#commands">the command line</a> to save the catalog alongside each release!) See which MCMs changed between releases, and which recorded steps those changes break.`],
+			['Compare', 'Two versions of a list’s catalog, side by side. (Save the catalog from Settings alongside each release!) See which MCMs changed between releases, and which recorded steps those changes break.'],
 			['Backups', 'Every save and delete keeps a copy first. A recording’s Backups tab lists them and puts one back.'],
-			['Settings', 'Choose or change the mod list (if you manage more than one) and set the name of the mod folder recordings get saved to.']
+			['Settings', 'Choose or change the mod list (if you manage more than one), set the name of the mod folder recordings get saved to, save the catalog as a file, or make a snapshot.']
 		]
 	}
 ];
@@ -107,7 +107,7 @@ const safety = [
 	},
 	{
 		rule: 'Your machine only',
-		text: 'MCM Lexicon listens only on 127.0.0.1, and every request has to carry a token from its own page, so other websites open in your browser can’t reach your files.'
+		text: 'MCM Lexicon listens only on 127.0.0.1, and every request has to carry a token from its own page, so nothing else on your PC or in a browser can reach your files through it.'
 	}
 ];
 ---
@@ -284,7 +284,7 @@ const safety = [
 					</li>
 				</ul>
 				<p>
-					Then run it! It finds your list, scans it (a few seconds for 1,800 mods), and opens in your browser. If you ran it from somewhere else, it asks where
+					Then run it! It finds your list, scans it (a few seconds for 1,800 mods), and opens in a window of its own. If you ran it from somewhere else, it asks where
 					your list is. <a href={`${base}/docs/`}>The docs</a> cover the rest.
 				</p>
 				<p>To play a recording back in the game, you’ll need MCM Recorder in your list.</p>

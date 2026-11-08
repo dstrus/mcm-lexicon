@@ -34,7 +34,7 @@ _Please excuse the bullet points that begin with a bold verb or verb phrase, but
 - **Check existing recordings** against what's installed, so you know before you launch which steps still have a matching menu/option in your game.
 - **Compare** two versions of a list's catalog, to see which MCMs changed between releases and which recorded steps are broken by those changes.
 
-It's a single program that runs a small web server on your machine and opens its interface in your browser. It reads MCMs defined in your load order and writes new recordings and changes to a separate mod.
+It's a single program that runs a small web server on your machine and shows its interface in a window of its own (Microsoft Edge's WebView2, part of Windows 10 and 11). It reads MCMs defined in your load order and writes new recordings and changes to a separate mod.
 
 It works with [MCM Recorder](https://www.nexusmods.com/skyrimspecialedition/mods/61719) but isn't part of it, and isn't affiliated with MCM Recorder, SkyUI, MCM Helper, or Mod Organizer. It does not include any files from those other sources.
 
@@ -48,9 +48,11 @@ Releases are for Windows only, but you can build it for macOS or Linux. See [DEV
 
 ## Running it
 
-Just run `MCMLexicon.exe`. If you run it from your MO2 folder or game folder, it finds your mod list automatically, scans it (a few seconds for 1,800 mods), and opens in your browser.
+Just run `MCMLexicon.exe`. If you run it from your MO2 folder or game folder, it finds your mod list automatically, scans it (a few seconds for 1,800 mods), and opens in its own window. Closing the window stops it.
 
-If it can't find a list because you ran it from somewhere else, it asks for the path to your list in the browser.
+If it can't find a list because you ran it from somewhere else, it asks for the path to your list.
+
+On the off chance your PC doesn't have WebView2, MCM Lexicon opens in your browser instead, with a small message box that stops it when you click OK.
 
 If you want to run it from a terminal, there are fancy command-line switches.
 
@@ -60,7 +62,7 @@ MCMLexicon.exe [-list <MO2 instance or Data folder>] [-profile <MO2 profile>] [-
 
 With Mod Organizer 2, MCM Lexicon reads the profile that's currently selected in MO2, or the one you name (and there's a dropdown in the GUI to switch), and follows its mod order, `overwrite` included. It watches the profile's `modlist.txt` and `plugins.txt`, so a change in MO2 shows up without restarting MCM Lexicon.
 
-There are also a few commands for working with catalogs without the browser-based GUI. (These exist because I build these utilities from a Mac where Skyrim isn't installed at all.)
+There are also a few commands for working with catalogs without the GUI. (Settings can save a catalog file or make a snapshot too.) (These exist because I build these utilities from a Mac where Skyrim isn't installed at all.)
 
 Print all of the relevant mods from your list, with the files MCM Lexicon reads from each:
 ```
@@ -102,7 +104,7 @@ Nothing else is written anywhere.
 - Nothing is written until you click the big golden **Save** (or **Save All**) button. Before you save, the **Changes** page shows every change as it will be written, compared to what's on disk now.
 - Before a file is replaced or removed, a copy goes to `lexicon-backups`.
 - If a save cannot finish completely, it leaves the old recording untouched. You can never end up with half a recording. (For the nerds: _writes are atomic_.)
-- The server only listens on `127.0.0.1`, and every API request must carry a per-session token from the page. Other sites open in your browser can't reach your files.
+- The server only listens on `127.0.0.1`, and every API request must carry a per-session token from the page. Nothing else on your PC, and no website open in a browser, can reach your files through it.
 - It reads files from mods installed on your machine when creating the catalog, but there are no files from other mods included here. Snapshots generated from a list, which copy other mods' files for testing, are for your own machine.
 
 ## Development

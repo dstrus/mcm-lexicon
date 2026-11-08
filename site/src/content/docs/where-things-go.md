@@ -28,7 +28,7 @@ When MCM Lexicon replaces or removes a file, a copy goes to a `lexicon-backups` 
 
 ## Its own settings
 
-Which list was open, the theme, and the save folder's name live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache goes under your user cache folder.
+Which list was open, the theme, and the save folder's name live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache and the window's own browsing data go under your user cache folder.
 
 Nothing else is written anywhere.
 

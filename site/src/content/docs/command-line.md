@@ -1,10 +1,10 @@
 ---
 title: Command line
-description: Switches for running MCM Lexicon, and the commands that work with catalogs without the browser.
+description: Switches for running MCM Lexicon, and the commands that work with catalogs from a terminal.
 order: 4
 ---
 
-You never have to use any of this. Running `MCMLexicon.exe` is enough. But if you like a terminal, there are fancy switches.
+You never have to use any of this. Running `MCMLexicon.exe` is enough, and Settings can save a catalog file or make a snapshot too. But if you like a terminal, there are fancy switches.
 
 ```
 MCMLexicon.exe [-list <MO2 instance or Data folder>] [-profile <MO2 profile>] [-port 8766] [-no-browser] [-version]
@@ -15,12 +15,12 @@ MCMLexicon.exe [-list <MO2 instance or Data folder>] [-profile <MO2 profile>] [-
 | `-list` | The MO2 instance or `Data` folder to open, instead of finding one. |
 | `-profile` | The MO2 profile to read, instead of the one selected in MO2. |
 | `-port` | The port to serve the page on: 8766 unless you say otherwise. If it's taken, the next nine are tried, then any free port. |
-| `-no-browser` | Don't open the browser. The address is printed instead. |
+| `-no-browser` | Don't open a window. The address is printed, for a browser of your choosing. |
 | `-version` | Print the version and stop. |
 
 ## Commands
 
-These work with catalogs without the browser. (They exist because I build MCM Lexicon on a Mac where Skyrim isn't installed at all.)
+These work with catalogs from a terminal, with no window at all. (They exist because I build MCM Lexicon on a Mac where Skyrim isn't installed at all.)
 
 Print the relevant mods in your list, with the files MCM Lexicon reads from each:
 

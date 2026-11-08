@@ -4,7 +4,7 @@ description: What MCM Lexicon needs, where to put it, and what happens the first
 order: 1
 ---
 
-MCM Lexicon is one executable. Put it next to your mod list, run it, and it opens in your browser. That's the whole setup process, but let's spell it out more completely anyway.
+MCM Lexicon is one executable. Put it next to your mod list and run it. That's the whole setup process, but let's spell it out more completely anyway.
 
 ## What you need
 
@@ -21,9 +21,9 @@ MCM Lexicon is one executable. Put it next to your mod list, run it, and it open
 
 ## Running it
 
-Run `MCMLexicon.exe`. It finds your list, scans it (a few seconds, even for 1,800 mods), and opens in your browser.
+Run `MCMLexicon.exe`. It finds your list, scans it (a few seconds, even for 1,800 mods), and opens in a window of its own. Close the window when you're done; that stops MCM Lexicon.
 
-If you ran it from somewhere else and it can't find a list, it asks for the path to your list in the browser instead. You can change the list later in Settings, too.
+If you ran it from somewhere else and it can't find a list, it asks for the path to your list instead. You can change the list later in Settings, too.
 
 With Mod Organizer 2, MCM Lexicon reads the profile that's currently selected in MO2, and there's a dropdown at the top of the page to switch. It follows the profile's load order, `overwrite` included, and it watches `modlist.txt` and `plugins.txt`, so a change in MO2 shows up without restarting MCM Lexicon.
 
@@ -31,7 +31,7 @@ With Mod Organizer 2, MCM Lexicon reads the profile that's currently selected in
 
 By the way…
 
-A small terminal-style window stays open while MCM Lexicon runs. Close it (or press Ctrl+C in it) when you're done to quit. Closing the browser tab doesn't stop it.
+The window is Microsoft Edge's WebView2, which is part of Windows 10 and 11, so there's nothing extra to install. If a PC somehow doesn't have it, MCM Lexicon opens in your browser instead, and a small message box stays open while it runs. Click OK in that box when you're done to quit.
 
 </div>
 
