@@ -12,7 +12,7 @@
 	import { m } from '#lib/copy/messages.ts';
 	import { menuHref } from '#lib/menus/api.ts';
 	import { column } from '#lib/menus/column.svelte.ts';
-	import { allowed, changed, edgeSpace, hex, show } from '#lib/menus/values.ts';
+	import { allowed, changed, edgeSpace, hex, show, startSays } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
 	import LiveValue from '#lib/recordings/LiveValue.svelte';
 	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency, setClicks } from '#lib/recordings/api.ts';
@@ -529,6 +529,7 @@
 						<span class="sep">·</span> <span class="caps">{m.option.type}</span> {typeLabel(o)}
 						<span class="sep">·</span> {allowed(o)}
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
+						{#if o.start && startSays(o)}<span class="sep">·</span> <span class="caps">{m.option.start}</span> {show(o, o.start)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
 						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if open.name && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
 					</p>

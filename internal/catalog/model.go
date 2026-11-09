@@ -129,6 +129,7 @@ type Option struct {
 	Slider    *Range     `json:"slider"`   // a slider's range, when known
 	Choices   []Choice   `json:"choices"`  // a menu's or stepper's entries, when known
 	Default   *Value     `json:"default"`  // when the source states one
+	Start     *Value     `json:"start"`    // what the menu shows on a new game, when its script and plugin say
 	Saved     *Value     `json:"saved"`    // the player's own value, when MCM Helper has saved one
 	Help      string     `json:"help"`     // the info text the menu shows, raw
 	HelpText  string     `json:"helpText"` // translated

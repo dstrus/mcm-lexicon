@@ -185,6 +185,7 @@ export interface Option {
   slider?: Range; // a slider's range, when known
   choices: Choice[]; // a menu's or stepper's entries, when known
   default?: Value; // when the source states one
+  start?: Value; // what the menu shows on a new game, when its script and plugin say
   saved?: Value; // the player's own value, when MCM Helper has saved one
   help: string; // the info text the menu shows, raw
   helpText: string; // translated

@@ -86,8 +86,17 @@ func strings_(ss ...string) []byte {
 
 func build(tes4Flags uint32) []byte {
 	var f bytes.Buffer
-	f.Write(record("TES4", tes4Flags, 0, sub("HEDR", make([]byte, 12))))
-	f.Write(group("GLOB", 0, record("GLOB", 0, 0x800, sub("EDID", []byte("Ignored\x00")))))
+	header := append(sub("HEDR", make([]byte, 12)), sub("MAST", []byte("Skyrim.esm\x00"))...)
+	header = append(append(header, sub("DATA", make([]byte, 8))...), sub("MAST", []byte("Base.esp\x00"))...)
+	f.Write(record("TES4", tes4Flags, 0, header))
+	glob := func(edid, kind string, v float32) []byte {
+		return append(append(sub("EDID", []byte(edid+"\x00")), sub("FNAM", []byte(kind))...), sub("FLTV", le(v))...)
+	}
+	f.Write(group("GLOB", 0, bytes.Join([][]byte{
+		record("GLOB", 0, 0x02000800, glob("Dirty_Toggle", "s", 1)),
+		record("GLOB", flagCompressed, 0x02000801, compress(glob("Dirty_Rate", "f", 2.5))),
+		record("GLOB", 0, 0x01000D62, glob("BaseOverride", "l", 7)), // a master's, overridden
+	}, nil)))
 	quest := append(sub("EDID", []byte("DirtyMCMQuest\x00")), vmad("Dirty_Quest_MCM",
 		prop("ModName", PropertyString, wstr("Dirt & Blood")),
 		prop("Pages", PropertyStringArray, strings_("Settings", "Caf\xe9 \x93Quoted\x94")),
@@ -143,6 +152,22 @@ func TestRead(t *testing.T) {
 	}
 	if c := p.Quests[1]; c.EditorID != "Squeezed" || c.Scripts[0].Name != "Squeezed_MCM" {
 		t.Errorf("the compressed quest = %+v", c)
+	}
+	if strings.Join(p.Masters, ",") != "Skyrim.esm,Base.esp" {
+		t.Errorf("masters = %q", p.Masters)
+	}
+	if len(p.Globals) != 3 || p.Globals[0].EditorID != "Dirty_Toggle" || p.Globals[0].Value != 1 || p.Globals[1].Value != 2.5 || p.Globals[2].Value != 7 {
+		t.Fatalf("globals = %+v", p.Globals)
+	}
+	// A form ID's first byte counts the masters, then the plugin itself.
+	p.Name = "Dirty.esp"
+	for id, owner := range map[uint32]string{0x00000014: "Skyrim.esm", 0x01000D62: "Base.esp", 0x02000800: "Dirty.esp"} {
+		if got := p.Owner(id); got != owner {
+			t.Errorf("owner of %08X = %s, want %s", id, got, owner)
+		}
+	}
+	if FormKey("Base.esp", 0x01000D62) != FormKey("BASE.ESP", 0x00000D62) {
+		t.Error("a form's key depends on the byte that counts its owner")
 	}
 }
 

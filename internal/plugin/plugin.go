@@ -1,8 +1,10 @@
 // Package plugin reads Skyrim's plugin files (.esp, .esm, .esl) as far as
-// MCM Lexicon needs: the header's flags, and each quest's attached scripts
-// with their property values (VMAD), which is where many MCMs keep their
-// display name (ModName) and pages (Pages). Everything else is skipped
-// without being read, so a large plugin costs a few seeks.
+// MCM Lexicon needs: the header's flags and masters, each quest's attached
+// scripts with their property values (VMAD), which is where many MCMs keep
+// their display name (ModName) and pages (Pages), and the global variables
+// (GLOB) with the values a new game starts them at, which many MCMs show.
+// Everything else is skipped without being read, so a large plugin costs a
+// few seeks.
 package plugin
 
 import (
@@ -21,11 +23,36 @@ import (
 
 // Plugin is what MCM Lexicon reads from a plugin file.
 type Plugin struct {
-	Name      string  `json:"name"`
-	Master    bool    `json:"master"`    // ESM-flagged, or an .esm
-	Light     bool    `json:"light"`     // ESL-flagged, or an .esl
-	Localized bool    `json:"localized"` // its names live in string files
-	Quests    []Quest `json:"quests"`    // quests with scripts attached
+	Name      string   `json:"name"`
+	Master    bool     `json:"master"`    // ESM-flagged, or an .esm
+	Light     bool     `json:"light"`     // ESL-flagged, or an .esl
+	Localized bool     `json:"localized"` // its names live in string files
+	Masters   []string `json:"masters"`   // the plugins its form IDs' first byte counts, in order
+	Quests    []Quest  `json:"quests"`    // quests with scripts attached
+	Globals   []Global `json:"globals"`
+}
+
+// Global is a global variable as the plugin defines or overrides it.
+type Global struct {
+	FormID   uint32  `json:"formId"`
+	EditorID string  `json:"editorId"`
+	Value    float64 `json:"value"` // a short's or long's too, which the game keeps as a float
+}
+
+// Owner is the plugin a form ID in this plugin belongs to: the master its
+// first byte counts, or this plugin itself past the masters.
+func (p *Plugin) Owner(formID uint32) string {
+	if i := int(formID >> 24); i < len(p.Masters) {
+		return p.Masters[i]
+	}
+	return p.Name
+}
+
+// FormKey names a form across plugins: its owner, lowercased, and its ID
+// within the owner, so a reference from one plugin finds the record in
+// another.
+func FormKey(owner string, formID uint32) string {
+	return strings.ToLower(owner) + ":" + strconv.FormatUint(uint64(formID&0xFFFFFF), 16)
 }
 
 type Quest struct {
@@ -127,10 +154,22 @@ func Read(r io.ReaderAt, size int64) (*Plugin, error) {
 		Master:    flags&flagMaster != 0,
 		Light:     flags&flagLight != 0,
 		Localized: flags&flagLocalized != 0,
+		Masters:   []string{},
 		Quests:    []Quest{},
+		Globals:   []Global{},
 	}
-	at := int64(headerSize) + int64(binary.LittleEndian.Uint32(head[4:]))
-	// The top-level groups, one per record type: only QUST is read.
+	// The header's masters (MAST), which a form ID's first byte counts.
+	headerData := int64(binary.LittleEndian.Uint32(head[4:]))
+	if headerData > size-headerSize {
+		return nil, errors.New("its header runs past the end of the file")
+	}
+	header := make([]byte, headerData)
+	if _, err := r.ReadAt(header, headerSize); err != nil {
+		return nil, err
+	}
+	p.Masters = masters(header)
+	at := int64(headerSize) + headerData
+	// The top-level groups, one per record type: only QUST and GLOB are read.
 	for at+headerSize <= size {
 		if _, err := r.ReadAt(head, at); err != nil {
 			return nil, err
@@ -142,7 +181,8 @@ func Read(r io.ReaderAt, size int64) (*Plugin, error) {
 		if groupSize < headerSize || at+groupSize > size {
 			return nil, fmt.Errorf("a group at offset %d runs past the end of the file", at)
 		}
-		if string(head[8:12]) == "QUST" {
+		switch string(head[8:12]) {
+		case "QUST":
 			body := make([]byte, groupSize-headerSize)
 			if _, err := r.ReadAt(body, at+headerSize); err != nil {
 				return nil, err
@@ -152,6 +192,16 @@ func Read(r io.ReaderAt, size int64) (*Plugin, error) {
 				return nil, err
 			}
 			p.Quests = quests
+		case "GLOB":
+			body := make([]byte, groupSize-headerSize)
+			if _, err := r.ReadAt(body, at+headerSize); err != nil {
+				return nil, err
+			}
+			globals, err := readGlobals(body)
+			if err != nil {
+				return nil, err
+			}
+			p.Globals = globals
 		}
 		at += groupSize
 	}
@@ -159,6 +209,77 @@ func Read(r io.ReaderAt, size int64) (*Plugin, error) {
 		return nil, fmt.Errorf("ends part-way through a group at offset %d", at)
 	}
 	return p, nil
+}
+
+// masters is the MAST subrecords of a plugin's header, in order.
+func masters(b []byte) []string {
+	out := []string{}
+	for len(b) >= 6 {
+		typ := string(b[:4])
+		n := int(binary.LittleEndian.Uint16(b[4:]))
+		b = b[6:]
+		if n > len(b) {
+			break
+		}
+		if typ == "MAST" {
+			out = append(out, zstring(b[:n]))
+		}
+		b = b[n:]
+	}
+	return out
+}
+
+// readGlobals reads the GLOB records in a GLOB group's body: each one's
+// editor ID and value (FLTV).
+func readGlobals(b []byte) ([]Global, error) {
+	out := []Global{}
+	for len(b) >= headerSize {
+		typ := string(b[:4])
+		n := int(binary.LittleEndian.Uint32(b[4:]))
+		if typ == "GRUP" {
+			if n < headerSize || n > len(b) {
+				return nil, errors.New("a nested group runs past its parent")
+			}
+			b = b[n:]
+			continue
+		}
+		if headerSize+n > len(b) {
+			return nil, fmt.Errorf("a %s record runs past its group", typ)
+		}
+		flags := binary.LittleEndian.Uint32(b[8:])
+		formID := binary.LittleEndian.Uint32(b[12:])
+		data := b[headerSize : headerSize+n]
+		b = b[headerSize+n:]
+		if typ != "GLOB" {
+			continue
+		}
+		if flags&flagCompressed != 0 {
+			var err error
+			if data, err = decompress(data); err != nil {
+				return nil, fmt.Errorf("global %08X: %w", formID, err)
+			}
+		}
+		g := Global{FormID: formID}
+		for len(data) >= 6 {
+			sub := string(data[:4])
+			m := int(binary.LittleEndian.Uint16(data[4:]))
+			data = data[6:]
+			if m > len(data) {
+				return nil, fmt.Errorf("global %08X: its %s runs past the record", formID, sub)
+			}
+			switch sub {
+			case "EDID":
+				g.EditorID = zstring(data[:m])
+			case "FLTV":
+				if m >= 4 {
+					g.Value = float64(math.Float32frombits(binary.LittleEndian.Uint32(data)))
+				}
+			}
+			data = data[m:]
+		}
+		out = append(out, g)
+	}
+	return out, nil
 }
 
 // readQuests reads the QUST records in a QUST group's body, skipping the

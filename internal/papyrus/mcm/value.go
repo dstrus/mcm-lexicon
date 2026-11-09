@@ -22,6 +22,7 @@ const (
 	kParam   // the option an option event was called for
 	kScoped  // a condition true for some options only: option == X
 	kOthers  // a condition true for all options but some: option != X
+	kGlobal  // a global variable the plugin fills, holding n; NaN when what it holds isn't known
 )
 
 // Value is a value as far as the analysis can tell.
@@ -32,6 +33,32 @@ type Value struct {
 	arr   *[]Value // arrays are shared by reference, as in Papyrus
 	parts []part   // a pattern's parts
 	ids   []int    // an option's ID, or a scoped condition's options
+	// hint, on an unknown value, is what it is on a new game: a global
+	// variable's value from the plugin, and what's worked out from it. It
+	// says what an option is shown with, never which way a condition
+	// goes: a menu shows other options once a setting changes, and the
+	// catalog lists every option a menu can show.
+	hint *Value
+}
+
+// hinted is an unknown value that's v on a new game.
+func hinted(v Value) Value {
+	if !v.known() {
+		return unknown
+	}
+	return Value{k: kUnknown, hint: &v}
+}
+
+// onNewGame is what v is on a new game: v itself when it's known, else its
+// hint, if it has one.
+func onNewGame(v Value) (Value, bool) {
+	if v.known() {
+		return v, true
+	}
+	if v.k == kUnknown && v.hint != nil {
+		return *v.hint, true
+	}
+	return Value{}, false
 }
 
 type part struct {
@@ -48,6 +75,7 @@ func boolean(b bool) Value    { return Value{k: kBool, n: b2f(b)} }
 func option(id int) Value     { return Value{k: kOption, ids: []int{id}} }
 func scoped(ids []int) Value  { return Value{k: kScoped, ids: ids} }
 func others(ids []int) Value  { return Value{k: kOthers, ids: ids} }
+func global(n float64) Value  { return Value{k: kGlobal, n: n} }
 func (v Value) known() bool {
 	return v.k != kUnknown && v.k != kPattern && v.k != kScoped && v.k != kOthers && v.k != kParam
 }
@@ -82,7 +110,7 @@ func (v Value) truth() (bool, bool) {
 		return v.n != 0, true
 	case kString:
 		return v.s != "", true
-	case kArray, kOption:
+	case kArray, kOption, kGlobal:
 		return true, true
 	}
 	return false, false
@@ -237,6 +265,21 @@ func patternText(parts []part) string {
 
 // binary is the result of a binary operator on two values.
 func binary(op string, a, b Value) Value {
+	// Text joined with a new game's value stays a pattern, with a gap where
+	// the value goes: a label or a value read at runtime, never the new
+	// game's text.
+	if op == "+" && (textual(a) || textual(b)) {
+		a.hint, b.hint = nil, nil
+	}
+	// Worked out from a new game's value: still only a hint.
+	if (a.k == kUnknown && a.hint != nil) || (b.k == kUnknown && b.hint != nil) {
+		ha, okA := onNewGame(a)
+		hb, okB := onNewGame(b)
+		if !okA || !okB {
+			return unknown
+		}
+		return hinted(binary(op, ha, hb))
+	}
 	switch op {
 	case "&&":
 		ta, oka := a.truth()
@@ -333,6 +376,32 @@ func binary(op string, a, b Value) Value {
 	return unknown
 }
 
+// unary is the result of ! or - on a value.
+func unary(op string, x Value) Value {
+	if x.k == kUnknown && x.hint != nil {
+		return hinted(unary(op, *x.hint))
+	}
+	if op == "!" {
+		if t, ok := x.truth(); ok {
+			return boolean(!t)
+		}
+		switch x.k {
+		case kScoped:
+			return others(x.ids)
+		case kOthers:
+			return scoped(x.ids)
+		}
+		return unknown
+	}
+	if x.numeric() {
+		if x.k == kInt {
+			return integer(-x.n)
+		}
+		return num(-x.n)
+	}
+	return unknown
+}
+
 // scopeOf is option == X, when one side is the option an event was called
 // for and the other an option ID: a condition true for that option only.
 func scopeOf(a, b Value) (Value, bool) {
@@ -368,6 +437,9 @@ func equal(a, b Value) (bool, bool) {
 
 // cast is v as typ.
 func cast(v Value, typ string) Value {
+	if v.k == kUnknown && v.hint != nil {
+		return hinted(cast(*v.hint, typ))
+	}
 	switch strings.ToLower(typ) {
 	case "string":
 		if t, ok := v.text(); ok {

@@ -213,7 +213,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 		chain = append(chain, p.script)
 		parent = p.script.Parent
 	}
-	result := mcm.Extract(chain, properties(a.props))
+	result := mcm.Extract(chain, s.properties(a))
 	prefer := []string{strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), sc.name}
 	src := SourceRef{Path: f.file.Path, Mod: f.file.Mod, Archive: f.file.Archive}
 	m := Menu{
@@ -297,6 +297,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 			if o.Default != nil {
 				opt.Default = &Value{Kind: ValueKindNumber, Number: *o.Default}
 			}
+			opt.Start = startValue(opt, o)
 			switch {
 			case opt.Certainty == CertaintyUnknown:
 				m.Certainty = CertaintyUnknown
@@ -365,13 +366,43 @@ func empty(m Menu) bool {
 	return false
 }
 
+// startValue is what an option shows on a new game, in the catalog's
+// terms: on or off for a toggle, a number for a slider, a key, or a color,
+// the entry for a menu (by position, as a menu's default is), and text for
+// an input. A menu entry the menu doesn't list isn't one a step can hold.
+func startValue(opt Option, o mcm.Option) *Value {
+	switch {
+	case o.StartNumber != nil && opt.Type == OptionTypeToggle:
+		return &Value{Kind: ValueKindBool, Bool: *o.StartNumber != 0}
+	case o.StartNumber != nil && (opt.Type == OptionTypeSlider || opt.Type == OptionTypeKeymap || opt.Type == OptionTypeColor):
+		return &Value{Kind: ValueKindNumber, Number: *o.StartNumber}
+	case o.StartText != nil && opt.Type == OptionTypeMenu:
+		for i, c := range opt.Choices {
+			if strings.EqualFold(c.Raw, *o.StartText) {
+				return &Value{Kind: ValueKindNumber, Number: float64(i)}
+			}
+		}
+	case o.StartText != nil && opt.Type == OptionTypeInput:
+		return &Value{Kind: ValueKindString, String: *o.StartText}
+	}
+	return nil
+}
+
 // properties is a quest script's property values as the analysis takes
-// them.
-func properties(props []plugin.Property) []mcm.Property {
+// them: an object property pointing to a global variable takes the value a
+// new game starts the global at.
+func (s *scan) properties(a attachment) []mcm.Property {
 	var out []mcm.Property
-	for _, p := range props {
+	for _, p := range a.props {
 		mp := mcm.Property{Name: p.Name}
 		switch p.Type {
+		case plugin.PropertyObject:
+			g, ok := s.globals[a.objects[strings.ToLower(p.Name)]]
+			if !ok {
+				continue
+			}
+			v := g.value
+			mp.Global = &v
 		case plugin.PropertyString:
 			s := p.String
 			mp.String = &s

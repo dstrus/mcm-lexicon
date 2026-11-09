@@ -137,9 +137,10 @@ export const typeKind: Record<Option['type'], Kind> = {
 };
 
 // known is the value an option has as far as the catalog knows: the
-// player's saved one (MCM Helper), else the mod's default.
+// player's saved one (MCM Helper), else what a new game shows (from the
+// script and plugin), else the mod's default.
 export function known(o: Option): Option['default'] {
-	return o.saved ?? o.default;
+	return o.saved ?? o.start ?? o.default;
 }
 
 // recordable reports whether a recording can name the option exactly: a

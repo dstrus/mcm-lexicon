@@ -77,6 +77,14 @@ type scan struct {
 	compiled map[string]modlist.File
 	forms    map[string]*form
 	cache    *parents
+	globals  map[string]global // global variables by form key (plugin.FormKey)
+}
+
+// global is a global variable's value as the plugin that wins defines it.
+type global struct {
+	value  float64
+	order  int
+	active bool
 }
 
 // attachment is a quest in a plugin with a script attached, and what the
@@ -89,6 +97,7 @@ type attachment struct {
 	modName string
 	pages   []string
 	props   []plugin.Property
+	objects map[string]string // each object property's form, by lowercase name: its form key
 }
 
 // loadTranslations reads every translation file the game would load for
@@ -405,6 +414,7 @@ func (s *scan) ini(rel string) mcmhelper.INI {
 // attached to. The game's own masters hold no MCMs, so they're skipped.
 func (s *scan) plugins() {
 	s.quests = map[string][]attachment{}
+	s.globals = map[string]global{}
 	order := map[string]int{}
 	for i, p := range s.list.Plugins() {
 		order[strings.ToLower(p.Name)] = i
@@ -422,6 +432,16 @@ func (s *scan) plugins() {
 		if !listed {
 			at = -1
 		}
+		active := s.list.PluginActive(f.Path)
+		// A global variable, or a later plugin's override of it: the one in
+		// an active plugin over an inactive one, then the one loaded last,
+		// as the game loads them.
+		for _, g := range p.Globals {
+			key := plugin.FormKey(p.Owner(g.FormID), g.FormID)
+			if had, ok := s.globals[key]; !ok || (active && !had.active) || (active == had.active && at > had.order) {
+				s.globals[key] = global{value: g.Value, order: at, active: active}
+			}
+		}
 		for _, q := range p.Quests {
 			for _, sc := range q.Scripts {
 				a := attachment{plugin: f.Path, order: at, active: s.list.PluginActive(f.Path), quest: q.EditorID}
@@ -432,6 +452,13 @@ func (s *scan) plugins() {
 					a.pages = v.Strings
 				}
 				a.props = sc.Properties
+				a.objects = map[string]string{}
+				for _, prop := range sc.Properties {
+					if prop.Type == plugin.PropertyObject {
+						id := uint32(prop.Number)
+						a.objects[strings.ToLower(prop.Name)] = plugin.FormKey(p.Owner(id), id)
+					}
+				}
 				key := strings.ToLower(sc.Name)
 				s.quests[key] = append(s.quests[key], a)
 			}

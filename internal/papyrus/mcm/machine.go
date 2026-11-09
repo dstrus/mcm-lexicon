@@ -1,6 +1,7 @@
 package mcm
 
 import (
+	"math"
 	"strings"
 
 	"lexicon/internal/papyrus/ir"
@@ -475,8 +476,8 @@ func same(a, b Value) bool {
 	switch a.k {
 	case kNone:
 		return true
-	case kString, kInt, kFloat, kBool:
-		return a.s == b.s && a.n == b.n
+	case kString, kInt, kFloat, kBool, kGlobal:
+		return a.s == b.s && a.n == b.n // a global whose value isn't known (NaN) is never the same
 	case kArray:
 		if a.arr == b.arr {
 			return true
@@ -609,6 +610,10 @@ func (m *machine) eval(e ir.Expr) Value {
 		if x.k == kArray && x.arr != nil && ir.Key(e.Name) == "length" {
 			return integer(float64(len(*x.arr)))
 		}
+		// A global's Value property, which GetValue reads.
+		if x.k == kGlobal && ir.Key(e.Name) == "value" && !math.IsNaN(x.n) {
+			return hinted(num(x.n))
+		}
 		return unknown
 	case *ir.Call:
 		return m.callExpr(e)
@@ -620,26 +625,7 @@ func (m *machine) eval(e ir.Expr) Value {
 		}
 		return binary(e.Op, a, m.eval(e.R))
 	case *ir.Unary:
-		x := m.eval(e.X)
-		if e.Op == "!" {
-			if t, ok := x.truth(); ok {
-				return boolean(!t)
-			}
-			switch x.k {
-			case kScoped:
-				return others(x.ids)
-			case kOthers:
-				return scoped(x.ids)
-			}
-			return unknown
-		}
-		if x.numeric() {
-			if x.k == kInt {
-				return integer(-x.n)
-			}
-			return num(-x.n)
-		}
-		return unknown
+		return unary(e.Op, m.eval(e.X))
 	case *ir.Cast:
 		return cast(m.eval(e.X), e.Type)
 	case *ir.NewArray:
@@ -655,6 +641,9 @@ func (m *machine) callExpr(c *ir.Call) Value {
 	args := make([]Value, len(c.Args))
 	for i, a := range c.Args {
 		args[i] = m.eval(a)
+	}
+	if v, ok := m.globalCall(c, args); ok {
+		return v
 	}
 	if c.Object != nil || c.Parent {
 		m.affect(c)
@@ -686,6 +675,69 @@ func (m *machine) callExpr(c *ir.Call) Value {
 	}
 	m.path = m.path[:len(m.path)-1]
 	return v
+}
+
+// globalCall is a call on a global variable the plugin fills, named by the
+// script's own property or variable: GetValue and GetValueInt read what it
+// holds, and SetValue, SetValueInt, and Mod change it for the rest of the
+// run, which counts as an effect, as any call that changes the game does.
+// ok is false for a call on anything else.
+func (m *machine) globalCall(c *ir.Call, args []Value) (Value, bool) {
+	if c.Parent {
+		return Value{}, false
+	}
+	switch c.Object.(type) {
+	case *ir.Ident, *ir.Member:
+	default:
+		return Value{}, false // a call's result, say: not evaluated twice
+	}
+	g := m.eval(c.Object)
+	if g.k != kGlobal {
+		return Value{}, false
+	}
+	held := !math.IsNaN(g.n)
+	arg := math.NaN()
+	if len(args) > 0 {
+		if v, ok := onNewGame(args[0]); ok && v.numeric() {
+			arg = v.n
+		}
+	}
+	// What it holds is a new game's value: a hint, never a known value,
+	// so no condition turns on it.
+	switch ir.Key(c.Method) {
+	case "getvalue":
+		if held {
+			return hinted(num(g.n)), true
+		}
+		return unknown, true
+	case "getvalueint":
+		if held {
+			return hinted(integer(g.n)), true
+		}
+		return unknown, true
+	case "setvalue":
+		m.setGlobal(c.Object, arg)
+	case "setvalueint":
+		m.setGlobal(c.Object, math.Trunc(arg))
+	case "mod":
+		m.setGlobal(c.Object, g.n+arg) // NaN unless both are known
+	default:
+		return Value{}, false
+	}
+	m.affect(c)
+	return Value{k: kNone}, true
+}
+
+// setGlobal changes what the global the script names holds.
+func (m *machine) setGlobal(target ir.Expr, n float64) {
+	if mem, ok := target.(*ir.Member); ok {
+		if id, ok := mem.X.(*ir.Ident); ok && ir.Key(id.Name) == "self" {
+			target = &ir.Ident{Name: mem.Name}
+		}
+	}
+	if id, ok := target.(*ir.Ident); ok {
+		m.set(id.Name, global(n))
+	}
 }
 
 // affect tells effect of a call the run doesn't follow into.

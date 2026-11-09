@@ -878,3 +878,71 @@ func TestInertTextOptions(t *testing.T) {
 		t.Errorf("Unused: help %q, want none", got)
 	}
 }
+
+// What a new game shows: a global's value from the plugin, changed by the
+// script's initialization, a variable's declared value, a literal, and
+// nothing where the value depends on the game or differs between arms.
+func TestStartValues(t *testing.T) {
+	const src = `Scriptname Start_MCM extends SKI_ConfigBase
+GlobalVariable Property Start_Enabled Auto
+GlobalVariable Property Start_Rate Auto
+GlobalVariable Property Start_Count Auto
+GlobalVariable Property Start_Unfilled Auto
+Actor Property PlayerRef Auto
+bool Shown = true
+int Hotkey = 42
+
+Event OnConfigInit()
+	Start_Rate.SetValue(3.5)
+	Start_Count.Mod(2)
+EndEvent
+
+Event OnPageReset(string page)
+	AddToggleOption("Enabled", Start_Enabled.GetValue() as bool)
+	AddSliderOption("Rate", Start_Rate.GetValue(), "{1}")
+	AddSliderOption("Count", Start_Count.GetValueInt())
+	AddSliderOption("Value", Start_Count.Value)
+	AddToggleOption("Shown", Shown)
+	AddKeyMapOption("Hotkey", Hotkey)
+	AddMenuOption("Style", "Medium")
+	AddTextOption("Version", Start_Count.GetValueInt() + "." + Start_Rate.GetValueInt())
+	AddSliderOption("Unfilled", Start_Unfilled.GetValue())
+	AddSliderOption("Level", PlayerRef.GetLevel())
+	; Shown only while the setting is off: still an option the menu has.
+	If Start_Enabled.GetValue() == 0
+		AddToggleOption("Only when off", False)
+	EndIf
+	If PlayerRef.IsInCombat()
+		AddToggleOption("Arms", True)
+	Else
+		AddToggleOption("Arms", False)
+	EndIf
+EndEvent
+`
+	one, rate, count := 1.0, 0.0, 5.0
+	m := Extract([]*ir.Script{parse(t, src)}, []Property{
+		{Name: "Start_Enabled", Global: &one},
+		{Name: "start_rate", Global: &rate},
+		{Name: "Start_Count", Global: &count},
+	})
+	p := page(t, m, "")
+	for label, want := range map[string]float64{"Enabled": 1, "Rate": 3.5, "Count": 7, "Value": 7, "Shown": 1, "Hotkey": 42} {
+		if o := opt(t, p, label); o.StartNumber == nil || *o.StartNumber != want {
+			t.Errorf("%s starts at %v, want %v", label, o.StartNumber, want)
+		}
+	}
+	if o := opt(t, p, "Style"); o.StartText == nil || *o.StartText != "Medium" {
+		t.Errorf("Style starts at %v", o.StartText)
+	}
+	if o := opt(t, p, "Only when off"); o.StartNumber == nil || *o.StartNumber != 0 {
+		t.Errorf("an option a condition on a global hides on a new game: %+v", o)
+	}
+	if o := opt(t, p, "Version"); o.Value != "*.*" || o.ValueCertainty != Pattern {
+		t.Errorf("text joined with a global's value = %q (%s), want the pattern *.*", o.Value, o.ValueCertainty)
+	}
+	for _, label := range []string{"Unfilled", "Level", "Arms"} {
+		if o := opt(t, p, label); o.StartNumber != nil || o.StartText != nil {
+			t.Errorf("%s starts at %v %v, want unknown", label, o.StartNumber, o.StartText)
+		}
+	}
+}

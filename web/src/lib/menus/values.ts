@@ -66,6 +66,12 @@ export function same(a: Value, b: Value): boolean {
 	return Math.abs(a.number - b.number) < 1e-6;
 }
 
+// startSays reports whether a new game's value says more than the
+// default: there's no default, or it differs.
+export function startSays(o: Option): boolean {
+	return !!o.start && !(o.default && same(o.start, o.default));
+}
+
 // changed reports whether the player's saved value differs from the
 // option's default: the Changed Rule's copper.
 export function changed(o: Option): boolean {

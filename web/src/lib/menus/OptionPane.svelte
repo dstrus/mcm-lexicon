@@ -5,7 +5,7 @@
 	import { m } from '#lib/copy/messages.ts';
 	import Fill from '#lib/copy/Fill.svelte';
 	import type { Snippet } from 'svelte';
-	import { allowed, changed, edgeSpace, hex, number, show } from './values.ts';
+	import { allowed, changed, edgeSpace, hex, number, show, startSays } from './values.ts';
 
 	// action, when given, sits under the heading: the option in the open
 	// recording, while editing.
@@ -56,6 +56,10 @@
 	{#if o.default}
 		<dt class="caps">{t.default}</dt>
 		<dd class="value">{#if o.type === 'color'}<span class="swatch" style:background={hex(o.default.number)}></span>{/if}{show(o, o.default)}</dd>
+	{/if}
+	{#if o.start && startSays(o)}
+		<dt class="caps">{t.start}</dt>
+		<dd class="value">{#if o.type === 'color'}<span class="swatch" style:background={hex(o.start.number)}></span>{/if}{show(o, o.start)}</dd>
 	{/if}
 	{#if o.saved}
 		<dt class="caps">{t.saved}</dt>

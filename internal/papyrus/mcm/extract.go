@@ -36,6 +36,7 @@ type Property struct {
 	String  *string
 	Strings []string // nil unless the property is a string array
 	Number  *float64
+	Global  *float64 // a global variable the property points to: what a new game starts it at
 }
 
 type Menu struct {
@@ -83,10 +84,16 @@ type Option struct {
 	Range     *Range
 	Choices   []string // a menu's entries, raw
 	Default   *float64 // a slider's default value, or a menu's default choice by position
-	Help      string
-	Line      int  // where it's added
-	Position  int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
-	Repeats   bool // added again and again by one call in a loop the game decides, with the same label
+	// Start is the value the option is shown with on a new game: what the
+	// page passes Add…Option once the script's initialization has run,
+	// when that's known. A number for a toggle (0 or 1), a slider, a key,
+	// or a color; text for a menu's entry or an input.
+	StartNumber *float64
+	StartText   *string
+	Help        string
+	Line        int  // where it's added
+	Position    int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
+	Repeats     bool // added again and again by one call in a loop the game decides, with the same label
 	// Inert is true for a text option nothing happens to when it's clicked:
 	// the script's click handler has no effect in any branch for it, nor
 	// one for every option. A recording's click on it does nothing.
@@ -233,6 +240,8 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 			v = str(*p.String)
 		case p.Number != nil:
 			v = num(*p.Number)
+		case p.Global != nil:
+			v = global(*p.Global)
 		default:
 			continue
 		}
@@ -442,6 +451,9 @@ func walk(m *machine, page string) Page {
 				value = args[1]
 			}
 			f.Value, f.ValueText, f.ValueCertainty = described(value)
+		}
+		if typ != "text" && len(args) > 1 {
+			f.StartNumber, f.StartText = start(args[1])
 		}
 		if typ == "slider" && len(args) > 2 && args[2].k == kString {
 			f.Format = args[2].s
@@ -935,7 +947,41 @@ func exclusive(a, b []step) bool {
 	return false
 }
 
+// start is a value an option is shown with, when it's known: a number (a
+// bool as 0 or 1), or text.
+func start(v Value) (*float64, *string) {
+	v, ok := onNewGame(v)
+	if !ok {
+		return nil, nil
+	}
+	switch v.k {
+	case kBool, kInt, kFloat:
+		n := v.n
+		return &n, nil
+	case kString:
+		s := v.s
+		return nil, &s
+	}
+	return nil, nil
+}
+
+// sameStart reports whether two copies of an option are shown with the
+// same known value.
+func sameStart(a, b Option) bool {
+	switch {
+	case a.StartNumber != nil && b.StartNumber != nil:
+		return *a.StartNumber == *b.StartNumber
+	case a.StartText != nil && b.StartText != nil:
+		return *a.StartText == *b.StartText
+	}
+	return false
+}
+
 func fill(k *Option, o Option) {
+	// Shown with different values, or one not known: not known.
+	if !sameStart(*k, o) {
+		k.StartNumber, k.StartText = nil, nil
+	}
 	if k.Range == nil {
 		k.Range = o.Range
 	}

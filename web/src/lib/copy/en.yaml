@@ -258,6 +258,10 @@ option:
   valueChanges: The menu changes this value as it’s used, so a step that finds this option by its value can’t be checked against it.
   choices: Choices
   default: Default
+  # What the menu shows on a new game, read from its script and plugin
+  # (a global variable's starting value, say), when that says more than
+  # the default does.
+  start: New game
   saved: Saved
   setting: Setting
   help: In the menu
