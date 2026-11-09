@@ -1,8 +1,8 @@
 <!-- An option's value in a menu's row while a recording is open: the
      control for its kind, always there, so changing it records the option
      with no step before. A menu entry, a color, or a key records as soon
-     as it's chosen; a number or text records on Enter or on leaving the
-     field, and Esc puts it back. A slider's hairline shows while its
+     as it's chosen; a number or text records on Enter, or on leaving the
+     field once it's changed, and Esc puts it back. A slider's hairline shows while its
      number has focus. Toggles don't come here: the row's Switch flips them. -->
 <script lang="ts">
 	import { page } from '$app/state';
@@ -11,7 +11,7 @@
 	import type { Kind } from '#lib/api/types/recordings.ts';
 	import { m } from '#lib/copy/messages.ts';
 	import { inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
-	import { hex, plain, snapped } from '#lib/menus/values.ts';
+	import { hex, plain, short, snapped } from '#lib/menus/values.ts';
 	import { clipped } from '#lib/ui/clipped.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy } from 'svelte';
@@ -44,7 +44,7 @@
 
 	// What a field shows: the value, as its format shows a number, started
 	// again whenever the value changes (recorded, or put back).
-	const shownNumber = (v: string) => (v.trim() !== '' && !Number.isNaN(Number(v)) ? plain(Number(v), range?.format) : v);
+	const shownNumber = (v: string) => (v.trim() !== '' && !Number.isNaN(Number(v)) ? short(Number(v), range?.format) : v);
 	let draft = $state('');
 	$effect(() => {
 		draft = kind === 'slider' ? shownNumber(value) : value;
@@ -56,8 +56,8 @@
 	}
 	// The page's hint strip shows Enter and Esc for a field with focus.
 	export function commit() {
-		if (kind === 'slider') commitNumber();
-		else if (kind === 'text' || kind === 'choose') commitText();
+		if (kind === 'slider') commitNumber(true);
+		else if (kind === 'text' || kind === 'choose') commitText(true);
 	}
 	export function revert() {
 		draft = kind === 'slider' ? shownNumber(value) : value;
@@ -65,7 +65,14 @@
 	}
 
 	// A number applied is held to the range and moved to its nearest step.
-	function commitNumber() {
+	// A field left as it was records nothing, so passing through doesn't add
+	// an option; Enter records what it shows, which is how an option not
+	// recorded yet is added as it is (exactly, not as it's rounded here).
+	function commitNumber(explicit = false) {
+		if (draft.trim() === shownNumber(value)) {
+			if (explicit && !recorded && value.trim() !== '') send(value);
+			return;
+		}
 		const n = Number(draft.trim());
 		if (draft.trim() === '' || Number.isNaN(n)) {
 			draft = shownNumber(value);
@@ -76,8 +83,11 @@
 		if (recorded && value.trim() !== '' && Number(value) === v) return;
 		send(draft);
 	}
-	function commitText() {
-		if (draft === value && recorded) return;
+	function commitText(explicit = false) {
+		if (draft === value) {
+			if (explicit && !recorded) send(value);
+			return;
+		}
 		send(draft);
 	}
 	// send records a value, and puts the control back as it was when it
@@ -175,8 +185,8 @@
 		<!-- The number, right-aligned, with its hairline and diamond to the
 		     left while it has focus; the knob records as it's let go. -->
 		<span class="pair">
-			{#if range}<Range bind:value={draft} min={range.min} max={range.max} step={range.step} label={t.slideFor({ option: label })} oncommit={commitNumber} onkeydown={(e) => e.key === 'Escape' && escapeLeaves(e)} />{/if}
-			<input class="field exact" type="text" inputmode="decimal" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, commitNumber)} onblur={commitNumber} autocomplete="off" />
+			{#if range}<Range bind:value={draft} min={range.min} max={range.max} step={range.step} label={t.slideFor({ option: label })} oncommit={() => commitNumber(true)} onkeydown={(e) => e.key === 'Escape' && escapeLeaves(e)} />{/if}
+			<input class="field exact" type="text" inputmode="decimal" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, () => commitNumber(true))} onblur={() => commitNumber()} autocomplete="off" />
 		</span>
 	{:else if kind === 'shortcut'}
 		<!-- The key box, with the controller list beside it while either has
@@ -190,7 +200,7 @@
 	{:else if kind === 'color'}
 		<input type="color" value={colorHex} aria-label={label} onchange={(e) => send(String(parseInt(e.currentTarget.value.slice(1), 16)), e.currentTarget, colorHex)} onkeydown={escapeLeaves} />
 	{:else}
-		<input class="field" type="text" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, commitText)} onblur={commitText} autocomplete="off" spellcheck="false" />
+		<input class="field" type="text" bind:value={draft} aria-label={label} onkeydown={(e) => fieldKeys(e, () => commitText(true))} onblur={() => commitText()} autocomplete="off" spellcheck="false" />
 	{/if}
 </span>
 

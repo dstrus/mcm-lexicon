@@ -39,6 +39,11 @@ type Value struct {
 	// goes: a menu shows other options once a setting changes, and the
 	// catalog lists every option a menu can show.
 	hint *Value
+	// pooled is a value a script variable was left holding after an If
+	// that may not have run the arm that set it (see ifArms): kept so an
+	// option ID stays linked, and a label as it was, but not what the
+	// option is shown with, which may be what the variable held before.
+	pooled bool
 }
 
 // hinted is an unknown value that's v on a new game.
@@ -52,6 +57,9 @@ func hinted(v Value) Value {
 // onNewGame is what v is on a new game: v itself when it's known, else its
 // hint, if it has one.
 func onNewGame(v Value) (Value, bool) {
+	if v.pooled {
+		return Value{}, false
+	}
 	if v.known() {
 		return v, true
 	}
@@ -265,6 +273,12 @@ func patternText(parts []part) string {
 
 // binary is the result of a binary operator on two values.
 func binary(op string, a, b Value) Value {
+	if a.pooled || b.pooled {
+		a.pooled, b.pooled = false, false
+		r := binary(op, a, b)
+		r.pooled = true
+		return r
+	}
 	// Text joined with a new game's value stays a pattern, with a gap where
 	// the value goes: a label or a value read at runtime, never the new
 	// game's text.
@@ -378,6 +392,12 @@ func binary(op string, a, b Value) Value {
 
 // unary is the result of ! or - on a value.
 func unary(op string, x Value) Value {
+	if x.pooled {
+		x.pooled = false
+		r := unary(op, x)
+		r.pooled = true
+		return r
+	}
 	if x.k == kUnknown && x.hint != nil {
 		return hinted(unary(op, *x.hint))
 	}
@@ -437,6 +457,12 @@ func equal(a, b Value) (bool, bool) {
 
 // cast is v as typ.
 func cast(v Value, typ string) Value {
+	if v.pooled {
+		v.pooled = false
+		r := cast(v, typ)
+		r.pooled = true
+		return r
+	}
 	if v.k == kUnknown && v.hint != nil {
 		return hinted(cast(*v.hint, typ))
 	}

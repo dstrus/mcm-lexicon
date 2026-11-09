@@ -10,6 +10,7 @@ import (
 
 	"lexicon/internal/mcmhelper"
 	"lexicon/internal/modlist"
+	"lexicon/internal/papyrus/mcm"
 	"lexicon/internal/plugin"
 	"lexicon/internal/translations"
 )
@@ -78,6 +79,7 @@ type scan struct {
 	forms    map[string]*form
 	cache    *parents
 	globals  map[string]global // global variables by form key (plugin.FormKey)
+	settings mcm.Settings      // what PluginINIs' files hold, once read
 }
 
 // global is a global variable's value as the plugin that wins defines it.

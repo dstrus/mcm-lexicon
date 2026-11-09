@@ -946,3 +946,86 @@ EndEvent
 		}
 	}
 }
+
+// VRIK's way: a helper per kind of option, which turns a setting its SKSE
+// plugin reads from an INI file into the value shown, through an If.
+func TestINISettings(t *testing.T) {
+	const src = `Scriptname Ini_MCM extends SKI_ConfigBase
+GlobalVariable Property Ini_Flag Auto
+
+Int Function AddSettingToggle(String asText, String asSettingName)
+	Int iValue = 0
+	If (IniPlugin.GetSetting(asSettingName) > 0)
+		iValue = 1
+	EndIf
+	Return AddToggleOption(asText, iValue)
+EndFunction
+
+Int Function AddSettingSlider(String asText, String asSettingName)
+	Return AddSliderOption(asText, IniPlugin.GetSetting(asSettingName), "{1}")
+EndFunction
+
+Event OnPageReset(string page)
+	AddSettingToggle("On", "enabled")
+	AddSettingToggle("Off", "disabled")
+	AddSettingToggle("Unset", "notInTheFile")
+	AddSettingSlider("Scale", "vrScale")
+	Int flag = 0
+	If Ini_Flag.GetValue() > 0
+		flag = 1
+	EndIf
+	AddToggleOption("Flag", flag)
+	; Shown only once a setting is on: still an option the menu has.
+	If IniPlugin.GetSetting("showMore") > 0
+		AddToggleOption("More", True)
+	EndIf
+EndEvent
+`
+	one := 1.0
+	m := ExtractWith([]*ir.Script{parse(t, src)}, []Property{{Name: "Ini_Flag", Global: &one}}, Settings{
+		"iniplugin.getsetting": {"enabled": 1, "disabled": 0, "vrscale": 79.5, "showmore": 0},
+	})
+	p := page(t, m, "")
+	for label, want := range map[string]float64{"On": 1, "Off": 0, "Scale": 79.5, "Flag": 1, "More": 1} {
+		if o := opt(t, p, label); o.StartNumber == nil || *o.StartNumber != want {
+			t.Errorf("%s starts at %v, want %v", label, o.StartNumber, want)
+		}
+	}
+	if o := opt(t, p, "Unset"); o.StartNumber != nil {
+		t.Errorf("a setting the file doesn't set starts at %v", *o.StartNumber)
+	}
+}
+
+// A script variable an If may not set holds either value after it: the
+// option shown with it has no start value, though an option ID kept that
+// way still links. An option added in a loop the game counts repeats.
+func TestUncertainValuesAndGameCountedLoops(t *testing.T) {
+	const src = `Scriptname Pool_MCM extends SKI_ConfigBase
+Actor Property PlayerRef Auto
+Int Picked = 1
+Int Kept = 2
+
+Event OnPageReset(string page)
+	If PlayerRef.IsInCombat()
+		Picked = 3
+	EndIf
+	AddSliderOption("Picked", Picked)
+	AddSliderOption("Kept", Kept)
+	Int i = 0
+	While i < PlayerRef.GetNumItems()
+		AddToggleOption("Item", True)
+		i += 1
+	EndWhile
+EndEvent
+`
+	p := page(t, Extract([]*ir.Script{parse(t, src)}, nil), "")
+	if o := opt(t, p, "Picked"); o.StartNumber != nil {
+		t.Errorf("a variable an If may not set starts at %v", *o.StartNumber)
+	}
+	if o := opt(t, p, "Kept"); o.StartNumber == nil || *o.StartNumber != 2 {
+		t.Errorf("Kept starts at %v, want 2", o.StartNumber)
+	}
+	if o := opt(t, p, "Item"); !o.Repeats {
+		t.Error("an option added in a loop the game counts doesn't repeat")
+	}
+}

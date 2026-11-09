@@ -90,10 +90,13 @@ type Option struct {
 	// or a color; text for a menu's entry or an input.
 	StartNumber *float64
 	StartText   *string
-	Help        string
-	Line        int  // where it's added
-	Position    int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
-	Repeats     bool // added again and again by one call in a loop the game decides, with the same label
+
+	site     *ir.Call   // the Add…Option call that added it
+	calls    []*ir.Call // the calls into the script's own functions it was added through
+	Help     string
+	Line     int  // where it's added
+	Position int  // SkyUI's cursor position when it was added; -1 when the script decides it at runtime
+	Repeats  bool // added again and again by one call in a loop the game decides, with the same label
 	// Inert is true for a text option nothing happens to when it's clicked:
 	// the script's click handler has no effect in any branch for it, nor
 	// one for every option. A recording's click on it does nothing.
@@ -207,10 +210,21 @@ type found struct {
 	site *ir.Call // the Add…Option call that made it
 }
 
+// Settings is what SKSE plugins' functions return for a setting from an
+// INI file the plugin keeps: by "script.function" (VRIK.VrikGetSetting),
+// lowercased, then the setting's name, lowercased.
+type Settings map[string]map[string]float64
+
 // Extract reads the menu a script defines. chain is the script, then the
 // ancestors whose source is at hand (SKI_ConfigBase itself excluded).
 func Extract(chain []*ir.Script, props []Property) Menu {
+	return ExtractWith(chain, props, nil)
+}
+
+// ExtractWith is Extract with the settings SKSE plugins' INI files hold.
+func ExtractWith(chain []*ir.Script, props []Property, settings Settings) Menu {
 	m := newMachine(chain)
+	m.settings = settings
 	// Script variables and properties start at their declared values (the
 	// root's first, so a child's declaration wins), then the plugin's.
 	for i := len(chain) - 1; i >= 0; i-- {
@@ -315,9 +329,65 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 		if name == "" && len(names) > 0 && len(page.Options) == 0 {
 			continue // the splash page of a menu with pages
 		}
+		// The page again as a new game shows it, with what's only a hint
+		// (a global's value, an INI's setting) taken as known, for what
+		// each option is shown with. Which options the page has stays the
+		// first run's, which takes every way a setting could go.
+		m.restore(initial)
+		m.state = initialState
+		m.newGame = true
+		shownOn := walk(m, name)
+		m.newGame = false
+		startsFrom(&page, shownOn)
 		menu.Pages = append(menu.Pages, page)
 	}
 	return menu
+}
+
+// startsFrom takes each option's start value from the page as a new game
+// shows it, among the copies there reached through the same calls, with
+// the same type and label. When the first run found as many options so
+// alike (a label a page repeats), each takes the copy in the same place.
+// Otherwise, as when the first run kept one copy of an option the arms of
+// an If each add and a new game that can't tell which arm runs adds both,
+// the copies have to agree. An option a new game doesn't show keeps what
+// the first run found.
+func startsFrom(page *Page, shownOn Page) {
+	alike := func(a, b Option) bool {
+		return slices.Equal(a.calls, b.calls) && a.Type == b.Type && a.Label == b.Label
+	}
+	for i := range page.Options {
+		o := &page.Options[i]
+		var copies []Option
+		for _, s := range shownOn.Options {
+			if alike(s, *o) {
+				copies = append(copies, s)
+			}
+		}
+		if len(copies) == 0 {
+			continue
+		}
+		place, count := 0, 0
+		for j, other := range page.Options {
+			if alike(other, *o) {
+				if j < i {
+					place++
+				}
+				count++
+			}
+		}
+		if count == len(copies) {
+			o.StartNumber, o.StartText = copies[place].StartNumber, copies[place].StartText
+			continue
+		}
+		o.StartNumber, o.StartText = copies[0].StartNumber, copies[0].StartText
+		for _, c := range copies[1:] {
+			if !sameStart(copies[0], c) {
+				o.StartNumber, o.StartText = nil, nil
+				break
+			}
+		}
+	}
 }
 
 // initial is a variable's or property's value before any code runs: its
@@ -430,8 +500,14 @@ func walk(m *machine, page string) Page {
 			return Value{}, false
 		}
 		f := &found{id: next, path: append([]step{}, m.path...), site: site}
+		for _, s := range m.path {
+			if s.call != nil {
+				f.Option.calls = append(f.Option.calls, s.call)
+			}
+		}
 		next++
 		f.Type, f.Line, f.Position = typ, line, place()
+		f.Repeats = m.looping > 0 // in a loop the game decides the count of
 		if st {
 			if len(args) > 0 {
 				if t, ok := args[0].text(); ok && args[0].k == kString {
@@ -476,6 +552,14 @@ func walk(m *machine, page string) Page {
 	m.budget = budget
 	m.invoke(m.function(m.state, "OnPageReset"), []Value{str(page)})
 	m.arms = nil
+	// As a new game shows it, only what each option is shown with counts.
+	if m.newGame {
+		out := Page{Name: page}
+		for _, f := range opts {
+			out.Options = append(out.Options, f.Option)
+		}
+		return out
+	}
 	// The state the page left the script in, where its option events are
 	// looked for: Simply Balanced keeps each page's in a state of its own.
 	pageState := m.state

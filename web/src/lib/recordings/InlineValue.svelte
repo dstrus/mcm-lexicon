@@ -11,7 +11,7 @@
 	import type { Status } from '#lib/api/types/api.ts';
 	import { inVR, keyName, mouseCodeOf, scanCodeOf, watchGamepads } from '#lib/menus/keys.ts';
 	import ControllerPicker from './ControllerPicker.svelte';
-	import { hex, number, plain, snapped } from '#lib/menus/values.ts';
+	import { hex, number, plain, short, snapped } from '#lib/menus/values.ts';
 	import Range from '#lib/ui/Range.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
 
@@ -40,7 +40,7 @@
 	// The field is filled before its text is selected, so typing replaces it.
 	// A slider's number shows the decimals its format gives: 5.0, not 5.
 	onMount(async () => {
-		draft = kind === 'slider' && value.trim() !== '' && !Number.isNaN(Number(value)) ? plain(Number(value), option?.slider?.format) : value;
+		draft = kind === 'slider' && value.trim() !== '' && !Number.isNaN(Number(value)) ? short(Number(value), option?.slider?.format) : value;
 		await tick();
 		field?.focus();
 		if (field instanceof HTMLInputElement && field.type !== 'color') field.select();
@@ -77,6 +77,8 @@
 		}
 		if (problem) return;
 		if (kind === 'slider') {
+			// Left as it was first shown: nothing changes, not even rounding.
+			if (value.trim() !== '' && draft.trim() === short(Number(value), range?.format)) return end(cancel);
 			const n = range ? snapped(Number(draft), range) : Number(draft);
 			draft = plain(n, range?.format);
 			const out = draft;

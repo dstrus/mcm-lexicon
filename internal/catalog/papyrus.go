@@ -3,6 +3,7 @@ package catalog
 import (
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	"lexicon/internal/modlist"
@@ -213,7 +214,7 @@ func (s *scan) papyrusMenu(sc script, a attachment, f *form) Menu {
 		chain = append(chain, p.script)
 		parent = p.script.Parent
 	}
-	result := mcm.Extract(chain, s.properties(a))
+	result := mcm.ExtractWith(chain, s.properties(a), s.pluginSettings())
 	prefer := []string{strings.TrimSuffix(a.plugin, path.Ext(a.plugin)), sc.name}
 	src := SourceRef{Path: f.file.Path, Mod: f.file.Mod, Archive: f.file.Archive}
 	m := Menu{
@@ -364,6 +365,53 @@ func empty(m Menu) bool {
 		}
 	}
 	return false
+}
+
+// PluginINI is an SKSE plugin's Papyrus function that returns a setting
+// from an INI file the plugin keeps, by the setting's name: what an MCM
+// built on it shows. The plugin reads the file as the game starts, so on a
+// list it's what a new game shows.
+type PluginINI struct {
+	Script   string // the native script the function belongs to
+	Function string
+	File     string // as the game sees it
+}
+
+// PluginINIs are the plugin functions MCM Lexicon reads the settings of.
+// VRIK keeps its settings, weapon slots, and gestures in three files.
+var PluginINIs = []PluginINI{
+	{Script: "VRIK", Function: "VrikGetSetting", File: "SKSE/Plugins/vrik.ini"},
+	{Script: "VRIK", Function: "VrikGetSlot", File: "SKSE/Plugins/vrikslots.ini"},
+	{Script: "VRIK", Function: "VrikGetGesture", File: "SKSE/Plugins/vrikgestures.ini"},
+}
+
+// pluginSettings is the settings PluginINIs' files hold, read once: each
+// key's number, the first word of its value. A file the list doesn't have
+// adds nothing.
+func (s *scan) pluginSettings() mcm.Settings {
+	if s.settings != nil {
+		return s.settings
+	}
+	s.settings = mcm.Settings{}
+	for _, p := range PluginINIs {
+		table := map[string]float64{}
+		for section, keys := range s.ini(p.File) {
+			if section != "" {
+				continue
+			}
+			for k, v := range keys {
+				if fields := strings.Fields(v); len(fields) > 0 {
+					if n, err := strconv.ParseFloat(fields[0], 64); err == nil {
+						table[k] = n
+					}
+				}
+			}
+		}
+		if len(table) > 0 {
+			s.settings[strings.ToLower(p.Script)+"."+strings.ToLower(p.Function)] = table
+		}
+	}
+	return s.settings
 }
 
 // startValue is what an option shows on a new game, in the catalog's

@@ -253,9 +253,10 @@ func (l *lowerer) shortCircuit(i, t int) ([]ir.Stmt, bool) {
 func destination(ins Instruction) (Operand, bool) {
 	switch ins.Op {
 	case OpIAdd, OpFAdd, OpISub, OpFSub, OpIMul, OpFMul, OpIDiv, OpFDiv, OpIMod, OpNot, OpINeg, OpFNeg, OpAssign, OpCast,
-		OpCmpEq, OpCmpLt, OpCmpLe, OpCmpGt, OpCmpGe, OpStrCat, OpArrayCreate, OpArrayLength, OpArrayGetElement,
-		OpArrayFindElement, OpArrayRFindElement:
+		OpCmpEq, OpCmpLt, OpCmpLe, OpCmpGt, OpCmpGe, OpStrCat, OpArrayCreate, OpArrayLength, OpArrayGetElement:
 		return ins.Args[0], true
+	case OpArrayFindElement, OpArrayRFindElement:
+		return ins.Args[1], true // after the array: array, result, value, start
 	case OpCallMethod, OpCallStatic, OpPropGet:
 		return ins.Args[2], true
 	case OpCallParent:
@@ -319,7 +320,9 @@ func (l *lowerer) stmt(ins Instruction) ir.Stmt {
 	case OpArraySetElement:
 		return &ir.Assign{Target: &ir.Index{X: op(0), I: op(1)}, Value: op(2), Line: ins.Line}
 	case OpArrayFindElement, OpArrayRFindElement:
-		return set(a[0], &ir.Dynamic{})
+		// The array comes first and the result second (array, result,
+		// value, start), unlike the other array instructions.
+		return set(a[1], &ir.Dynamic{})
 	}
 	return nil
 }

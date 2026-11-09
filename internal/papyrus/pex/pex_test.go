@@ -247,6 +247,37 @@ func TestReadAndLower(t *testing.T) {
 	}
 }
 
+// Find and RFind put the array first and their result second, unlike the
+// other array instructions: the result is what's unknown afterward, not
+// the array, and not the value looked for, which the compiler often keeps
+// in the same temporary.
+func TestFindWritesItsResult(t *testing.T) {
+	f, err := Read(build("Find_MCM", "SKI_ConfigBase",
+		fn{name: "OnPageReset", params: []string{"page:String"}, locals: []string{"::temp0:Int", "list:Int[]"}, code: []ins{
+			{op: OpArrayCreate, args: []op{id("list"), num(3)}},
+			{op: OpAssign, args: []op{id("::temp0"), num(7)}},
+			{op: OpArrayFindElement, args: []op{id("list"), id("::temp0"), id("::temp0"), num(0)}},
+			{op: OpCallMethod, args: []op{id("AddSliderOption"), id("self"), id("::NoneVar")}, call: []op{lit("Found"), id("::temp0"), lit("{0}")}},
+			{op: OpArrayLength, args: []op{id("::temp0"), id("list")}},
+			{op: OpCallMethod, args: []op{id("AddSliderOption"), id("self"), id("::NoneVar")}, call: []op{lit("Length"), id("::temp0"), lit("{0}")}},
+		}},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := mcm.Extract([]*ir.Script{f.Script()}, nil)
+	opts := m.Pages[0].Options
+	if len(opts) != 2 {
+		t.Fatalf("options = %+v", opts)
+	}
+	if opts[0].StartNumber != nil {
+		t.Errorf("Find's result is taken as the value it looked for: %v", *opts[0].StartNumber)
+	}
+	if opts[1].StartNumber == nil || *opts[1].StartNumber != 3 {
+		t.Errorf("the array was lost to Find's result: its length is %v", opts[1].StartNumber)
+	}
+}
+
 func TestMalformedFilesAreErrorsNotCrashes(t *testing.T) {
 	good := menu()
 	for n := 0; n < len(good); n += 3 {

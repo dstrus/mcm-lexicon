@@ -8,7 +8,7 @@
 	import { ApiError } from '#lib/api/client.ts';
 	import type { Option } from '#lib/api/types/catalog.ts';
 	import { m } from '#lib/copy/messages.ts';
-	import { plain } from '#lib/menus/values.ts';
+	import { short } from '#lib/menus/values.ts';
 	import { addStep, recordingHref, recordingsDependency } from '#lib/recordings/api.ts';
 	import type { OpenRecording } from '#lib/recordings/open.svelte.ts';
 	import { recordable, stepFor } from '#lib/recordings/steps.ts';
@@ -49,7 +49,7 @@
 	let working = $state(false);
 	// A slider's number as its field shows it, with its format's decimals
 	// (5.0, not 5), on both sides of the comparison below.
-	const shown = (v: string) => (base.kind === 'slider' && v.trim() !== '' && !Number.isNaN(Number(v)) ? plain(Number(v), option.slider?.format) : v);
+	const shown = (v: string) => (base.kind === 'slider' && v.trim() !== '' && !Number.isNaN(Number(v)) ? short(Number(v), option.slider?.format) : v);
 	let from = $derived(existing ? { value: shown(existing.step.value), side: existing.step.side } : { value: shown(base.value), side: base.side });
 	$effect(() => {
 		value = from.value;
@@ -68,7 +68,9 @@
 		working = true;
 		error = '';
 		try {
-			const r = await addStep(open.name, { ...base, value, side });
+			// The field as it was first shown adds the value it came from.
+			const exact = value === from.value ? (existing?.step.value ?? base.value) : value;
+			const r = await addStep(open.name, { ...base, value: exact, side });
 			done = r.replaced ? t.changed({ recording: open.name, n: r.number }) : t.added({ recording: open.name, n: r.number });
 			await invalidate(recordingsDependency);
 		} catch (err) {

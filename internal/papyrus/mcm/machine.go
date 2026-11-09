@@ -47,6 +47,19 @@ type machine struct {
 	guard    []int // the last If's, when it returns for every option but these: "If option != X / Return"
 	skipped  bool  // the last If's: whether no arm may have run
 	returned bool  // the last If's: whether an arm returned, so what follows runs only when it didn't
+
+	// settings is what SKSE plugins' functions return for a setting from
+	// an INI file the plugin keeps, by "script.function", then the
+	// setting's name, lowercased.
+	settings Settings
+	// looping counts the loops running whose count the game decides, which
+	// the run goes through once: an option one adds is added once per time
+	// round.
+	looping int
+	// newGame, while a page runs a second time to see what a new game
+	// shows, counts what's only a hint (a global's value, a plugin's INI
+	// setting) as known, so conditions on it go the way they would.
+	newGame bool
 }
 
 // armHooks hear of an If's arms as the machine runs them: enter as it
@@ -357,6 +370,11 @@ func (m *machine) ifArms(s *ir.If) (bool, Value) {
 		if skipped && before[i] != nil && m.isLocal(name) {
 			merged = join(merged, before[i])
 		}
+		// A script variable an arm that may not run set, to something else
+		// than it held: pooled, so what an option shows isn't taken from it.
+		if skipped && !m.isLocal(name) && merged.k != kOption && (before[i] == nil || !same(merged, *before[i])) {
+			merged.pooled = true
+		}
 		m.set(name, merged)
 	}
 	return false, unknown
@@ -518,7 +536,9 @@ func (m *machine) loop(s *ir.While) {
 			for _, name := range assigned(s.Body) {
 				m.set(name, unknown)
 			}
+			m.looping++
 			m.exec(s.Body)
+			m.looping--
 			return
 		}
 		if r, _ := m.exec(s.Body); r {
@@ -597,7 +617,9 @@ func (m *machine) eval(e ir.Expr) Value {
 		i := m.eval(e.I)
 		if arr.k == kArray && arr.arr != nil && i.numeric() {
 			if n := int(i.n); n >= 0 && n < len(*arr.arr) {
-				return (*arr.arr)[n]
+				v := (*arr.arr)[n]
+				v.pooled = v.pooled || i.pooled || arr.pooled
+				return v
 			}
 		}
 		return unknown
@@ -612,7 +634,7 @@ func (m *machine) eval(e ir.Expr) Value {
 		}
 		// A global's Value property, which GetValue reads.
 		if x.k == kGlobal && ir.Key(e.Name) == "value" && !math.IsNaN(x.n) {
-			return hinted(num(x.n))
+			return m.hint(num(x.n))
 		}
 		return unknown
 	case *ir.Call:
@@ -691,6 +713,9 @@ func (m *machine) globalCall(c *ir.Call, args []Value) (Value, bool) {
 	default:
 		return Value{}, false // a call's result, say: not evaluated twice
 	}
+	if v, ok := m.settingCall(c, args); ok {
+		return v, true
+	}
 	g := m.eval(c.Object)
 	if g.k != kGlobal {
 		return Value{}, false
@@ -707,12 +732,12 @@ func (m *machine) globalCall(c *ir.Call, args []Value) (Value, bool) {
 	switch ir.Key(c.Method) {
 	case "getvalue":
 		if held {
-			return hinted(num(g.n)), true
+			return m.hint(num(g.n)), true
 		}
 		return unknown, true
 	case "getvalueint":
 		if held {
-			return hinted(integer(g.n)), true
+			return m.hint(integer(g.n)), true
 		}
 		return unknown, true
 	case "setvalue":
@@ -726,6 +751,38 @@ func (m *machine) globalCall(c *ir.Call, args []Value) (Value, bool) {
 	}
 	m.affect(c)
 	return Value{k: kNone}, true
+}
+
+// hint is a value that's what it is on a new game: known while the page
+// runs as a new game, else only a hint.
+func (m *machine) hint(v Value) Value {
+	if m.newGame {
+		return v
+	}
+	return hinted(v)
+}
+
+// settingCall is a call to an SKSE plugin's function that returns a
+// setting from an INI file the plugin keeps (VRIK.VrikGetSetting("x")):
+// the setting's value there, as a hint, or unknown when the file doesn't
+// set it. It still counts as a call the run doesn't follow into.
+func (m *machine) settingCall(c *ir.Call, args []Value) (Value, bool) {
+	id, ok := c.Object.(*ir.Ident)
+	if !ok || m.settings == nil || m.lookup(id.Name) != nil {
+		return Value{}, false // a variable's function, not a script's
+	}
+	table, ok := m.settings[ir.Key(id.Name)+"."+ir.Key(c.Method)]
+	if !ok {
+		return Value{}, false
+	}
+	m.affect(c)
+	if len(args) == 0 || args[0].k != kString {
+		return unknown, true
+	}
+	if n, ok := table[strings.ToLower(args[0].s)]; ok {
+		return m.hint(num(n)), true
+	}
+	return unknown, true
 }
 
 // setGlobal changes what the global the script names holds.

@@ -213,7 +213,8 @@ func (w *writer) run() error {
 			w.addKind(m.Name, "translations")
 		}
 	}
-	// overwrite: MCM Helper's saved settings and any recordings made through MO2.
+	// overwrite: MCM Helper's saved settings, any recordings made through
+	// MO2, and SKSE plugins' INI files the game wrote there.
 	if ow, ok := l.Mod("overwrite"); ok {
 		for _, sub := range []string{"MCM/Settings", "McmRecorder"} {
 			dir, rel, ok := modlist.Resolve(ow.Dir, sub)
@@ -222,6 +223,13 @@ func (w *writer) run() error {
 			}
 			if err := w.copyTree(dir, "overwrite/"+rel, "overwrite"); err != nil {
 				return err
+			}
+		}
+		for _, p := range catalog.PluginINIs {
+			if f, found := findLoose(ow.Dir, p.File); found {
+				if err := w.copy(f, "overwrite/"+filepath.ToSlash(mustRel(ow.Dir, f)), "overwrite"); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -307,6 +315,20 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 			w.addKind(m.Name, fmt.Sprintf("archive:%d", packed))
 			w.packed = append(w.packed, af)
 		}
+	}
+	// The INI files SKSE plugins keep settings in that MCM Lexicon reads
+	// (VRIK's), never the plugins themselves.
+	inis := 0
+	for _, p := range catalog.PluginINIs {
+		if f, found := findLoose(m.Dir, p.File); found {
+			if err := w.copy(f, prefix+filepath.ToSlash(mustRel(m.Dir, f)), m.Name); err != nil {
+				return err
+			}
+			inis++
+		}
+	}
+	if inis > 0 {
+		w.addKind(m.Name, fmt.Sprintf("plugin-settings:%d", inis))
 	}
 	if source > 0 {
 		w.addKind(m.Name, fmt.Sprintf("source:%d", source))
@@ -726,4 +748,17 @@ func zipDir(dir, out string) error {
 		err = cerr
 	}
 	return err
+}
+
+// findLoose is the file at rel (a path under Data, in any case) in a mod's
+// folder, if it's there.
+func findLoose(dir, rel string) (string, bool) {
+	p, _, ok := modlist.Resolve(dir, rel)
+	if !ok {
+		return "", false
+	}
+	if info, err := os.Stat(p); err != nil || info.IsDir() {
+		return "", false
+	}
+	return p, true
 }

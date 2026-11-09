@@ -33,6 +33,14 @@ export function plain(n: number, format = ''): string {
 	return places ? n.toFixed(Number(places[1])) : String(n);
 }
 
+// short is a stored value as a field first shows it: plain, but without a
+// format no more than four decimals, as values read elsewhere, since a float
+// a plugin wrote reads 6.8938999. A field left showing it saves the value
+// it came from, not this.
+export function short(n: number, format = ''): string {
+	return /\{\d\}/.test(format) ? plain(n, format) : String(Number(n.toFixed(4)));
+}
+
 // hex is a color's value as the game writes it, #RRGGBB.
 export function hex(n: number): string {
 	return '#' + Math.max(0, Math.round(n)).toString(16).padStart(6, '0').slice(-6).toUpperCase();

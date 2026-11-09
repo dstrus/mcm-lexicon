@@ -258,11 +258,12 @@ type Scope struct {
 }
 
 // MCMScope covers what MCMs are made of: scripts and their sources, MCM
-// Helper's configs and settings, recordings, translations, and plugins.
-// Settings and recordings are read only loose, since what writes them
+// Helper's configs and settings, recordings, translations, plugins, and the
+// INI files SKSE plugins keep their settings in (VRIK's), which some MCMs
+// show. Settings and recordings are read only loose, since what writes them
 // can't write into an archive.
 var MCMScope = Scope{
-	Subtrees: []string{"Scripts", "Source", "MCM", "McmRecorder", "Interface/Translations"},
+	Subtrees: []string{"Scripts", "Source", "MCM", "McmRecorder", "Interface/Translations", "SKSE/Plugins"},
 	TopLevel: IsPlugin,
 	Archived: []string{"Scripts", "Source", "MCM/Config", "Interface/Translations"},
 }
