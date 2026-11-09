@@ -8,8 +8,8 @@ You need Go 1.26 or later and Node 22.17 or later.
 
 ```sh
 make build              # the frontend, then the program, as ./lexicon
-make windows            # the program for 64-bit Windows, with its icon, as ./MCMLexicon.exe
-make windows-app        # a trial: the same, in its own WebView2 window, as ./MCMLexicon-window.exe
+make windows            # the program for 64-bit Windows, in its own WebView2 window, as ./MCMLexicon.exe
+make windows-console    # the same as a console program that opens the browser, as ./MCMLexicon-console.exe
 make release            # the Windows download, into dist/
 make release-notes VERSION=v0.2.0   # that version's release notes, from CHANGELOG.md, into dist/
 make notices            # THIRD_PARTY_NOTICES.txt, from the licenses of everything built into the program

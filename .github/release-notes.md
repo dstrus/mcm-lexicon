@@ -2,7 +2,7 @@ It's a beta. It has worked well on my own lists, but you will find things that d
 
 ## Download
 
-- **Windows:** `MCMLexicon-windows-x64.zip`. Put `MCMLexicon.exe` in your MO2 instance folder (beside `ModOrganizer.ini`), or in your Skyrim folder (beside `SkyrimVR.exe` or `SkyrimSE.exe`) if you use Vortex or nothing, and run it.
+- **Windows:** `MCMLexicon-windows-x64.zip`. Put `MCMLexicon.exe` in your MO2 instance folder (beside `ModOrganizer.ini`), or in your Skyrim folder (beside `SkyrimVR.exe` or `SkyrimSE.exe`) if you use Vortex or nothing, and run it. It opens in a window of its own; closing the window stops it.
 
 Releases are for Windows only. On macOS or Linux, you can build it yourself; see [DEVELOPING.md](https://github.com/dstrus/mcm-lexicon/blob/main/DEVELOPING.md). `SHA256SUMS` lists the download's checksum.
 

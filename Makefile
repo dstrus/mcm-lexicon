@@ -4,29 +4,32 @@
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GOBUILD = CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)"
 
-.PHONY: build windows windows-app release release-notes web notices types test dev icons clean
+.PHONY: build windows windows-console release release-notes web notices types test dev icons clean
 
 # The program, for this machine.
 build: web
 	$(GOBUILD) -o lexicon ./cmd/lexicon
 
-# The program for 64-bit Windows, as MCMLexicon.exe, from any OS. Its icon and
-# file details go into a .syso file that go build links into Windows builds.
-windows: web
-	go tool go-winres simply --arch amd64 --manifest cli --icon cmd/lexicon/lexicon.ico \
-		--product-name "MCM Lexicon" --file-description "MCM Lexicon, a catalog of MCM options and an editor for MCM Recorder recordings" \
-		--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
-	GOOS=windows GOARCH=amd64 $(GOBUILD) -o MCMLexicon.exe ./cmd/lexicon
+# The Windows program's icon and file details, which go into a .syso file
+# that go build links into Windows builds, with the manifest given.
+WINRES = go tool go-winres simply --arch amd64 --icon cmd/lexicon/lexicon.ico \
+	--product-name "MCM Lexicon" --file-description "MCM Lexicon, a catalog of MCM options and an editor for MCM Recorder recordings" \
+	--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
 
-# The same program in a window of its own (WebView2) instead of the browser,
-# as MCMLexicon-window.exe, from any OS: built with -tags window, and linked
-# as a GUI program, with a GUI program's manifest, so no console opens.
-windows-app: web
-	go tool go-winres simply --arch amd64 --manifest gui --icon cmd/lexicon/lexicon.ico \
-		--product-name "MCM Lexicon" --file-description "MCM Lexicon, a catalog of MCM options and an editor for MCM Recorder recordings" \
-		--original-filename MCMLexicon.exe --out cmd/lexicon/rsrc
+# The program for 64-bit Windows, as MCMLexicon.exe, from any OS: MCM
+# Lexicon in a window of its own (WebView2) rather than the browser, built
+# with -tags window and linked as a GUI program, with a GUI program's
+# manifest, so no console opens. This is what releases ship.
+windows: web
+	$(WINRES) --manifest gui
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -tags window \
-		-ldflags "-s -w -H windowsgui -X main.version=$(VERSION)" -o MCMLexicon-window.exe ./cmd/lexicon
+		-ldflags "-s -w -H windowsgui -X main.version=$(VERSION)" -o MCMLexicon.exe ./cmd/lexicon
+
+# The same for a console, as MCMLexicon-console.exe: it opens the browser,
+# and its console window stops it. For development; releases don't ship it.
+windows-console: web
+	$(WINRES) --manifest cli
+	GOOS=windows GOARCH=amd64 $(GOBUILD) -o MCMLexicon-console.exe ./cmd/lexicon
 
 # A release's download, into dist/: a zip for Windows, with LICENSE and
 # THIRD_PARTY_NOTICES.txt, plus its SHA256SUMS. Its name carries no version,

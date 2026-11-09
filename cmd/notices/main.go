@@ -1,7 +1,9 @@
 // Command notices writes THIRD_PARTY_NOTICES.txt: the license of everything
 // built into MCM Lexicon, which releases ship beside LICENSE. That's the Go
 // standard library, the Go modules compiled into the program for each OS it
-// ships for, and the npm packages in its pages, as web/third-party.ts
+// ships for (the Windows program in its window, with -tags window), files
+// those modules embed that carry a license of their own (go-webview2's
+// copy of Microsoft's WebView2Loader.dll), and the npm packages in its pages, as web/third-party.ts
 // records them during the frontend's build. Run it with `make notices`,
 // which builds the frontend first.
 package main
@@ -26,8 +28,10 @@ const (
 	ruleLine = "================================================================================"
 )
 
-// The operating systems MCM Lexicon ships for; each pulls in some code of its own.
-var targets = []string{"windows", "darwin", "linux"}
+// The operating systems MCM Lexicon ships for, each with its build tags;
+// each pulls in some code of its own. The Windows release is the program
+// in its own window.
+var targets = []struct{ goos, tags string }{{"windows", "window"}, {"darwin", ""}, {"linux", ""}}
 
 // A module's license files: its license, any for code it carries from
 // elsewhere (LICENSE-SQLITE), a NOTICE that Apache's license asks to travel
@@ -76,14 +80,24 @@ func main() {
 // each with its license file.
 func goModules() ([]notice, error) {
 	type module struct{ Path, Version, Dir string }
+	// A file a package embeds, with a license in its folder or one between
+	// it and the package's: carried in from elsewhere, so its own notice.
+	type carried struct {
+		module module
+		dir    string
+		files  map[string]bool
+	}
 	found := map[string]module{}
-	for _, goos := range targets {
-		env := append(os.Environ(), "GOOS="+goos, "GOARCH=amd64")
-		dec := json.NewDecoder(strings.NewReader(run(env, "go", "list", "-deps", "-json", program)))
+	embedded := map[string]*carried{}
+	for _, t := range targets {
+		env := append(os.Environ(), "GOOS="+t.goos, "GOARCH=amd64")
+		dec := json.NewDecoder(strings.NewReader(run(env, "go", "list", "-deps", "-json", "-tags="+t.tags, program)))
 		for dec.More() {
 			var pkg struct {
-				Standard bool
-				Module   *module
+				Standard   bool
+				Dir        string
+				EmbedFiles []string
+				Module     *module
 			}
 			if err := dec.Decode(&pkg); err != nil {
 				return nil, err
@@ -92,6 +106,18 @@ func goModules() ([]notice, error) {
 				continue
 			}
 			found[pkg.Module.Path] = *pkg.Module
+			for _, f := range pkg.EmbedFiles {
+				for d := filepath.Dir(filepath.Join(pkg.Dir, f)); len(d) > len(pkg.Dir); d = filepath.Dir(d) {
+					if _, err := licenseIn(d); err != nil {
+						continue
+					}
+					if embedded[d] == nil {
+						embedded[d] = &carried{module: *pkg.Module, dir: d, files: map[string]bool{}}
+					}
+					embedded[d].files[filepath.Base(f)] = true
+					break
+				}
+			}
 		}
 	}
 	var out []notice
@@ -102,7 +128,16 @@ func goModules() ([]notice, error) {
 		}
 		out = append(out, notice{name: m.Path, version: m.Version, text: text})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
+	for _, c := range embedded {
+		text, _ := licenseIn(c.dir)
+		var files []string
+		for f := range c.files {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		out = append(out, notice{name: fmt.Sprintf("%s, embedded in %s", strings.Join(files, ", "), c.module.Path), version: c.module.Version, text: text})
+	}
+	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].name) < strings.ToLower(out[j].name) })
 	return out, nil
 }
 
