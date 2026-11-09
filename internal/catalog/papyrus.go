@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"lexicon/internal/mcmhelper"
 	"lexicon/internal/modlist"
 	"lexicon/internal/papyrus/ir"
 	"lexicon/internal/papyrus/mcm"
@@ -400,10 +401,8 @@ func (s *scan) pluginSettings() mcm.Settings {
 				continue
 			}
 			for k, v := range keys {
-				if fields := strings.Fields(v); len(fields) > 0 {
-					if n, err := strconv.ParseFloat(fields[0], 64); err == nil {
-						table[k] = n
-					}
+				if n, ok := settingNumber(v); ok {
+					table[k] = n
 				}
 			}
 		}
@@ -411,7 +410,49 @@ func (s *scan) pluginSettings() mcm.Settings {
 			s.settings[strings.ToLower(p.Script)+"."+strings.ToLower(p.Function)] = table
 		}
 	}
+	// MCM Helper's settings, which a classic MCM can keep its values in too
+	// (MCM.GetModSettingBool(mod, "key:Section")): each mod's defaults, then
+	// what its saved settings hold.
+	helper := map[string]float64{}
+	for _, f := range s.list.Files("MCM/Config") {
+		parts := strings.Split(f.Path, "/")
+		if len(parts) != 4 || !strings.EqualFold(parts[3], "settings.ini") {
+			continue
+		}
+		mod := parts[2]
+		for _, ini := range []mcmhelper.INI{s.ini(f.Path), s.ini("MCM/Settings/" + mod + ".ini")} {
+			for section, keys := range ini {
+				for k, v := range keys {
+					if n, ok := settingNumber(v); ok {
+						helper[strings.ToLower(mod)+"|"+k+":"+section] = n
+					}
+				}
+			}
+		}
+	}
+	if len(helper) > 0 {
+		for _, fn := range []string{"getmodsettingbool", "getmodsettingint", "getmodsettingfloat"} {
+			s.settings["mcm."+fn] = helper
+		}
+	}
 	return s.settings
+}
+
+// settingNumber is an INI value as a number: its first word, with true and
+// false as 1 and 0.
+func settingNumber(v string) (float64, bool) {
+	fields := strings.Fields(v)
+	if len(fields) == 0 {
+		return 0, false
+	}
+	switch strings.ToLower(fields[0]) {
+	case "true":
+		return 1, true
+	case "false":
+		return 0, true
+	}
+	n, err := strconv.ParseFloat(fields[0], 64)
+	return n, err == nil
 }
 
 // remote is what the scripts on a quest hold on a new game, for a form

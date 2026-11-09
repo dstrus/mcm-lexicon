@@ -1104,3 +1104,37 @@ EndEvent
 	}
 	opt(t, p, "Only when off") // a condition on another script's property hides no option
 }
+
+// A classic MCM that keeps its values with MCM Helper: a global set from
+// MCM.GetModSettingBool(mod, "key:Section") during setup shows what MCM
+// Helper's settings hold.
+func TestMCMHelperSettingsInAClassicMCM(t *testing.T) {
+	const src = `Scriptname Helper_MCM extends SKI_ConfigBase
+GlobalVariable Property Helper_Latest Auto
+String Property PluginName = "HelperMod" Auto
+
+Event OnConfigInit()
+	Helper_Latest.SetValue((MCM.GetModSettingBool(PluginName, "bLatest:Features") as Int) as Float)
+EndEvent
+
+Event OnPageReset(string page)
+	AddToggleOption("Latest", Helper_Latest.GetValue() as Bool)
+	AddSliderOption("Chance", MCM.GetModSettingFloat(PluginName, "fChance:Features"))
+	AddSliderOption("Missing", MCM.GetModSettingFloat(PluginName, "fMissing:Features"))
+EndEvent
+`
+	zero := 0.0
+	helper := map[string]float64{"helpermod|blatest:features": 1, "helpermod|fchance:features": 0.25}
+	m := ExtractWith([]*ir.Script{parse(t, src)}, []Property{{Name: "Helper_Latest", Global: &zero}}, Settings{
+		"mcm.getmodsettingbool": helper, "mcm.getmodsettingfloat": helper,
+	})
+	p := page(t, m, "")
+	for label, want := range map[string]float64{"Latest": 1, "Chance": 0.25} {
+		if o := opt(t, p, label); o.StartNumber == nil || *o.StartNumber != want {
+			t.Errorf("%s starts at %v, want %v", label, o.StartNumber, want)
+		}
+	}
+	if o := opt(t, p, "Missing"); o.StartNumber != nil {
+		t.Errorf("a setting MCM Helper doesn't have starts at %v", *o.StartNumber)
+	}
+}

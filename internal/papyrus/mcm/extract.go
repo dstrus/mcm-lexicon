@@ -240,7 +240,9 @@ func declaredType(chain []*ir.Script, name string) string {
 
 // Settings is what SKSE plugins' functions return for a setting from an
 // INI file the plugin keeps: by "script.function" (VRIK.VrikGetSetting),
-// lowercased, then the setting's name, lowercased.
+// lowercased, then the setting's name, lowercased, or for a function that
+// takes two names (MCM Helper's GetModSetting: a mod, then "key:Section"),
+// both, joined by "|".
 type Settings map[string]map[string]float64
 
 // Extract reads the menu a script defines. chain is the script, then the

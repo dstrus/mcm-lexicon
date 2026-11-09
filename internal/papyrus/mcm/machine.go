@@ -791,10 +791,28 @@ func (m *machine) settingCall(c *ir.Call, args []Value) (Value, bool) {
 		return Value{}, false
 	}
 	m.affect(c)
-	if len(args) == 0 || args[0].k != kString {
+	text := func(i int) (string, bool) {
+		if i >= len(args) {
+			return "", false
+		}
+		v, ok := onNewGame(args[i])
+		if !ok || v.k != kString {
+			return "", false
+		}
+		return strings.ToLower(v.s), true
+	}
+	first, ok := text(0)
+	if !ok {
 		return unknown, true
 	}
-	if n, ok := table[strings.ToLower(args[0].s)]; ok {
+	// Two names, as MCM Helper's GetModSetting takes a mod and a setting:
+	// looked for together first.
+	if second, ok := text(1); ok {
+		if n, ok := table[first+"|"+second]; ok {
+			return m.hint(num(n)), true
+		}
+	}
+	if n, ok := table[first]; ok {
 		return m.hint(num(n)), true
 	}
 	return unknown, true
