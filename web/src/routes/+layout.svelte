@@ -60,8 +60,11 @@
 	const here = (path: string) => page.url.pathname === path || page.url.pathname.startsWith(`${path}/`);
 	let recordings = $derived(data.recordings?.recordings ?? []);
 	let openRecording = $derived(data.status.openRecording);
-	// The recording chosen, as listed: its page is one click away.
-	let chosen = $derived(recordings.find((r) => r.name === openRecording) ?? null);
+	// The recording chosen, as listed: its page is one click away. One
+	// remembered but gone (deleted, or from another list) is none, and the
+	// select shows None rather than nothing.
+	let chosen = $derived(recordings.find((r) => r.name.toLowerCase() === openRecording.toLowerCase()) ?? null);
+	let shownRecording = $derived(chosen?.name ?? '');
 
 	// The menus, as SkyUI lists them: by display text, the inactive ones
 	// (which the game wouldn't list at all) after the rest, and only those
@@ -100,7 +103,7 @@
 	async function chooseRecording(name: string, select: HTMLSelectElement) {
 		openError = '';
 		if (name === newValue) {
-			if (!(await creator?.choose(true))) select.value = openRecording;
+			if (!(await creator?.choose(true))) select.value = shownRecording;
 			return;
 		}
 		try {
@@ -262,7 +265,7 @@
 				<div class="adding">
 					<label class="caps" for="adding-to">{editing ? m.shell.recording : m.shell.recordingReadOnly}</label>
 					<span class="pick">
-						<select id="adding-to" value={openRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
+						<select id="adding-to" value={shownRecording} title={openError || (editing ? m.shell.recordingTitle : m.shell.recordingReadOnlyTitle)} onchange={(e) => chooseRecording(e.currentTarget.value, e.currentTarget)}>
 						<!-- None is a choice too: browsing while editing adds nothing,
 						     and the first change asks which recording it goes to. -->
 						<option value="">{m.shell.noRecording}</option>
