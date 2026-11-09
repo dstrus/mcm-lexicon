@@ -2,6 +2,16 @@
 
 What changed in each release of MCM Lexicon, newest first.
 
+## 0.1.0-beta.3 (2026-11-08)
+
+Menus now show the default values for far more options across far more menus. On an internal build of Mad God's Overhaul, the options showing no default value went from about two-thirds to under a quarter.
+
+- Added default values for new games. If an option isn't recorded and MCM Helper has no saved value for it, the menu shows what the mod's scripts and plugins say a new game starts with, and the info line labels it **NEW GAME**. That covers global variables, values a script sets up for itself, other scripts' properties, MCM Helper settings that classic menus read, and the INI files that certain mods keep their settings in. Several big mods (including VRIK and Spell Wheel VR, among others), went from missing most of their defaults to having most or all of them filled in.
+- Fixed some bogus values derived from bad searches in compiled script.
+- Tabbing past a field no longer records it. Leaving a number or text field records the option only when you've changed it or explicitly saved.
+- Options added once per item (one per recording in MCM Recorder's menu, say) are marked as repeating.
+- Snapshots (Settings → Make snapshot) now hold everything these values come from: SKSE plugins' INI files, the scripts other scripts' properties point to, and patches that change an MCM's quest.
+
 ## 0.1.0-beta.2 (2026-11-08)
 
 MCM Lexicon now opens in a window of its own instead of your browser, and setting a value while editing no longer takes an extra step.
