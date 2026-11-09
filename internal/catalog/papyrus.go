@@ -373,18 +373,28 @@ func empty(m Menu) bool {
 // built on it shows. The plugin reads the file as the game starts, so on a
 // list it's what a new game shows.
 type PluginINI struct {
-	Script   string // the native script the function belongs to
-	Function string
-	File     string // as the game sees it
+	Script    string   // the native script the functions belong to
+	Functions []string // each takes a setting's name: "key", or "Section:key"
+	File      string   // as the game sees it
 }
 
 // PluginINIs are the plugin functions MCM Lexicon reads the settings of.
-// VRIK keeps its settings, weapon slots, and gestures in three files.
+// VRIK keeps its settings, weapon slots, and gestures in three files;
+// Experience its settings by name; and Ricochet, Accuracy, and Core Impact
+// Framework theirs by section and name.
 var PluginINIs = []PluginINI{
-	{Script: "VRIK", Function: "VrikGetSetting", File: "SKSE/Plugins/vrik.ini"},
-	{Script: "VRIK", Function: "VrikGetSlot", File: "SKSE/Plugins/vrikslots.ini"},
-	{Script: "VRIK", Function: "VrikGetGesture", File: "SKSE/Plugins/vrikgestures.ini"},
+	{Script: "VRIK", Functions: []string{"VrikGetSetting"}, File: "SKSE/Plugins/vrik.ini"},
+	{Script: "VRIK", Functions: []string{"VrikGetSlot"}, File: "SKSE/Plugins/vrikslots.ini"},
+	{Script: "VRIK", Functions: []string{"VrikGetGesture"}, File: "SKSE/Plugins/vrikgestures.ini"},
+	{Script: "Experience", Functions: []string{"GetSettingBool", "GetSettingInt", "GetSettingFloat"}, File: "SKSE/Plugins/Experience.ini"},
+	{Script: "RicochetFramework", Functions: iniValues, File: "SKSE/Plugins/RicochetFramework.ini"},
+	{Script: "Accuracy", Functions: iniValues, File: "SKSE/Plugins/Accuracy.ini"},
+	{Script: "CoreImpactFramework", Functions: iniValues, File: "SKSE/Plugins/CoreImpactFramework.ini"},
 }
+
+// iniValues are the functions Ricochet's author's plugins read their INI
+// settings with, by "Section:key".
+var iniValues = []string{"GetIniValueBool", "GetIniValueInt", "GetIniValueFloat"}
 
 // pluginSettings is the settings PluginINIs' files hold, read once: each
 // key's number, the first word of its value. A file the list doesn't have
@@ -395,19 +405,31 @@ func (s *scan) pluginSettings() mcm.Settings {
 	}
 	s.settings = mcm.Settings{}
 	for _, p := range PluginINIs {
+		// Each setting by "section:key", and by its name alone when no other
+		// section has one so named.
 		table := map[string]float64{}
+		named := map[string]int{}
 		for section, keys := range s.ini(p.File) {
-			if section != "" {
-				continue
-			}
 			for k, v := range keys {
-				if n, ok := settingNumber(v); ok {
+				n, ok := settingNumber(v)
+				if !ok {
+					continue
+				}
+				if section != "" {
+					table[section+":"+k] = n
+				}
+				named[k]++
+				if named[k] == 1 {
 					table[k] = n
+				} else {
+					delete(table, k)
 				}
 			}
 		}
 		if len(table) > 0 {
-			s.settings[strings.ToLower(p.Script)+"."+strings.ToLower(p.Function)] = table
+			for _, fn := range p.Functions {
+				s.settings[strings.ToLower(p.Script)+"."+strings.ToLower(fn)] = table
+			}
 		}
 	}
 	// MCM Helper's settings, which a classic MCM can keep its values in too
@@ -461,12 +483,12 @@ func settingNumber(v string) (float64, bool) {
 // deep: what a script's own form properties point to isn't followed, so
 // scripts that point to each other don't go round. Each quest's is worked
 // out once.
-func (s *scan) remote(key string, qf questForm) mcm.Remote {
+func (s *scan) remote(key string, scripts []attachedScript) mcm.Remote {
 	if r, ok := s.remotes[key]; ok {
 		return r
 	}
 	out := mcm.Remote{}
-	for _, as := range qf.scripts {
+	for _, as := range scripts {
 		chain := s.chainOf(ir.Key(as.name))
 		var props []mcm.Property
 		for _, p := range as.props {
@@ -557,8 +579,8 @@ func (s *scan) properties(a attachment) []mcm.Property {
 			if g, ok := s.globals[key]; ok {
 				v := g.value
 				mp.Global = &v
-			} else if qf, ok := s.questForms[key]; ok {
-				if r := s.remote(key, qf); len(r) > 0 {
+			} else if scripts, ok := s.formScripts(key); ok {
+				if r := s.remote(key, scripts); len(r) > 0 {
 					mp.Remote = r
 				} else {
 					continue
@@ -619,7 +641,8 @@ func QuestPlugins(l *modlist.List) []string {
 		for _, a := range s.quests[k] {
 			add(a.form)
 			for _, key := range a.objects {
-				add(key)
+				base, _, _ := strings.Cut(key, "#")
+				add(base)
 			}
 		}
 	}
@@ -662,7 +685,8 @@ func Scripts(l *modlist.List) map[string]bool {
 	for _, k := range menus {
 		for _, a := range s.quests[k] {
 			for _, key := range a.objects {
-				for _, as := range s.questForms[key].scripts {
+				scripts, _ := s.formScripts(key)
+				for _, as := range scripts {
 					if _, ok := s.compiled[ir.Key(as.name)]; ok {
 						add(ir.Key(as.name))
 					}

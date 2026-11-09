@@ -129,6 +129,8 @@ func (p *parser) top() {
 			}
 			p.endLine()
 		case p.atWord("Import"):
+			p.next()
+			p.script.Imports = append(p.script.Imports, p.ident())
 			p.endLine()
 		case p.atWord("Auto") && p.peekAt(1).kind == tIdent && strings.EqualFold(p.peekAt(1).text, "State"):
 			p.next()

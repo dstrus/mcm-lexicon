@@ -18,6 +18,9 @@ type Script struct {
 	Properties []Variable
 	Variables  []Variable
 	States     []*State // the empty state, named "", first
+	// Imports are the scripts whose global functions it calls by name
+	// alone (Import RicochetFramework), as a source script declares them.
+	Imports []string
 }
 
 // Variable is a script variable or property, with its initial value when

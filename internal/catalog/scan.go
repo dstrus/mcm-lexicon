@@ -89,6 +89,7 @@ type scan struct {
 // scripts attached to it: what another script's form property points to.
 type questForm struct {
 	scripts []attachedScript
+	aliases map[int][]attachedScript // the scripts on its aliases, by alias ID
 	order   int
 	active  bool
 }
@@ -473,16 +474,17 @@ func (s *scan) plugins() {
 			key := plugin.FormKey(p.Owner(q.FormID), q.FormID)
 			s.questPlugins[key] = append(s.questPlugins[key], f.Path)
 			if had, ok := s.questForms[key]; !ok || (active && !had.active) || (active == had.active && at > had.order) {
-				qf := questForm{order: at, active: active}
+				qf := questForm{order: at, active: active, aliases: map[int][]attachedScript{}}
+				attached := func(sc plugin.Script) attachedScript {
+					return attachedScript{name: sc.Name, props: sc.Properties, objects: objectKeys(p, sc.Properties)}
+				}
 				for _, sc := range q.Scripts {
-					as := attachedScript{name: sc.Name, props: sc.Properties, objects: map[string]string{}}
-					for _, prop := range sc.Properties {
-						if prop.Type == plugin.PropertyObject {
-							id := uint32(prop.Number)
-							as.objects[strings.ToLower(prop.Name)] = plugin.FormKey(p.Owner(id), id)
-						}
+					qf.scripts = append(qf.scripts, attached(sc))
+				}
+				for _, al := range q.Aliases {
+					for _, sc := range al.Scripts {
+						qf.aliases[al.ID] = append(qf.aliases[al.ID], attached(sc))
 					}
-					qf.scripts = append(qf.scripts, as)
 				}
 				s.questForms[key] = qf
 			}
@@ -495,14 +497,8 @@ func (s *scan) plugins() {
 					a.pages = v.Strings
 				}
 				a.props = sc.Properties
-				a.objects = map[string]string{}
+				a.objects = objectKeys(p, sc.Properties)
 				a.form = key
-				for _, prop := range sc.Properties {
-					if prop.Type == plugin.PropertyObject {
-						id := uint32(prop.Number)
-						a.objects[strings.ToLower(prop.Name)] = plugin.FormKey(p.Owner(id), id)
-					}
-				}
 				key := strings.ToLower(sc.Name)
 				s.quests[key] = append(s.quests[key], a)
 			}
@@ -555,4 +551,42 @@ func deref(p *float64, fallback float64) float64 {
 		return fallback
 	}
 	return *p
+}
+
+// objectKeys is each object property's form, by the property's lowercase
+// name: its form key, with "#" and the alias's ID when it names one of a
+// quest's aliases (Seasonal Weathers' SFMain, its quest's alias 0).
+func objectKeys(p *plugin.Plugin, props []plugin.Property) map[string]string {
+	out := map[string]string{}
+	for _, prop := range props {
+		if prop.Type != plugin.PropertyObject {
+			continue
+		}
+		id := uint32(prop.Number)
+		key := plugin.FormKey(p.Owner(id), id)
+		if prop.Alias >= 0 {
+			key += "#" + strconv.Itoa(prop.Alias)
+		}
+		out[strings.ToLower(prop.Name)] = key
+	}
+	return out
+}
+
+// formScripts is the scripts on the form an object key names: a quest's,
+// or one of its aliases'.
+func (s *scan) formScripts(key string) ([]attachedScript, bool) {
+	base, alias, named := strings.Cut(key, "#")
+	qf, ok := s.questForms[base]
+	if !ok {
+		return nil, false
+	}
+	if !named {
+		return qf.scripts, true
+	}
+	id, err := strconv.Atoi(alias)
+	if err != nil {
+		return nil, false
+	}
+	scripts, ok := qf.aliases[id]
+	return scripts, ok
 }

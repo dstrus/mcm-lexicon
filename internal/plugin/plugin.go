@@ -59,6 +59,14 @@ type Quest struct {
 	FormID   uint32   `json:"formId"`
 	EditorID string   `json:"editorId"`
 	Scripts  []Script `json:"scripts"`
+	Aliases  []Alias  `json:"aliases"` // its aliases with scripts attached
+}
+
+// Alias is one of a quest's aliases, by its ID in the quest, with the
+// scripts attached to it (a ReferenceAlias's, say).
+type Alias struct {
+	ID      int      `json:"id"`
+	Scripts []Script `json:"scripts"`
 }
 
 type Script struct {
@@ -91,6 +99,7 @@ type Property struct {
 	Strings []string     `json:"strings"`
 	Number  float64      `json:"number"` // an int, a float, a bool as 0 or 1, or an object's form ID
 	Numbers []float64    `json:"numbers"`
+	Alias   int          `json:"alias"` // an object's alias in the quest Number names; -1 for none
 }
 
 // Property is the named property of the script, compared without regard
@@ -369,11 +378,11 @@ func readQuest(formID uint32, b []byte) (Quest, error) {
 		case "EDID":
 			q.EditorID = zstring(data)
 		case "VMAD":
-			scripts, err := readVMAD(data)
+			scripts, aliases, err := readVMAD(data)
 			if err != nil {
 				return q, fmt.Errorf("its scripts: %w", err)
 			}
-			q.Scripts = scripts
+			q.Scripts, q.Aliases = scripts, aliases
 		}
 	}
 	return q, nil
@@ -382,10 +391,46 @@ func readQuest(formID uint32, b []byte) (Quest, error) {
 // readVMAD reads the scripts attached to a record and their properties. A
 // quest's VMAD goes on to its fragments and aliases, which MCM Lexicon
 // doesn't need, so reading stops after the scripts.
-func readVMAD(b []byte) ([]Script, error) {
+func readVMAD(b []byte) ([]Script, []Alias, error) {
 	r := &reader{b: b}
 	version := r.i16()
 	format := r.i16()
+	scripts := r.scripts(version, format)
+	if r.err != nil {
+		return scripts, nil, r.err
+	}
+	// A quest's VMAD goes on to its fragments, skipped, then its aliases
+	// with their scripts. A tail that doesn't read leaves the aliases out:
+	// the scripts above are what count.
+	r.u8() // always 2
+	fragments := int(r.u16())
+	r.wstring() // the fragments' script file
+	for i := 0; i < fragments && r.err == nil; i++ {
+		r.u16()
+		r.i16()
+		r.u32()
+		r.u8()
+		r.wstring()
+		r.wstring()
+	}
+	n := int(r.u16())
+	var aliases []Alias
+	for i := 0; i < n && r.err == nil; i++ {
+		_, id := r.object(format)
+		v, f := r.i16(), r.i16()
+		a := Alias{ID: id, Scripts: r.scripts(v, f)}
+		if len(a.Scripts) > 0 {
+			aliases = append(aliases, a)
+		}
+	}
+	if r.err != nil {
+		return scripts, nil, nil
+	}
+	return scripts, aliases, nil
+}
+
+// scripts reads a list of scripts with their properties.
+func (r *reader) scripts(version, format int16) []Script {
 	count := int(r.u16())
 	scripts := make([]Script, 0, count)
 	for i := 0; i < count && r.err == nil; i++ {
@@ -395,7 +440,7 @@ func readVMAD(b []byte) ([]Script, error) {
 		}
 		props := int(r.u16())
 		for j := 0; j < props && r.err == nil; j++ {
-			p := Property{Name: r.wstring(), Type: PropertyType(r.u8())}
+			p := Property{Name: r.wstring(), Type: PropertyType(r.u8()), Alias: -1}
 			if version >= 4 {
 				r.u8() // status
 			}
@@ -404,7 +449,17 @@ func readVMAD(b []byte) ([]Script, error) {
 		}
 		scripts = append(scripts, s)
 	}
-	return scripts, r.err
+	return scripts
+}
+
+// object is an object value's form ID and alias (-1 for none): format 1
+// puts the form ID first, format 2 last.
+func (r *reader) object(format int16) (uint32, int) {
+	b := r.take(8)
+	if format == 1 {
+		return binary.LittleEndian.Uint32(b), int(int16(binary.LittleEndian.Uint16(b[4:])))
+	}
+	return binary.LittleEndian.Uint32(b[4:]), int(int16(binary.LittleEndian.Uint16(b[2:])))
 }
 
 // reader reads VMAD's little-endian fields, remembering the first time it
@@ -449,16 +504,14 @@ func (r *reader) count(each int) int {
 // an alias; format says in which order.
 func (r *reader) value(p *Property, format int16) {
 	object := func() float64 {
-		b := r.take(8)
-		if format == 1 {
-			return float64(binary.LittleEndian.Uint32(b))
-		}
-		return float64(binary.LittleEndian.Uint32(b[4:]))
+		id, _ := r.object(format)
+		return float64(id)
 	}
 	switch p.Type {
 	case PropertyNone:
 	case PropertyObject:
-		p.Number = object()
+		id, alias := r.object(format)
+		p.Number, p.Alias = float64(id), alias
 	case PropertyString:
 		p.String = r.wstring()
 	case PropertyInt:

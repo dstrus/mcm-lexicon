@@ -1167,3 +1167,30 @@ EndProperty
 		t.Errorf("a property the game decides = %+v", v)
 	}
 }
+
+// Ricochet's way: the plugin's script imported, and its INI read by
+// "Section:key" with the function's name alone; Experience's: by key.
+func TestImportedINISettings(t *testing.T) {
+	const src = `Scriptname Imported_MCM extends SKI_ConfigBase
+Import IniFramework
+
+Event OnPageReset(string page)
+	AddSliderOption("Speed", GetIniValueFloat("Global:fSpeed"), "{1}")
+	AddToggleOption("Caps", Experience.GetSettingBool("bUseRacialCaps"))
+	AddSliderOption("Unknown", GetIniValueFloat("Global:fMissing"))
+EndEvent
+`
+	m := ExtractWith([]*ir.Script{parse(t, src)}, nil, Settings{
+		"iniframework.getinivaluefloat": {"global:fspeed": 2.3},
+		"experience.getsettingbool":     {"buseracialcaps": 1},
+	})
+	p := page(t, m, "")
+	for label, want := range map[string]float64{"Speed": 2.3, "Caps": 1} {
+		if o := opt(t, p, label); o.StartNumber == nil || *o.StartNumber != want {
+			t.Errorf("%s starts at %v, want %v", label, o.StartNumber, want)
+		}
+	}
+	if o := opt(t, p, "Unknown"); o.StartNumber != nil {
+		t.Errorf("a setting the file doesn't have starts at %v", *o.StartNumber)
+	}
+}

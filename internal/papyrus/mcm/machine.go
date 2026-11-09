@@ -682,6 +682,9 @@ func (m *machine) callExpr(c *ir.Call) Value {
 	if v, ok := m.globalCall(c, args); ok {
 		return v
 	}
+	if v, ok := m.importedSetting(c, args); ok {
+		return v
+	}
 	if c.Object != nil || c.Parent {
 		m.affect(c)
 		return unknown // another object's function, or SKI_ConfigBase's own
@@ -786,7 +789,29 @@ func (m *machine) settingCall(c *ir.Call, args []Value) (Value, bool) {
 	if !ok || m.settings == nil || m.lookup(id.Name) != nil {
 		return Value{}, false // a variable's function, not a script's
 	}
-	table, ok := m.settings[ir.Key(id.Name)+"."+ir.Key(c.Method)]
+	return m.setting(c, id.Name, args)
+}
+
+// importedSetting is a call by name alone to a function the script doesn't
+// define, which an imported script's settings answer (RicochetFramework's
+// GetIniValueFloat, under Import RicochetFramework).
+func (m *machine) importedSetting(c *ir.Call, args []Value) (Value, bool) {
+	if c.Object != nil || c.Parent || m.settings == nil || m.function(m.state, c.Method) != nil {
+		return Value{}, false
+	}
+	for _, sc := range m.chain {
+		for _, imp := range sc.Imports {
+			if v, ok := m.setting(c, imp, args); ok {
+				return v, true
+			}
+		}
+	}
+	return Value{}, false
+}
+
+// setting is the setting script.function returns for the call's names.
+func (m *machine) setting(c *ir.Call, script string, args []Value) (Value, bool) {
+	table, ok := m.settings[ir.Key(script)+"."+ir.Key(c.Method)]
 	if !ok {
 		return Value{}, false
 	}

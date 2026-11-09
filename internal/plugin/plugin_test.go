@@ -258,3 +258,61 @@ func TestRealSnapshots(t *testing.T) {
 		})
 	}
 }
+
+// A quest's aliases come after its scripts and fragments: Seasonal
+// Weathers' main script is on its quest's alias 0, which the MCM's SFMain
+// property names.
+func TestQuestAliases(t *testing.T) {
+	object := func(alias int16, id uint32) []byte {
+		return append(append(le(uint16(0)), le(alias)...), le(id)...)
+	}
+	var v bytes.Buffer
+	v.Write(le(int16(5)))
+	v.Write(le(int16(2)))
+	v.Write(le(uint16(1)))
+	v.Write(wstr("Seasons_MCM"))
+	v.WriteByte(0)
+	v.Write(le(uint16(2)))
+	v.Write(prop("SFMain", PropertyObject, object(0, 0x800)))
+	v.Write(prop("PlayerRef", PropertyObject, object(-1, 0x14)))
+	v.WriteByte(2)              // fragments: unknown
+	v.Write(le(uint16(1)))      // one fragment
+	v.Write(wstr("QF_Seasons")) // its file
+	v.Write(le(uint16(10)))
+	v.Write(le(int16(0)))
+	v.Write(le(int32(0)))
+	v.WriteByte(0)
+	v.Write(wstr("QF_Seasons"))
+	v.Write(wstr("Fragment_0"))
+	v.Write(le(uint16(1))) // one alias
+	v.Write(object(0, 0x800))
+	v.Write(le(int16(5)))
+	v.Write(le(int16(2)))
+	v.Write(le(uint16(1)))
+	v.Write(wstr("Seasons_Main"))
+	v.WriteByte(0)
+	v.Write(le(uint16(1)))
+	v.Write(prop("Speed", PropertyFloat, le(float32(2.5))))
+	quest := append(sub("EDID", []byte("SeasonsQuest\x00")), sub("VMAD", v.Bytes())...)
+	var f bytes.Buffer
+	f.Write(record("TES4", 0, 0, sub("HEDR", make([]byte, 12))))
+	f.Write(group("QUST", 0, record("QUST", 0, 0x800, quest)))
+	p, err := Read(bytes.NewReader(f.Bytes()), int64(f.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := p.Quests[0]
+	if len(q.Aliases) != 1 || q.Aliases[0].ID != 0 || q.Aliases[0].Scripts[0].Name != "Seasons_Main" {
+		t.Fatalf("aliases = %+v", q.Aliases)
+	}
+	if v, _ := q.Aliases[0].Scripts[0].Property("Speed"); v.Number != 2.5 {
+		t.Errorf("the alias script's Speed = %v", v.Number)
+	}
+	s := q.Scripts[0]
+	if v, _ := s.Property("SFMain"); v.Alias != 0 || v.Number != 0x800 {
+		t.Errorf("SFMain = %+v", v)
+	}
+	if v, _ := s.Property("PlayerRef"); v.Alias != -1 {
+		t.Errorf("PlayerRef's alias = %d, want -1", v.Alias)
+	}
+}
