@@ -468,6 +468,27 @@ func find(c *Catalog, mod, page string, typ OptionType, label string, index int)
 	return Option{}, false
 }
 
+// findValue is the text option showing value on a page, by its value's
+// 1-based index among those showing the same one (0 for the only one).
+func findValue(c *Catalog, mod, page, value string, index int) (Option, bool) {
+	for _, m := range c.Menus {
+		if m.Name != mod {
+			continue
+		}
+		for _, p := range m.Pages {
+			if p.Name != page {
+				continue
+			}
+			for _, o := range p.Options {
+				if o.Type == OptionTypeText && strings.EqualFold(o.Value, value) && (o.ValueIndex == index || (index == 0 && o.ValueIndex == 1)) {
+					return o, true
+				}
+			}
+		}
+	}
+	return Option{}, false
+}
+
 // hasChoice compares as Papyrus does, without regard to case: R.A.S.S.'s
 // recording in Nordic chooses "off" from a menu that offers "Off".
 func hasChoice(o Option, raw string) bool {
@@ -524,8 +545,18 @@ func checkRecordings(t *testing.T, l *modlist.List, c *Catalog) {
 					}
 				}
 			}
+			// A click names its option in its own field, as MCM Recorder writes
+			// it: {"click": "Permit Hands"}.
+			if v, ok := st["click"].(string); ok && label == "" {
+				label = v
+			}
 			checked++
 			o, ok := find(c, mod, page, typ, label, index)
+			// A click on the right side finds its text option by the value
+			// shown there, for one without a label.
+			if side, _ := st["side"].(string); side == "right" {
+				o, ok = findValue(c, mod, page, label, index)
+			}
 			switch {
 			case !ok:
 				t.Errorf("%s: %s / %q / %s %q (index %d) isn't in the catalog", f.Path, mod, page, typ, label, index)

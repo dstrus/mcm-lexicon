@@ -414,6 +414,73 @@ func (s *scan) pluginSettings() mcm.Settings {
 	return s.settings
 }
 
+// remote is what the scripts on a quest hold on a new game, for a form
+// property that points to it: each script's initialization run as a new
+// game runs it, from what its declarations and the plugin give it. One step
+// deep: what a script's own form properties point to isn't followed, so
+// scripts that point to each other don't go round. Each quest's is worked
+// out once.
+func (s *scan) remote(key string, qf questForm) mcm.Remote {
+	if r, ok := s.remotes[key]; ok {
+		return r
+	}
+	out := mcm.Remote{}
+	for _, as := range qf.scripts {
+		chain := s.chainOf(ir.Key(as.name))
+		var props []mcm.Property
+		for _, p := range as.props {
+			mp := mcm.Property{Name: p.Name}
+			switch p.Type {
+			case plugin.PropertyString:
+				str := p.String
+				mp.String = &str
+			case plugin.PropertyInt, plugin.PropertyFloat, plugin.PropertyBool:
+				n := p.Number
+				mp.Number = &n
+			case plugin.PropertyObject:
+				g, ok := s.globals[as.objects[strings.ToLower(p.Name)]]
+				if !ok {
+					continue
+				}
+				v := g.value
+				mp.Global = &v
+			default:
+				continue
+			}
+			props = append(props, mp)
+		}
+		// Without the script, what the plugin fills its properties with.
+		var table map[string]mcm.RemoteValue
+		if len(chain) > 0 {
+			table = mcm.Initialized(chain, props, s.pluginSettings())
+		} else {
+			table = map[string]mcm.RemoteValue{}
+			for _, p := range props {
+				table[ir.Key(p.Name)] = mcm.RemoteValue{Number: p.Number, String: p.String, Global: p.Global}
+			}
+		}
+		if len(table) > 0 {
+			out[ir.Key(as.name)] = table
+		}
+	}
+	s.remotes[key] = out
+	return out
+}
+
+// chainOf is a script, then the ancestors whose script is at hand.
+func (s *scan) chainOf(name string) []*ir.Script {
+	var chain []*ir.Script
+	for k := name; k != "" && len(chain) < 16; {
+		f := s.form(k)
+		if f == nil {
+			break
+		}
+		chain = append(chain, f.script)
+		k = ir.Key(f.script.Parent)
+	}
+	return chain
+}
+
 // startValue is what an option shows on a new game, in the catalog's
 // terms: on or off for a toggle, a number for a slider, a key, or a color,
 // the entry for a menu (by position, as a menu's default is), and text for
@@ -445,12 +512,19 @@ func (s *scan) properties(a attachment) []mcm.Property {
 		mp := mcm.Property{Name: p.Name}
 		switch p.Type {
 		case plugin.PropertyObject:
-			g, ok := s.globals[a.objects[strings.ToLower(p.Name)]]
-			if !ok {
+			key := a.objects[strings.ToLower(p.Name)]
+			if g, ok := s.globals[key]; ok {
+				v := g.value
+				mp.Global = &v
+			} else if qf, ok := s.questForms[key]; ok {
+				if r := s.remote(key, qf); len(r) > 0 {
+					mp.Remote = r
+				} else {
+					continue
+				}
+			} else {
 				continue
 			}
-			v := g.value
-			mp.Global = &v
 		case plugin.PropertyString:
 			s := p.String
 			mp.String = &s
@@ -479,18 +553,17 @@ func sortedKeys[V any](m map[string]V) []string {
 }
 
 // Scripts is every compiled script in the list that makes an MCM, by its
-// Extends chain, and the scripts on the chains between them and the MCM
-// bases (a framework's), by lowercase name: what a snapshot must hold for
-// the menus to read. The bases themselves aren't included.
+// Extends chain, the scripts on the chains between them and the MCM bases
+// (a framework's), and the scripts on the quests an MCM script's properties
+// point to, whose properties it shows, with theirs, by lowercase name: what
+// a snapshot must hold for the menus to read. The bases themselves aren't
+// included.
 func Scripts(l *modlist.List) map[string]bool {
 	l.Index(modlist.MCMScope)
 	s := &scan{list: l, cat: &Catalog{}, ids: map[string]bool{}}
 	s.scripts()
 	out := map[string]bool{}
-	for k := range s.compiled {
-		if s.base(k) == "" {
-			continue
-		}
+	add := func(k string) {
 		for name := k; name != "" && name != "ski_configbase" && name != "mcm_configbase" && !out[name]; {
 			out[name] = true
 			parent, ok := s.parent(name)
@@ -498,6 +571,28 @@ func Scripts(l *modlist.List) map[string]bool {
 				break
 			}
 			name = ir.Key(parent)
+		}
+	}
+	var menus []string
+	for k := range s.compiled {
+		if s.base(k) == "" {
+			continue
+		}
+		menus = append(menus, k)
+		add(k)
+	}
+	// The scripts on the quests an MCM script's properties point to, whose
+	// properties it shows.
+	s.plugins()
+	for _, k := range menus {
+		for _, a := range s.quests[k] {
+			for _, key := range a.objects {
+				for _, as := range s.questForms[key].scripts {
+					if _, ok := s.compiled[ir.Key(as.name)]; ok {
+						add(ir.Key(as.name))
+					}
+				}
+			}
 		}
 	}
 	return out

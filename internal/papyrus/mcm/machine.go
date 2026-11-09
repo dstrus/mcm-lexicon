@@ -632,6 +632,21 @@ func (m *machine) eval(e ir.Expr) Value {
 		if x.k == kArray && x.arr != nil && ir.Key(e.Name) == "length" {
 			return integer(float64(len(*x.arr)))
 		}
+		// Another script's property, on the form a property points to: a
+		// new game's value, so a hint, as a global's is.
+		if x.k == kRemote {
+			if rv, ok := x.remoteProperty(e.Name); ok {
+				switch {
+				case rv.Number != nil:
+					return m.hint(num(*rv.Number))
+				case rv.String != nil:
+					return m.hint(str(*rv.String))
+				case rv.Global != nil:
+					return global(*rv.Global)
+				}
+			}
+			return unknown
+		}
 		// A global's Value property, which GetValue reads.
 		if x.k == kGlobal && ir.Key(e.Name) == "value" && !math.IsNaN(x.n) {
 			return m.hint(num(x.n))

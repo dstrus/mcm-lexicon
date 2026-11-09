@@ -254,8 +254,12 @@ func TestRealSnapshots(t *testing.T) {
 			if f, ok := l.Open("MCM/Settings/DismemberingFramework.ini"); !ok || f.Mod != "overwrite" {
 				t.Errorf("overwrite's settings: %+v, %v", f, ok)
 			}
-			if f, ok := l.Open(`McmRecorder\DirtAndBlood\0001_Dirt & Blood.json`); !ok || f.Mod != "[NoDelete] Davey's MCM Recordings" {
-				t.Errorf("the recording in a bracketed folder: %+v, %v", f, ok)
+			// A recording in a mod whose folder name has brackets, in the
+			// snapshots that still hold that mod.
+			if _, has := l.Mod("[NoDelete] Davey's MCM Recordings"); has {
+				if f, ok := l.Open(`McmRecorder\DirtAndBlood\0001_Dirt & Blood.json`); !ok || f.Mod != "[NoDelete] Davey's MCM Recordings" {
+					t.Errorf("the recording in a bracketed folder: %+v, %v", f, ok)
+				}
 			}
 		})
 	}

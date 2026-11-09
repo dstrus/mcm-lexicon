@@ -1029,3 +1029,78 @@ EndEvent
 		t.Error("an option added in a loop the game counts doesn't repeat")
 	}
 }
+
+// Another script's properties, read through a property pointing to the
+// quest it's on: what its OnInit leaves them holding on a new game, from
+// its declarations and the plugin's values.
+func TestRemoteProperties(t *testing.T) {
+	const main = `Scriptname Remote_Main extends Quest
+Bool Property ResetPosition Auto
+Float Property Speed = 1.5 Auto
+Int Property Filled Auto
+Int Property Unsure Auto
+String Property Style Auto
+GlobalVariable Property Remote_Count Auto
+
+Event OnInit()
+	Startup()
+EndEvent
+
+Function Startup()
+	ResetPosition = True
+	Style = "Medium"
+	If Game.GetPlayer().IsInCombat()
+		Unsure = 3
+	EndIf
+EndFunction
+`
+	five := 5.0
+	twelve := 12.0
+	remote := Initialized([]*ir.Script{parse(t, main)}, []Property{{Name: "Filled", Number: &twelve}, {Name: "Remote_Count", Global: &five}}, nil)
+	want := map[string]float64{"resetposition": 1, "speed": 1.5, "filled": 12}
+	for name, n := range want {
+		if v, ok := remote[name]; !ok || v.Number == nil || *v.Number != n {
+			t.Errorf("%s = %+v, want %v", name, v, n)
+		}
+	}
+	if v := remote["style"]; v.String == nil || *v.String != "Medium" {
+		t.Errorf("style = %+v", v)
+	}
+	if v := remote["remote_count"]; v.Global == nil || *v.Global != 5 {
+		t.Errorf("remote_count = %+v", v)
+	}
+	if v, ok := remote["unsure"]; ok {
+		t.Errorf("a property OnInit may or may not set = %+v", v)
+	}
+
+	const mcmSrc = `Scriptname Remote_MCM extends SKI_ConfigBase
+Remote_Main Property Main Auto
+Quest Property MainQuest Auto
+
+Event OnPageReset(string page)
+	AddToggleOption("Reset Position", Main.ResetPosition)
+	AddSliderOption("Speed", Main.Speed, "{1}")
+	AddSliderOption("Count", Main.Remote_Count.GetValue())
+	AddMenuOption("Style", Main.Style)
+	AddSliderOption("Cast", (MainQuest as Remote_Main).Filled)
+	AddSliderOption("Unsure", Main.Unsure)
+	If Main.ResetPosition
+		AddToggleOption("Only when off", False)
+	EndIf
+EndEvent
+`
+	m := Extract([]*ir.Script{parse(t, mcmSrc)}, []Property{{Name: "Main", Remote: Remote{"remote_main": remote}}, {Name: "MainQuest", Remote: Remote{"remote_main": remote}}})
+	p := page(t, m, "")
+	for label, n := range map[string]float64{"Reset Position": 1, "Speed": 1.5, "Count": 5, "Cast": 12} {
+		if o := opt(t, p, label); o.StartNumber == nil || *o.StartNumber != n {
+			t.Errorf("%s starts at %v, want %v", label, o.StartNumber, n)
+		}
+	}
+	if o := opt(t, p, "Style"); o.StartText == nil || *o.StartText != "Medium" {
+		t.Errorf("Style starts at %v", o.StartText)
+	}
+	if o := opt(t, p, "Unsure"); o.StartNumber != nil {
+		t.Errorf("Unsure starts at %v", *o.StartNumber)
+	}
+	opt(t, p, "Only when off") // a condition on another script's property hides no option
+}

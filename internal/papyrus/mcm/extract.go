@@ -14,6 +14,7 @@ package mcm
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"sort"
 	"strings"
@@ -37,6 +38,20 @@ type Property struct {
 	Strings []string // nil unless the property is a string array
 	Number  *float64
 	Global  *float64 // a global variable the property points to: what a new game starts it at
+	Remote  Remote   // a form the property points to, with scripts attached: what their properties hold
+}
+
+// Remote is what the scripts attached to a form hold on a new game, by
+// script name, then property name, both lowercased: what the plugin fills,
+// else what the script declares, for a property its OnInit leaves alone.
+type Remote map[string]map[string]RemoteValue
+
+// RemoteValue is one of those properties' values: a number (a bool as 0 or
+// 1), text, or a global variable's starting value.
+type RemoteValue struct {
+	Number *float64
+	String *string
+	Global *float64
 }
 
 type Menu struct {
@@ -210,6 +225,19 @@ type found struct {
 	site *ir.Call // the Add…Option call that made it
 }
 
+// declaredType is the type a property is declared with in the chain,
+// lowercased: for a form, the script it's taken as.
+func declaredType(chain []*ir.Script, name string) string {
+	for _, sc := range chain {
+		for _, v := range sc.Properties {
+			if ir.Key(v.Name) == ir.Key(name) {
+				return strings.ToLower(v.Type)
+			}
+		}
+	}
+	return ""
+}
+
 // Settings is what SKSE plugins' functions return for a setting from an
 // INI file the plugin keeps: by "script.function" (VRIK.VrikGetSetting),
 // lowercased, then the setting's name, lowercased.
@@ -222,7 +250,9 @@ func Extract(chain []*ir.Script, props []Property) Menu {
 }
 
 // ExtractWith is Extract with the settings SKSE plugins' INI files hold.
-func ExtractWith(chain []*ir.Script, props []Property, settings Settings) Menu {
+// setup is a machine for the script, its variables and properties at their
+// declared values, then the plugin's.
+func setup(chain []*ir.Script, props []Property, settings Settings) *machine {
 	m := newMachine(chain)
 	m.settings = settings
 	// Script variables and properties start at their declared values (the
@@ -256,11 +286,19 @@ func ExtractWith(chain []*ir.Script, props []Property, settings Settings) Menu {
 			v = num(*p.Number)
 		case p.Global != nil:
 			v = global(*p.Global)
+		case p.Remote != nil:
+			v = Value{k: kRemote, s: declaredType(chain, p.Name), rem: p.Remote}
 		default:
 			continue
 		}
 		m.globals[ir.Key(p.Name)] = &v
 	}
+	return m
+}
+
+// initialize runs the script's initialization events, as a new game and a
+// first opening of the menu do.
+func (m *machine) initialize() {
 	// The initialization events. SKI_ConfigBase's own functions do nothing
 	// the menu's contents depend on, so calls to them are ignored. A script
 	// that defers its setup by registering for an update (EVG Conditional
@@ -296,6 +334,52 @@ func ExtractWith(chain []*ir.Script, props []Property, settings Settings) Menu {
 			m.invoke(f, nil)
 		}
 	}
+}
+
+// Initialized is what a script's properties hold once its initialization
+// has run as on a new game, starting from their declared values and the
+// plugin's: what another script reads of them, through a property pointing
+// to the form it's attached to. A property it may or may not have set, or
+// sets to something the game decides, isn't there.
+func Initialized(chain []*ir.Script, props []Property, settings Settings) map[string]RemoteValue {
+	m := setup(chain, props, settings)
+	m.newGame = true
+	m.initialize()
+	out := map[string]RemoteValue{}
+	for _, sc := range chain {
+		for _, v := range sc.Properties {
+			key := ir.Key(v.Name)
+			p := m.globals[key]
+			if _, done := out[key]; done || p == nil || v.Computed {
+				continue
+			}
+			if p.k == kGlobal {
+				if !math.IsNaN(p.n) {
+					n := p.n
+					out[key] = RemoteValue{Global: &n}
+				}
+				continue
+			}
+			val, ok := onNewGame(*p)
+			if !ok {
+				continue
+			}
+			switch val.k {
+			case kBool, kInt, kFloat:
+				n := val.n
+				out[key] = RemoteValue{Number: &n}
+			case kString:
+				str := val.s
+				out[key] = RemoteValue{String: &str}
+			}
+		}
+	}
+	return out
+}
+
+func ExtractWith(chain []*ir.Script, props []Property, settings Settings) Menu {
+	m := setup(chain, props, settings)
+	m.initialize()
 	if f := m.function("", "OnConfigOpen"); f != nil {
 		m.budget = budget
 		m.invoke(f, nil)

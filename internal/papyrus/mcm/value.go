@@ -23,6 +23,7 @@ const (
 	kScoped  // a condition true for some options only: option == X
 	kOthers  // a condition true for all options but some: option != X
 	kGlobal  // a global variable the plugin fills, holding n; NaN when what it holds isn't known
+	kRemote  // a form another script is attached to: rem says what its properties hold, s names the script it's taken as
 )
 
 // Value is a value as far as the analysis can tell.
@@ -44,6 +45,7 @@ type Value struct {
 	// option ID stays linked, and a label as it was, but not what the
 	// option is shown with, which may be what the variable held before.
 	pooled bool
+	rem    Remote // a kRemote's scripts and what their properties hold
 }
 
 // hinted is an unknown value that's v on a new game.
@@ -118,7 +120,7 @@ func (v Value) truth() (bool, bool) {
 		return v.n != 0, true
 	case kString:
 		return v.s != "", true
-	case kArray, kOption, kGlobal:
+	case kArray, kOption, kGlobal, kRemote:
 		return true, true
 	}
 	return false, false
@@ -496,8 +498,13 @@ func cast(v Value, typ string) Value {
 		}
 	default:
 		// To an object or array type, None stays None (the compiler casts
-		// the None it compares with), and an array stays itself.
+		// the None it compares with), and an array stays itself. A form
+		// another script is attached to is taken as the script cast to.
 		if v.k == kNone || v.k == kArray {
+			return v
+		}
+		if v.k == kRemote {
+			v.s = strings.ToLower(typ)
 			return v
 		}
 	}
@@ -515,4 +522,24 @@ func copyValue(v Value) Value {
 		v.arr = &a
 	}
 	return v
+}
+
+// remoteProperty is the named property of the script a kRemote is taken
+// as, or, when the form has no script by that name, of the only script on
+// it that has the property.
+func (v Value) remoteProperty(name string) (RemoteValue, bool) {
+	key := strings.ToLower(name)
+	if table, ok := v.rem[v.s]; ok {
+		rv, ok := table[key]
+		return rv, ok
+	}
+	var found RemoteValue
+	n := 0
+	for _, table := range v.rem {
+		if rv, ok := table[key]; ok {
+			found = rv
+			n++
+		}
+	}
+	return found, n == 1
 }

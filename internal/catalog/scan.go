@@ -71,15 +71,33 @@ type scan struct {
 	tr   *translations.Table
 	ids  map[string]bool
 
-	classic  []script                // scripts whose Extends chain reaches SKI_ConfigBase
-	helpers  map[string][]string     // MCM Helper's scripts (whose chain reaches MCM_ConfigBase), by mod
-	quests   map[string][]attachment // quests by the lowercase name of a script attached to them
-	sources  map[string][]modlist.File
-	compiled map[string]modlist.File
-	forms    map[string]*form
-	cache    *parents
-	globals  map[string]global // global variables by form key (plugin.FormKey)
-	settings mcm.Settings      // what PluginINIs' files hold, once read
+	classic    []script                // scripts whose Extends chain reaches SKI_ConfigBase
+	helpers    map[string][]string     // MCM Helper's scripts (whose chain reaches MCM_ConfigBase), by mod
+	quests     map[string][]attachment // quests by the lowercase name of a script attached to them
+	sources    map[string][]modlist.File
+	compiled   map[string]modlist.File
+	forms      map[string]*form
+	cache      *parents
+	globals    map[string]global     // global variables by form key (plugin.FormKey)
+	questForms map[string]questForm  // quests with scripts attached, by form key (plugin.FormKey)
+	settings   mcm.Settings          // what PluginINIs' files hold, once read
+	remotes    map[string]mcm.Remote // what each quest's scripts hold on a new game, once worked out
+}
+
+// questForm is a quest as the plugin that wins defines it, with the
+// scripts attached to it: what another script's form property points to.
+type questForm struct {
+	scripts []attachedScript
+	order   int
+	active  bool
+}
+
+// attachedScript is a script on a quest, with what the plugin fills its
+// properties with, and each object property's form.
+type attachedScript struct {
+	name    string
+	props   []plugin.Property
+	objects map[string]string
 }
 
 // global is a global variable's value as the plugin that wins defines it.
@@ -417,6 +435,8 @@ func (s *scan) ini(rel string) mcmhelper.INI {
 func (s *scan) plugins() {
 	s.quests = map[string][]attachment{}
 	s.globals = map[string]global{}
+	s.questForms = map[string]questForm{}
+	s.remotes = map[string]mcm.Remote{}
 	order := map[string]int{}
 	for i, p := range s.list.Plugins() {
 		order[strings.ToLower(p.Name)] = i
@@ -445,6 +465,23 @@ func (s *scan) plugins() {
 			}
 		}
 		for _, q := range p.Quests {
+			// The quest by its form, the one that wins as the game loads
+			// plugins, for a form property elsewhere that points to it.
+			key := plugin.FormKey(p.Owner(q.FormID), q.FormID)
+			if had, ok := s.questForms[key]; !ok || (active && !had.active) || (active == had.active && at > had.order) {
+				qf := questForm{order: at, active: active}
+				for _, sc := range q.Scripts {
+					as := attachedScript{name: sc.Name, props: sc.Properties, objects: map[string]string{}}
+					for _, prop := range sc.Properties {
+						if prop.Type == plugin.PropertyObject {
+							id := uint32(prop.Number)
+							as.objects[strings.ToLower(prop.Name)] = plugin.FormKey(p.Owner(id), id)
+						}
+					}
+					qf.scripts = append(qf.scripts, as)
+				}
+				s.questForms[key] = qf
+			}
 			for _, sc := range q.Scripts {
 				a := attachment{plugin: f.Path, order: at, active: s.list.PluginActive(f.Path), quest: q.EditorID}
 				if v, ok := sc.Property("ModName"); ok && v.Type == plugin.PropertyString {
