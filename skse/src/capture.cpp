@@ -1,8 +1,9 @@
-// The capture: each menu SkyUI lists, each of its pages run as the Journal
-// runs it, and what the page added read back from SkyUI's option buffers
-// (PLAN.md §11). Script calls and reads happen on the game's main thread,
-// through SKSE's task queue, or in the callback of the call that ran the
-// page; the thread that drives it only waits.
+// The capture: each menu SkyUI lists, opened, paged through, and closed as
+// the Journal does it, and what each page added read back from SkyUI's
+// option buffers (PLAN.md §11). Script calls and reads happen on the game's
+// main thread, through SKSE's task queue, or in the callback of the call
+// that ran; the thread that drives it only waits, and starts nothing until
+// the last call has returned.
 
 #include "capture.h"
 
@@ -16,12 +17,15 @@ namespace capture
 	namespace
 	{
 		// How long the menus have to settle after a load, and how long one
-		// page or one main-thread task may take.
+		// main-thread task may take. A menu's call is logged as slow after
+		// callSlow, and after callMost the capture stops, since a call still
+		// running can't be stopped and the next would run over it.
 		constexpr auto settleFirst = 10s;
 		constexpr auto settleQuiet = 5s;
 		constexpr auto settleMost = 120s;
-		constexpr auto pageMost = 10s;
 		constexpr auto taskMost = 10s;
+		constexpr auto callSlow = 60s;
+		constexpr auto callMost = 300s;
 
 		std::atomic_bool running{ false };
 
@@ -133,7 +137,6 @@ namespace capture
 			std::string name;    // as SkyUI lists it
 			std::string script;  // the menu's script
 			std::string quest;
-			std::vector<std::string> pages;
 			ObjectPtr object;
 		};
 
@@ -178,16 +181,25 @@ namespace capture
 					m.script = type->GetName();
 				}
 				m.quest = QuestKey(object);
-				if (auto pages = object->GetProperty("Pages"); pages && pages->IsArray()) {
-					if (auto a = pages->GetArray()) {
-						for (std::uint32_t p = 0; p < a->size(); ++p) {
-							m.pages.emplace_back((*a)[p].GetString());  // raw: SetPage gets them back
-						}
-					}
-				}
 				menus.push_back(std::move(m));
 			}
 			return menus;
+		}
+
+		// Pages is a menu's Pages, raw, since SetPage gets them back: read
+		// after OpenConfig, as the Journal does, since OnConfigOpen may set
+		// them. Main thread only.
+		std::vector<std::string> Pages(const ObjectPtr& a_menu)
+		{
+			std::vector<std::string> pages;
+			if (auto v = a_menu->GetProperty("Pages"); v && v->IsArray()) {
+				if (auto a = v->GetArray()) {
+					for (std::uint32_t i = 0; i < a->size(); ++i) {
+						pages.emplace_back((*a)[i].GetString());
+					}
+				}
+			}
+			return pages;
 		}
 
 		// ReadPage reads the option buffers a page just filled: each index a
@@ -226,7 +238,7 @@ namespace capture
 			return options;
 		}
 
-		// Done calls back when a page's SetPage returns.
+		// Done calls back when a menu's call returns.
 		class Done : public RE::BSScript::IStackCallbackFunctor
 		{
 		public:
@@ -239,26 +251,41 @@ namespace capture
 			std::function<void()> fn;
 		};
 
-		// RunPage runs one page as the Journal would, SetPage(page, index),
-		// and returns what it added, or nullopt after pageMost. A call that
-		// returns late finds no one waiting and changes nothing.
-		std::optional<json> RunPage(const Menu& a_menu, const std::string& a_page, std::int32_t a_index)
+		struct Called
+		{
+			enum class Result
+			{
+				returned,  // and options holds the buffers as it left them
+				notSent,   // the call couldn't be made, so nothing is running
+				stuck,     // it's still running after callMost
+			} result;
+			json options;
+		};
+
+		// Call calls a_fn on the menu and waits for it to return, then reads
+		// the option buffers it left.
+		Called Call(const Menu& a_menu, const char* a_fn, std::function<RE::BSScript::IFunctionArguments*()> a_args)
 		{
 			auto done = std::make_shared<std::promise<json>>();
 			auto result = done->get_future();
 			auto object = a_menu.object;
-			auto sent = OnMain([object, a_page, a_index, done]() mutable {
+			auto sent = OnMain([object, a_fn, a_args, done]() mutable {
 				auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 				RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback{ new Done([object, done]() {
 					done->set_value(ReadPage(object));
 				}) };
-				auto args = RE::MakeFunctionArguments(RE::BSFixedString(a_page), std::move(a_index));
-				return vm->DispatchMethodCall(object, "SetPage", args, callback);
+				return vm->DispatchMethodCall(object, a_fn, a_args(), callback);
 			});
-			if (!sent || !*sent || result.wait_for(pageMost) != std::future_status::ready) {
-				return std::nullopt;
+			if (!sent || !*sent) {
+				return { Called::Result::notSent, {} };
 			}
-			return result.get();
+			if (result.wait_for(callSlow) != std::future_status::ready) {
+				logger::warn("{}: {} still running after {} seconds", a_menu.name, a_fn, callSlow.count());
+				if (result.wait_for(callMost - callSlow) != std::future_status::ready) {
+					return { Called::Result::stuck, {} };
+				}
+			}
+			return { Called::Result::returned, result.get() };
 		}
 
 		bool JournalOpen()
@@ -336,6 +363,25 @@ namespace capture
 				file["stopped"] = "SkyUI's menus weren't found";
 			}
 
+			// The file is written before each call, naming it under running,
+			// so if the game crashes the file says where.
+			auto progress = [&](const Menu& a_menu, const json& a_doing, std::string_view a_step) {
+				file["running"] = { { "menu", a_menu.name }, { "script", a_menu.script }, { "step", a_step } };
+				json shown = file;
+				shown["menus"].push_back(a_doing);
+				Write(a_folder, shown);
+			};
+			// The Journal would show what a call draws, and a call that won't
+			// return can't be stopped, so either ends the capture.
+			auto stop = [&](std::string a_why) {
+				file["stopped"] = std::move(a_why);
+				logger::warn("Stopped: {}", file["stopped"].get<std::string>());
+			};
+			auto pageArgs = [](std::string a_page, std::int32_t a_index) {
+				return [a_page, a_index]() { return RE::MakeFunctionArguments(RE::BSFixedString(a_page), std::int32_t(a_index)); };
+			};
+			auto noArgs = []() { return RE::MakeFunctionArguments(); };
+
 			auto menus = manager ? OnMain([manager]() { return Menus(manager); }).value_or(std::vector<Menu>{}) : std::vector<Menu>{};
 			logger::info("Capturing {} menus", menus.size());
 			for (const auto& m : menus) {
@@ -349,31 +395,71 @@ namespace capture
 					{ "quest", m.quest },
 					{ "pages", json::array() },
 				};
-				auto pages = m.pages.empty() ? std::vector<std::string>{ "" } : m.pages;
-				for (std::int32_t i = 0; i < static_cast<std::int32_t>(pages.size()); ++i) {
-					// SetPage draws into the Journal when it's open.
-					if (JournalOpen()) {
-						file["stopped"] = "the Journal menu opened";
-						break;
-					}
-					json page = { { "name", Text(pages[i]) } };
-					if (auto options = RunPage(m, pages[i], m.pages.empty() ? -1 : i)) {
-						page["options"] = std::move(*options);
-					} else {
-						page["error"] = "timed out";
-						logger::warn("{}: page \"{}\" timed out", m.name, Text(pages[i]));
-					}
-					menu["pages"].push_back(std::move(page));
-				}
-				file["menus"].push_back(std::move(menu));
-				if (file.contains("stopped")) {
+				auto start = std::chrono::steady_clock::now();
+
+				// OpenConfig, as the Journal calls it: it makes the option
+				// buffers, runs the page "" and then OnConfigOpen.
+				if (JournalOpen()) {
+					stop("the Journal menu opened");
 					break;
 				}
+				progress(m, menu, "OpenConfig");
+				auto open = Call(m, "OpenConfig", noArgs);
+				if (open.result == Called::Result::stuck) {
+					stop(std::format("{}: OpenConfig didn't return", m.name));
+					file["menus"].push_back(std::move(menu));
+					break;
+				}
+				if (open.result == Called::Result::notSent) {
+					menu["error"] = "OpenConfig couldn't be called";
+					file["menus"].push_back(std::move(menu));
+					continue;
+				}
+
+				// A menu without pages shows the page "" that OpenConfig drew.
+				auto pages = OnMain([object = m.object]() { return Pages(object); }).value_or(std::vector<std::string>{});
+				if (pages.empty()) {
+					menu["pages"].push_back({ { "name", "" }, { "options", std::move(open.options) } });
+				}
+				for (std::int32_t i = 0; i < static_cast<std::int32_t>(pages.size()); ++i) {
+					if (JournalOpen()) {
+						stop("the Journal menu opened");
+						break;
+					}
+					progress(m, menu, Text(pages[i]));
+					auto page = Call(m, "SetPage", pageArgs(pages[i], i));
+					if (page.result == Called::Result::stuck) {
+						stop(std::format("{}: page \"{}\" didn't return", m.name, Text(pages[i])));
+						break;
+					}
+					json p = { { "name", Text(pages[i]) } };
+					if (page.result == Called::Result::returned) {
+						p["options"] = std::move(page.options);
+					} else {
+						p["error"] = "SetPage couldn't be called";
+					}
+					menu["pages"].push_back(std::move(p));
+				}
+				if (file.contains("stopped")) {
+					file["menus"].push_back(std::move(menu));
+					break;
+				}
+
+				// CloseConfig runs OnConfigClose and shrinks the buffers back,
+				// as when the player leaves the menu.
+				progress(m, menu, "CloseConfig");
+				if (Call(m, "CloseConfig", noArgs).result == Called::Result::stuck) {
+					stop(std::format("{}: CloseConfig didn't return", m.name));
+					file["menus"].push_back(std::move(menu));
+					break;
+				}
+				auto took = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start);
+				logger::info("{}: {} pages in {} seconds", m.name, menu["pages"].size(), took.count());
+				file["menus"].push_back(std::move(menu));
 			}
 
+			file.erase("running");
 			if (Write(a_folder, file)) {
-				std::error_code err;
-				std::filesystem::remove(a_folder / "capture-request.json", err);
 				logger::info("Wrote the capture of {} menus", file["menus"].size());
 			} else {
 				logger::error("Couldn't write {}", (a_folder / "capture.json").string());
@@ -406,6 +492,9 @@ namespace capture
 			logger::warn("Reading the request: {}; capturing every menu", e.what());
 		}
 
+		// The request is used up at once: if a menu crashes the game, the
+		// next load mustn't run the capture again.
+		std::filesystem::remove(request, err);
 		logger::info("A capture was requested");
 		std::thread(Run, *folder, std::move(skip)).detach();
 	}
