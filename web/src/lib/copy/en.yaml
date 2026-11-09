@@ -36,7 +36,7 @@ shell:
   editingTitle: Every change goes to the draft until you save it, here or on the Changes page.
   # Asked when a value is changed while read-only.
   startTitle: Start editing?
-  startSays: MCM Lexicon is read-only. Editing puts each change in a draft, and nothing is written until you save.
+  startSays: MCM Lexicon is in read-only mode. Ready to start recording? (Nothing is written to disk until you save.)
   startEditing: Start editing
   leaveTitle: The draft has changes
   leaveSays:
@@ -630,7 +630,7 @@ edit:
 # The whole draft, reviewed before Save.
 changes:
   title: Changes
-  readOnly: MCM Lexicon is read-only. Turn on editing at the top of the column to make and change recordings; every change waits here until you save it.
+  readOnly: MCM Lexicon is in read-only mode. When you're ready to record, toggle editing at the top of the left column. Every change waits here until you save it.
   none: The draft has no changes. Make them on any recording’s page, from a menu or a search result with A, or with New on Recordings.
   # The files and the recordings are counted apart: 3 files for 1 recording.
   summary: Save writes or removes {files} for {recordings}, backing up any file it replaces or removes first. Changes are kept, even when MCM Lexicon is closed, until you save them, discard them, or choose another list.
