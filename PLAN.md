@@ -33,7 +33,7 @@ The name is MCM Lexicon, and it's settled.
 - **A separate program, not a Hermaeus feature.** Hermaeus is explicitly about SkyrimNet (`PRODUCT.md`: "Fit alongside SkyrimNet"), and MCM Recorder has nothing to do with SkyrimNet. MCM Lexicon is a sibling app.
 - **Same stack and conventions as Hermaeus.** That means Go in domain packages under `internal/`, Svelte 5 + SvelteKit (static/SPA) + TypeScript embedded in the binary, TypeScript types generated from Go with tygo, and copy in `en.yaml`. It's pure Go (no cgo), and ships one program per OS from the same Makefile and release workflow. It also uses the same safety rules: `127.0.0.1` only, per-session token, refuse writes while Skyrim runs, back up before writing, atomic writes. Copy Hermaeus's infrastructure into the new repo rather than importing it; extracting a shared module can come later if both apps keep growing.
 - **Same design language as Hermaeus, inherited rather than adapted.** The visual system in Hermaeus's `DESIGN.md` is MCM Lexicon's: the same tokens, fonts, shell, item table, details pane, hint strip and rules, copied with the code that implements them. MCM Lexicon adds only the meanings its product needs (what copper marks, how certainty and validation show, where the File font is used, nothing written before Save) and its own mark. §5.2 says exactly what's copied and what's new, and §5.4 composes every page from those parts.
-- **Offline only.** Nothing that needs the game running. In particular, MCM Recorder can't produce this catalog in-game: its patched `SKI_ConfigBase` only tracks options while recording or playing, and `ClearOptionBuffers` marks the tracked set for reset on every page change, so its debug dump only ever holds the current page.
+- **Offline first.** Everything works with the game closed. A running game adds to the catalog only through the optional capture plugin (§11), which fills in what the files can't give and is never required. MCM Recorder can't produce this catalog in game on its own: its patched `SKI_ConfigBase` only tracks options while recording or playing, and `ClearOptionBuffers` marks the tracked set for reset on every page change, so its debug dump only ever holds the current page.
 - **Any list, any machine.** MCM Lexicon works on whatever list it's pointed at, and it can also open a catalog file exported elsewhere, so a list can be explored on a machine where it isn't installed.
 
 ### Success
@@ -576,3 +576,61 @@ This is the answer to "MGO updated; what do I need to redo?", and it's equally u
 |---|---|---|---|
 | `lexicon-snapshot-mgo-4-rc4.5-…zip` | 72 | 277 | 57 |
 | `lexicon-snapshot-nordic-…zip` | 52 | 224 | 23 |
+
+---
+
+## 11. The in-game capture
+
+The files can't say everything. VRIK keeps 72 of its values in its DLL, some labels are built from game state (a follower's name, "… (…)"), and a few menus can't be read statically at all. A running game knows all of it, so an optional SKSE plugin captures what each menu shows, and MCM Lexicon adds it to the catalog. Everything else keeps working without it (§1, Offline first).
+
+**The plugin.** `MCMLexicon.dll`, in `skse/`, built on CommonLibSSE-NG so one DLL runs on Skyrim SE, AE, and VR (it needs Address Library, or VR Address Library on VR). It has no game plugin and writes nothing to the save or to SKSE's co-save, so it's safe to remove at any time: removing it is deleting the DLL. It ships as its own download in each release, `MCMLexicon-Capture.zip`, laid out for a mod manager: `SKSE/Plugins/MCMLexicon.dll`, with its license and notices in `SKSE/Plugins/MCMLexicon/`. The DLL as distributed is GPL-3.0-or-later, since CommonLibSSE NG is (`skse/LICENSE.md`); MCM Lexicon's source stays MIT.
+
+**What starts it.** A request from MCM Lexicon, never on its own. Settings has CAPTURE IN GAME, which writes `capture-request.json` to the plugin's folder, `MCM Lexicon/` in SKSE's log folder (`Documents/My Games/<game folder>/SKSE/`, outside MO2's virtual files, so neither side needs the mod list to find it). The next time a save is loaded, the plugin waits for SkyUI's menus to settle (10 seconds, then until the number registered stops changing for 5, at most 2 minutes), captures once, writes `capture.json` beside the request (to a temporary name, then renamed), and deletes the request. A request names the menus to skip, by script, for any menu whose page code misbehaves when run.
+
+**How it reads a menu.** As SkyUI and MCM Recorder do (checked against MCM Recorder's copy of `SKI_ConfigBase`): `SKI_ConfigManager` lists the menus in `_modConfigs` (`_modNames` beside them). For each menu, and each of its `Pages` (or `""` when it has none), the plugin calls the menu's `SetPage(page, index)` through the script engine and waits for it to return. `SetPage` clears the option buffers, runs `OnPageReset` with `_state` at `STATE_RESET`, and leaves the buffers filled (`WriteOptionBuffers` only copies them to the Journal menu, a no-op while it's closed). The plugin then reads them from the menu's object: `_optionFlagsBuf` (the type in the low byte, the flags above it), `_textBuf`, `_strValueBuf`, `_numValueBuf`, and `_stateOptionMap`, each index a position on the page's grid. Pages run one at a time. One that hasn't returned after 10 seconds is recorded as timed out and the rest go on. The capture stops, writing what it has, if the Journal menu opens, since `SetPage` would then draw into it.
+
+**What running a page does.** It runs the menu's own `OnPageReset`, exactly as opening that page in the Journal would, and as MCM Recorder's playback already does. A menu that does more there than add options (loading a profile, registering for events) does it once per page. That's why a capture only happens on request, and why a request can skip menus.
+
+**The file.** One JSON object, `format` 1:
+
+```json
+{
+  "format": 1,
+  "plugin": "0.1.0",
+  "game": "SkyrimVR",
+  "runtime": "1.4.15.0",
+  "captured": "2026-11-09T18:04:11Z",
+  "menus": [
+    {
+      "name": "Conduit",
+      "script": "CSTE_MCMLayoutScript",
+      "quest": "conduit.esp:d62",
+      "pages": [
+        {
+          "name": "Main Setup",
+          "options": [
+            { "position": 0, "type": "header", "flags": 0, "text": "Conduction Options", "str": "", "num": 0, "state": "" },
+            { "position": 2, "type": "toggle", "flags": 0, "text": "Conduct by grabbing weapon", "str": "", "num": 1, "state": "" }
+          ]
+        },
+        { "name": "Maintenance", "error": "timed out" }
+      ]
+    }
+  ],
+  "skipped": [{ "script": "SomeMenuScript", "reason": "asked to skip" }]
+}
+```
+
+`stopped`, when present, says why the capture ended early ("the Journal menu opened", "SkyUI's menus weren't found"); what it had is still written. Text is decoded from Windows-1252, as the catalog decodes scripts, so labels match byte for byte. `quest` is the menu's quest as `plugin.FormKey` writes it (the owning plugin, lowercased, and the ID within it), so it matches the catalog's own keys. `type` is SkyUI's option type by name (`empty`, `header`, `text`, `toggle`, `slider`, `menu`, `color`, `keymap`, `input`); `str` and `num` are the buffers as SkyUI fills them (a slider's `str` is its format, a menu's its shown entry, a toggle's `num` 0 or 1, a key's its scan code, a color's its RGB).
+
+**How MCM Lexicon uses it.** It reads the newest `capture.json` for the list's game, or a capture file chosen in Settings. Menus match by quest, then by script; pages by name; options by position and type, then by type and label. A matched option gains a fourth value, `game` ("In your game"), beside `default`, `start`, and `saved`, and where the catalog has a pattern or no label, the captured text as the exact label. A captured option the catalog lacks is added with its own certainty, `captured`, since a capture sees only what that save shows and the files still decide what exists. The capture is merged when the catalog is read, not baked into the scan's cache, and a catalog file exported afterward carries the values with their source. The info line shows IN YOUR GAME (with the capture's date) beside NEW GAME, and an option not recorded yet shows the saved value, else the game's, else the new game's, else the default.
+
+**Building it.** CMake and MSVC, with CommonLibSSE NG fetched at a release tag (in CI its CMake links that tag's prebuilt library) and its dependencies from vcpkg. `.github/workflows/skse.yml` builds it on a `windows-latest` runner on any push to `main` that changes `skse/`, or by hand, and `release.yml` calls it and attaches the zip. Locally it builds on Windows (`cmake --preset release` in `skse/`, with `VCPKG_ROOT` set). On macOS or Linux, `cmake --preset cross` checks that it compiles, with clang-cl against an xwin sysroot (DEVELOPING.md); that DLL is for checking only.
+
+**Phases.**
+
+1. The plugin, the request and capture files, and its build in CI. Done when a capture of the author's MGO VR list, from a save, lists every menu SkyUI lists.
+2. Reading a capture into the catalog, with tests on a realistic fake capture (`internal/testcorpus`), and the match counts checked against the MGO capture.
+3. CAPTURE IN GAME in Settings, IN YOUR GAME in the info line, and the prefill order.
+
+The author tests each phase in game (§9): Claude Code can build the DLL but can't run Skyrim.

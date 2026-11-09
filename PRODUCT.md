@@ -37,13 +37,13 @@ MCM Recorder records clicks in game and replays them, but writing or fixing a re
 
 ## Capabilities and Constraints
 
-Capabilities: the catalog of menus, pages, and options with their allowed values and certainty; search across every menu; recordings listed, validated against the catalog, edited, and written; catalogs exported and compared; snapshots of a list for testing.
+Capabilities: the catalog of menus, pages, and options with their allowed values and certainty; search across every menu; recordings listed, validated against the catalog, edited, and written; catalogs exported and compared; snapshots of a list for testing; and, optionally, a capture from a running game that fills in the labels and values that can't be derived from the files alone.
 
 Constraints:
 
 - **Local web UI in a browser:** one program per OS that serves only `127.0.0.1` and opens the browser; every view has its own bookmarkable address, and Back and Forward work.
-- **Offline only:** nothing that needs the game running belongs here.
-- **Safety:** writes are refused while Skyrim is running (browsing still works); backups precede changes; writes are atomic; requests carry a per-session token. Nothing is written anywhere but the chosen recordings folder, the backups folder, and the files the player names: a catalog file or a snapshot saved from Settings, or a command's output path. A file already there is replaced only when the player says so.
+- **Offline first:** everything works with the game closed, but some option labels and values can only be grabbed by running the game. The optional SKSE plugin (no game plugin) adds to the catalog. Nothing depends on it, and removing it leaves nothing behind in a save.
+- **Safety:** writes are refused while Skyrim is running (browsing still works); backups precede changes; writes are atomic; requests carry a per-session token. Nothing is written anywhere but the chosen recordings folder, the backups folder, the files the player names (a catalog file or a snapshot saved from Settings, or a command's output path), and a capture request in the capture plugin's folder beside the SKSE logs. A file already there is replaced only when the player says so.
 - **Unofficial:** MCM Lexicon is not part of MCM Recorder, SkyUI, MCM Helper, or any mod list, and ships none of their files.
 
 Terminology: menu (an MCM, as SkyUI lists it), page, option, selector (the raw label MCM Recorder matches), text (what the player reads), recording, step, step file, catalog, list, profile, source, certainty (exact, pattern, unknown).
@@ -63,7 +63,7 @@ Terminology: menu (an MCM, as SkyUI lists it), page, option, selector (the raw l
 ## Product Principles
 
 1. **The player's data comes first.** Every write is reversible, minimal, and in MCM Recorder's own format; when in doubt, refuse and explain.
-2. **Offline is the point.** Anything that only works with the game running doesn't belong, and anything that doesn't need it shouldn't make the player launch Skyrim.
+2. **Offline is the point.** Nothing should make the player launch Skyrim. A running game can add what the files can't say, through the optional capture, but every feature works without it, and a catalog without a capture is complete as far as the files go.
 3. **Say what actually happens.** Name the file, the backup, and the consequence; don't soften or guess. Say what's certain and what's inferred.
 4. **Write only what MCM Recorder reads, in its format.** A recording MCM Lexicon writes is one MCM Recorder could have written.
 5. **Built for one, releasable to many.** Serve the author's own setup first, but nothing should hard-code that setup or need the author to explain it.

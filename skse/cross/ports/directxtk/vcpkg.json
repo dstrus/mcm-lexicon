@@ -1,0 +1,7 @@
+{
+  "name": "directxtk",
+  "version-date": "2026-05-07",
+  "port-version": 1,
+  "description": "Local stand-in: DirectXTK's headers and SimpleMath only, so no shader compiler is needed.",
+  "dependencies": ["directxmath", { "name": "vcpkg-cmake", "host": true }, { "name": "vcpkg-cmake-config", "host": true }]
+}

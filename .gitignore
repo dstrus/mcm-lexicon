@@ -5,6 +5,11 @@
 *.syso
 *.syso.tmp
 
+# The capture plugin's build output
+/skse/build/
+/skse/build-cross/
+/skse/dist/
+
 # Go
 *.test
 *.out

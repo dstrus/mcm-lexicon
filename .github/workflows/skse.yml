@@ -1,0 +1,88 @@
+# Builds MCMLexicon.dll, the capture plugin (PLAN.md §11), on Windows with
+# MSVC, and uploads MCMLexicon-Capture.zip, laid out for a mod manager: on a
+# push to main that changes skse/, by hand, or for a release, whose workflow
+# calls this one and attaches the zip.
+name: Capture plugin
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - skse/**
+      - .github/workflows/skse.yml
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: The release tag, such as v0.2.0-beta.1
+        type: string
+        required: true
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+      # A DLL's version is numbers only: v0.2.0-beta.1 builds as 0.2.0, and
+      # the capture file records the whole tag. Builds that aren't releases
+      # are 0.0.0, named for their commit.
+      - name: Work out the version
+        shell: bash
+        run: |
+          tag="${{ inputs.version }}"
+          [ -n "$tag" ] || tag="dev-${GITHUB_SHA::7}"
+          number="${tag#v}"
+          number="${number%%-*}"
+          [[ "$number" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || number=0.0.0
+          echo "VERSION_TEXT=$tag" >> "$GITHUB_ENV"
+          echo "VERSION_NUMBER=$number" >> "$GITHUB_ENV"
+      # vcpkg's built packages, kept between runs: building them takes longer
+      # than the plugin.
+      - name: Cache vcpkg's packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-${{ hashFiles('skse/vcpkg.json', 'skse/vcpkg-configuration.json') }}
+      - name: Build
+        working-directory: skse
+        shell: pwsh
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ runner.temp }}/vcpkg-cache,readwrite
+        run: |
+          New-Item -ItemType Directory -Force "${{ runner.temp }}/vcpkg-cache" | Out-Null
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          cmake --preset release "-DLEXICON_VERSION=$env:VERSION_NUMBER" "-DLEXICON_VERSION_TEXT=$env:VERSION_TEXT"
+          cmake --build --preset release
+      # The zip: the DLL where SKSE loads it, and beside it in a folder of its
+      # own the license (skse/LICENSE.md, the GPL, CommonLibSSE NG's
+      # exceptions) and the notices of every library vcpkg built in, and
+      # OpenVR's.
+      - name: Package
+        working-directory: skse
+        shell: pwsh
+        run: |
+          $out = "dist/zip"
+          $docs = "$out/SKSE/Plugins/MCMLexicon"
+          New-Item -ItemType Directory -Force $docs | Out-Null
+          Copy-Item build/MCMLexicon.dll "$out/SKSE/Plugins/"
+          $commonlib = "build/_deps/commonlibsse-src"
+          Get-Content LICENSE.md, "$commonlib/COPYING.txt", "$commonlib/EXCEPTIONS.md" | Set-Content "$docs/LICENSE.txt"
+          # PowerShell binds a comma before *, so the rule is made once.
+          $rule = '=' * 72
+          $notices = @("MCMLexicon.dll includes the following libraries, under these licenses.", "")
+          Get-ChildItem build/vcpkg_installed/x64-windows-static-md/share -Directory |
+            Where-Object { $_.Name -notlike 'vcpkg-*' -and (Test-Path "$($_.FullName)/copyright") } |
+            ForEach-Object { $notices += @($rule, $_.Name, $rule, (Get-Content -Raw "$($_.FullName)/copyright"), "") }
+          # OpenVR's headers, which CommonLibSSE NG brings, can compile code in.
+          $notices += @($rule, "OpenVR", $rule, (Get-Content -Raw "$commonlib/extern/openvr/LICENSE"), "")
+          $notices += @($rule, "CommonLibSSE NG", $rule, "GPL-3.0-or-later, with the exceptions in LICENSE.txt.")
+          $notices | Set-Content "$docs/NOTICES.txt"
+          Compress-Archive -Path "$out/*" -DestinationPath dist/MCMLexicon-Capture.zip -Force
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-plugin
+          path: skse/dist/MCMLexicon-Capture.zip
+          if-no-files-found: error

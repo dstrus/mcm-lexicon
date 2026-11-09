@@ -21,7 +21,40 @@ make icons              # the icon files, from the drawings in assets/
 
 `go test ./internal/...` works without Node. Building the program, or `go vet ./...`, needs the frontend built first, since it's embedded from `web/build`. The tests that read real mod lists run only when `snapshots/` holds some (or `LEXICON_SNAPSHOTS` points at them); without any they're skipped, not failed.
 
-To release a version, add its section to [CHANGELOG.md](CHANGELOG.md) (`make release-notes VERSION=v0.2.0` shows the notes it makes), then push a tag such as `v0.2.0`. The Release workflow tests, builds the Windows download, and attaches it to a draft release with those notes, which goes live when you publish it.
+To release a version, add its section to [CHANGELOG.md](CHANGELOG.md) (`make release-notes VERSION=v0.2.0` shows the notes it makes), then push a tag such as `v0.2.0`. The Release workflow tests, builds the Windows download and the capture plugin's, and attaches them to a draft release with those notes, which goes live when you publish it.
+
+### The capture plugin
+
+`skse/` is `MCMLexicon.dll`, the SKSE plugin that captures what each MCM shows in a running game ([PLAN.md](PLAN.md) §11). It's C++ on CommonLibSSE NG. Builds you install or release are made on Windows, with Visual Studio 2022's C++ tools, CMake, Ninja, and vcpkg:
+
+```powershell
+cd skse
+$env:VCPKG_ROOT = 'C:\path\to\vcpkg'
+cmake --preset release     # from a Developer PowerShell, so cl is found
+cmake --build --preset release   # skse/build/MCMLexicon.dll
+```
+
+On macOS or Linux, `cmake --preset cross` checks that it compiles, with clang-cl and lld-link against a Windows SDK and C runtime downloaded by [xwin](https://github.com/Jake-Shadle/xwin). The DLL it makes is for checking only: clang-cl doesn't promise MSVC's layout for the game's classes, so what you install or release comes from MSVC. Set up once (on macOS; on Linux, your distribution's `clang`, `lld`, `cmake`, `ninja`, and `rustup`):
+
+```sh
+brew install llvm lld cmake ninja rustup
+/opt/homebrew/opt/rustup/bin/rustup default stable
+cargo install xwin --locked     # ~/.cargo/bin/xwin
+xwin --accept-license --cache-dir ~/xwin-cache splat --output ~/xwin-out \
+  --include-debug-libs --use-winsysroot-style --preserve-ms-arch-notation   # accepts Microsoft's license for the SDK and runtime
+git clone https://github.com/microsoft/vcpkg ~/.local/share/vcpkg && ~/.local/share/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+```
+
+Then, from `skse/`:
+
+```sh
+export VCPKG_ROOT=~/.local/share/vcpkg   # and XWIN_SYSROOT, if the SDK isn't in ~/xwin-out
+cmake --preset cross && cmake --build --preset cross   # skse/build-cross/MCMLexicon.dll
+```
+
+The first build compiles CommonLibSSE NG from source, about 15 minutes; after that, a change to the plugin builds in seconds. `skse/cross/` holds the toolchain, vcpkg's triplet for it, and a stand-in for vcpkg's `directxtk` that skips its shaders, which need the Windows SDK's `fxc.exe`.
+
+The Capture plugin workflow builds it on every push to `main` that changes `skse/` (or by hand, from the Actions tab) and keeps `MCMLexicon-Capture.zip` as the run's artifact. The DLL as distributed is GPL-3.0-or-later, since CommonLibSSE NG is; see [skse/LICENSE.md](skse/LICENSE.md).
 
 ## Layout
 
@@ -51,5 +84,6 @@ To release a version, add its section to [CHANGELOG.md](CHANGELOG.md) (`make rel
 | `web/src/lib/<domain>/` | Each domain's API calls and components, mirroring `internal/<domain>/` |
 | `web/src/lib/api/` | The API client, and TypeScript types generated from Go (`types/`, don't edit) |
 | `tygo.yaml` | Which Go types become TypeScript types |
+| `skse/` | The capture plugin, `MCMLexicon.dll`: C++ on CommonLibSSE NG, built by its own workflow |
 
 Domain packages own their logic, request and response types, routes, and tests. Only `textfile` writes files the game reads. The visual system is recorded in [DESIGN.md](DESIGN.md), and the plan it was built from in [PLAN.md](PLAN.md).

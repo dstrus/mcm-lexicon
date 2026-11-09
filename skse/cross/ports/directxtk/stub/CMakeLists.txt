@@ -1,0 +1,15 @@
+# DirectXTK's SimpleMath as a static library, with its headers, exported as
+# Microsoft::DirectXTK as the real package exports it (portfile.cmake).
+cmake_minimum_required(VERSION 3.25)
+project(DirectXTK LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+find_package(directxmath CONFIG REQUIRED)
+add_library(DirectXTK STATIC "${DXTK_SOURCE}/Src/SimpleMath.cpp")
+target_include_directories(DirectXTK PUBLIC "$<BUILD_INTERFACE:${DXTK_SOURCE}/Inc>" "$<INSTALL_INTERFACE:include/directxtk>" PRIVATE "${DXTK_SOURCE}/Src")
+target_link_libraries(DirectXTK PUBLIC Microsoft::DirectXMath)
+target_compile_definitions(DirectXTK PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0A00)
+install(TARGETS DirectXTK EXPORT directxtk-targets ARCHIVE DESTINATION lib)
+install(DIRECTORY "${DXTK_SOURCE}/Inc/" DESTINATION include/directxtk)
+install(EXPORT directxtk-targets NAMESPACE Microsoft:: DESTINATION share/directxtk)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/directxtk-config.cmake" "include(CMakeFindDependencyMacro)\nfind_dependency(directxmath CONFIG)\ninclude(\"\${CMAKE_CURRENT_LIST_DIR}/directxtk-targets.cmake\")\n")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/directxtk-config.cmake" DESTINATION share/directxtk)

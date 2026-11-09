@@ -1,5 +1,6 @@
-# Builds a release's download, for Windows, when a version tag (v0.1.0,
-# v0.2.0-beta.1, and so on) is pushed, and attaches it to a draft release
+# Builds a release's downloads, for Windows, when a version tag (v0.1.0,
+# v0.2.0-beta.1, and so on) is pushed: the app, and the capture plugin
+# (skse.yml). It attaches them to a draft release
 # for that tag, with notes from that version's section of CHANGELOG.md.
 # Publishing the draft makes it the latest release, which the site's
 # download links point to.
@@ -11,7 +12,13 @@ on:
 permissions:
   contents: write
 jobs:
+  # The capture plugin builds on Windows, in its own workflow.
+  capture:
+    uses: ./.github/workflows/skse.yml
+    with:
+      version: ${{ github.ref_name }}
   release:
+    needs: capture
     # The Windows build cross-compiles, so any runner does.
     runs-on: ubuntu-latest
     steps:
@@ -37,6 +44,15 @@ jobs:
         run: make notices && git diff --exit-code -I '^The Go standard library' -I '^  The Go standard library' THIRD_PARTY_NOTICES.txt
       - name: Build the download
         run: make release VERSION="$GITHUB_REF_NAME"
+      # After the download, which empties dist/: the capture plugin's zip,
+      # and its line in SHA256SUMS.
+      - name: Add the capture plugin
+        uses: actions/download-artifact@v4
+        with:
+          name: capture-plugin
+          path: dist
+      - name: Add the capture plugin's checksum
+        run: cd dist && shasum -a 256 MCMLexicon-Capture.zip >> SHA256SUMS
       - name: Write the release notes
         run: make release-notes VERSION="$GITHUB_REF_NAME"
       - name: Draft the release
@@ -44,6 +60,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "$GITHUB_REF_NAME"
-          dist/MCMLexicon-windows-x64.zip dist/SHA256SUMS
+          dist/MCMLexicon-windows-x64.zip dist/MCMLexicon-Capture.zip dist/SHA256SUMS
           --draft --latest --verify-tag --notes-file dist/release-notes.md
           --title "MCM Lexicon ${GITHUB_REF_NAME#v}"
