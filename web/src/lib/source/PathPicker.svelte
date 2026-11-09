@@ -83,7 +83,7 @@
 </script>
 
 <dialog bind:this={dialog} aria-labelledby="{id}-title" oncancel={cancel} {...closeOnBackdrop(cancel)}>
-	<h2 id="{id}-title" class="caps">{looking === 'catalog' ? t.titleCatalog : looking === 'folder' ? t.titleFolder : t.title}</h2>
+	<h2 id="{id}-title" class="caps">{looking === 'catalog' ? t.titleCatalog : looking === 'capture' ? t.titleCapture : looking === 'folder' ? t.titleFolder : t.title}</h2>
 	{#if listing}
 		<div class="where">
 			{#if listing.roots.length > 1}
@@ -110,14 +110,14 @@
 					</button>
 				</li>
 			{/each}
-			<!-- A catalog file is chosen by clicking it; any other file is there
-			     to tell where you are. -->
+			<!-- A catalog or capture file is chosen by clicking it; any other
+			     file is there to tell where you are. -->
 			{#each listing.files as f (f.path)}
 				{#if f.mark === 'here'}
 					<li>
 						<button type="button" class="row" onclick={() => onpick(f.path)}>
 							<span class="label"><EntryIcon kind="file" /><span class="name">{f.name}</span></span>
-							<span class="mark caps here">{t.catalog}</span>
+							<span class="mark caps here">{looking === 'capture' ? t.capture : t.catalog}</span>
 						</button>
 					</li>
 				{:else}
@@ -134,7 +134,7 @@
 		{#if looking === 'list' || looking === 'folder'}
 			<button type="button" class={['button', (looking === 'folder' || listing?.mark === 'here') && 'primary']} disabled={!listing} onclick={() => listing && onpick(listing.path)}>{t.choose}</button>
 		{:else if listing && !listing.files.some((f) => f.mark === 'here')}
-			<p class="muted small">{t.noCatalogs}</p>
+			<p class="muted small">{looking === 'capture' ? t.noCaptures : t.noCatalogs}</p>
 		{/if}
 		<button type="button" class="button" onclick={oncancel}>{m.common.cancel}</button>
 	</div>

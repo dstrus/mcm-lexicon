@@ -59,6 +59,7 @@ func Scan(l *modlist.List, o Options) *Catalog {
 	s.mcmHelper()
 	s.papyrus()
 	plainText(c)
+	c.tr = s.tr
 	sort.SliceStable(c.Menus, func(i, j int) bool {
 		return strings.ToLower(c.Menus[i].NameText) < strings.ToLower(c.Menus[j].NameText)
 	})

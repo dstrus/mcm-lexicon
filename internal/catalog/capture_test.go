@@ -8,6 +8,7 @@ import (
 
 	"lexicon/internal/modlist"
 	"lexicon/internal/testcorpus"
+	"lexicon/internal/translations"
 )
 
 // A capture file as the plugin writes it: one menu the catalog has, with a
@@ -147,6 +148,27 @@ func TestApplyCapture(t *testing.T) {
 	if len(c.Menus[1].Pages) != 2 || adv.Name != "Advanced" || !adv.Placed || len(adv.Fixtures) != 1 || adv.Fixtures[0].Label != "Debug" ||
 		len(adv.Options) != 1 || adv.Options[0].Game.String != "lexicon" {
 		t.Errorf("added page: %+v (a page that timed out isn't added)", c.Menus[1].Pages[1:])
+	}
+}
+
+// A catalog from a scan keeps its translations, so what a capture adds
+// reads as the rest of the menu does; a catalog file has none, and shows
+// the script's own text.
+func TestApplyCaptureTranslates(t *testing.T) {
+	f, path := readTestCapture(t)
+	f.Menus[0].Pages[1].Name = "$Test_Advanced"
+	f.Menus[0].Pages[1].Options[1].Text = "$Test_LogName"
+	base := captureCatalog()
+	base.Menus[0].Plugin = "Test.esp"
+	base.tr = translations.New()
+	base.tr.Add("Test", []byte("$Test_Advanced\tAdvanced\n$Test_LogName\tLog name\n"))
+	adv := ApplyCapture(base, f, path).Menus[1].Pages[1]
+	if adv.Name != "$Test_Advanced" || adv.Text != "Advanced" || adv.Options[0].Label != "$Test_LogName" || adv.Options[0].Text != "Log name" {
+		t.Errorf("translated: page %q (%q), option %q (%q)", adv.Name, adv.Text, adv.Options[0].Label, adv.Options[0].Text)
+	}
+	base.tr = nil
+	if adv := ApplyCapture(base, f, path).Menus[1].Pages[1]; adv.Text != "$Test_Advanced" {
+		t.Errorf("without translations: %q", adv.Text)
 	}
 }
 

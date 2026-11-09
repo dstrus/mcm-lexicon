@@ -132,9 +132,12 @@ source:
     browse: Browse…
     title: Choose your mod list
     titleCatalog: Choose a catalog file
+    titleCapture: Choose a capture file
     titleFolder: Choose a folder to save in
     catalog: Catalog file
     noCatalogs: There’s no catalog file in this folder.
+    capture: Capture file
+    noCaptures: There’s no capture file in this folder.
     drive: Drive
     path: Folder path, listed when you press Enter
     up: Up a folder
@@ -200,6 +203,7 @@ menus:
   noPlugin: Its mod has no plugin, so whether the game loads this menu isn’t known.
   pluginGuessed: No quest with this menu’s script was found, so its plugin is the one in its mod named most like it.
   nameFromScript: Neither the script nor its quest sets a name, so this menu goes by its script’s. A recording may need the name SkyUI shows instead.
+  captured: Only the capture from your game showed this menu. MCM Lexicon couldn’t read it from its mod’s files, so this is what your game showed, with its labels as the script writes them.
   pagesGuessed: The script builds its page list at runtime, so these pages are the names it checks for. One it builds some other way may be missing.
   framework: "Built on {script}, which was read with it."
   sourceStale: Its mod ships a source from another version than the compiled script the game runs, so this menu was read from the compiled script.
@@ -267,8 +271,12 @@ option:
   # the default does.
   start: New game
   saved: Saved
+  # What the menu showed in the capture from the player's game (Settings).
+  game: In your game
   setting: Setting
   help: In the menu
+  captured: Only the capture from your game showed this option; its mod’s files don’t say it’s there. It may appear only in some games, or only at times. Its label is as your game showed it.
+  gameLabel: In your game, this reads “{label}”.
   pattern: This label is built while the game runs, so a recording can only match it with a *wildcard* around its fixed parts.
   unknown: This label is only known while the game runs, so a recording can’t name it.
   stepper: Each click moves this option to its next value, so a recording can only click it, once per step; from the mod’s default, reaching a value takes as many clicks as it is along.
@@ -866,3 +874,29 @@ settings:
     replace: Replace
     exists: There’s already a file named {file} in that folder. Replace it?
     saved: Saved {path}.
+  # The capture plugin, which reads each menu in a running game.
+  capture:
+    title: Capture from the game
+    lead: MCM Lexicon’s capture plugin reads each menu in a running game, for the values and labels its mod’s files don’t give. It’s an SKSE plugin for Skyrim SE, AE, and VR, and adds nothing to the load order or to your saves, so it can be removed at any time. Install MCMLexicon-Capture.zip as a mod.
+    download: Download the capture plugin
+    captured: Captured
+    menus: Menus
+    matched: Options matched
+    matchedOf: "{matched} of {options}"
+    values: Values
+    added: Added from the game
+    none: No capture yet.
+    stopped: "It stopped early: {why}."
+    unfinished: "It didn’t finish: the game closed during {step}. What it read before then is here."
+    request: Capture in game
+    requested: Requested {when}. Load a save in Skyrim; about a minute after it loads, the capture runs once, and it shows here.
+    cancel: Cancel request
+    noFolder: There’s no My Games folder for {game} on this machine. The game makes it the first time it runs; until then, choose a capture file below.
+    includeTrackers: Include trackers
+    trackersNote: A capture skips {names}, which only track your progress, with no settings to record, and are slow to capture.
+    use: Show the capture’s values
+    useNote: Each option the capture matched shows the value it has in your game, and starts from it when it’s added to a recording. Off, MCM Lexicon shows only what the files say.
+    folder: Captures are read from {path}.
+    file: "Reading this capture file in place of the game’s: {path}."
+    chooseFile: Choose capture file…
+    useFolder: Use the game’s folder

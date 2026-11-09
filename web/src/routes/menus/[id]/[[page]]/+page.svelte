@@ -395,6 +395,7 @@
 <h1 class="caps">{menu.nameText}</h1>
 <p class="muted sub">{menu.mod}{#if menu.plugin}{' · '}{menu.plugin}{/if}</p>
 {#if !menu.active}<p class="notice warn">{m.menus.inactive({ plugin: menu.plugin })}</p>{/if}
+{#if menu.kind === 'captured'}<p class="notice">{m.menus.captured}</p>{/if}
 <!-- How the menu was read, where that's worth knowing: a guess, another
      copy, or a framework read along with it. -->
 {#each menu.notes as n, i (i)}
@@ -467,7 +468,7 @@
 
 {#snippet slot(x: Slot)}
 	{#if x.fixture?.kind === 'header'}
-		<li class="header caps" style:grid-row={x.row + 1} style:grid-column={x.col + 1}>{x.fixture.text || x.fixture.label}{#if x.fixture.certainty !== 'exact'}<span class="word">{x.fixture.certainty}</span>{/if}</li>
+		<li class="header caps" style:grid-row={x.row + 1} style:grid-column={x.col + 1}>{x.fixture.text || x.fixture.label}{#if x.fixture.certainty !== 'exact' && x.fixture.certainty !== 'captured'}<span class="word">{x.fixture.certainty}</span>{/if}</li>
 	{:else if x.fixture}
 		<li class="empty" aria-hidden="true" style:grid-row={x.row + 1} style:grid-column={x.col + 1}></li>
 	{:else if x.option}
@@ -476,9 +477,11 @@
 		<li class="opt" class:disabled={o.disabled === 'always'} role="option" aria-selected={selected(x.i!)} style:grid-row={x.row + 1} style:grid-column={x.col + 1} onclick={() => pick(x.i!)}>
 			<span class="marker">{#if selected(x.i!)}<Diamond />{/if}</span>
 			<span class="label">
-				{o.text || o.label || m.values.noLabel}
+				<!-- The label as the player's game showed it, where a capture
+				     says and the files only partly know it. -->
+				{o.gameText || o.text || o.label || m.values.noLabel}
 				{#if o.index > 0}<span class="word">{t.indexOf({ n: o.index, count: sharing.get(`${o.type}\0${o.label}`) ?? o.index })}</span>{/if}
-				{#if o.certainty !== 'exact'}<span class="word">{o.certainty}</span>{/if}
+				{#if o.certainty !== 'exact' && o.certainty !== 'captured'}<span class="word">{o.certainty}</span>{/if}
 			</span>
 			{@render value(o, x.i!)}
 		</li>
@@ -534,9 +537,12 @@
 						{#if o.default}<span class="sep">·</span> <span class="caps">{m.option.default}</span> {show(o, o.default)}{/if}
 						{#if o.start && startSays(o)}<span class="sep">·</span> <span class="caps">{m.option.start}</span> {show(o, o.start)}{/if}
 						{#if o.saved}<span class="sep">·</span> <span class="caps">{m.option.saved}</span> <span class:changed={changed(o)}>{show(o, o.saved)}</span>{/if}
+						{#if o.game}<span class="sep">·</span> <span class="caps">{m.option.game}</span> {show(o, o.game)}{/if}
 						{#if rec}<span class="sep">·</span> <a href={recordingHref(open.name) + `?item=${rec.n}`}>{s.stepOf({ n: rec.n, recording: open.name })}</a>{:else if open.name && canEdit(o)}<span class="sep">·</span> {m.adding.notIn({ recording: open.name })}{/if}
 					</p>
-					{#if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
+					{#if o.certainty === 'captured'}<p class="notice">{m.option.captured}</p>
+					{:else if o.certainty !== 'exact'}<p class="notice warn">{o.certainty === 'pattern' ? m.option.pattern : m.option.unknown}</p>{/if}
+					{#if o.gameText}<p class="notice">{m.option.gameLabel({ label: o.gameText })}</p>{/if}
 					{#if o.type === 'text' && o.valueChanges}<p class="notice">{m.option.valueChanges}</p>{/if}
 					<!-- A click on an inert option does nothing, grayed out or not. -->
 					{#if o.inert}<p class="notice">{m.option.inert}</p>

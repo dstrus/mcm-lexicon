@@ -93,6 +93,13 @@ export interface CaptureInfo {
   game: string;
   plugin: string;
   report: CaptureReport;
+  /**
+   * Stopped is why the capture ended early, if it did, and Unfinished
+   * the menu and step it was on when the game closed, for a capture
+   * that never finished.
+   */
+  stopped: string;
+  unfinished: string;
 }
 /**
  * CaptureReport counts what a capture matched in the catalog and what it
@@ -233,9 +240,11 @@ export interface Option {
   certainty: Certainty;
   /**
    * GameLabel is the label the menu showed in that capture, where the
-   * files know it only as a pattern, or not at all.
+   * files know it only as a pattern, or not at all, and GameText the
+   * same for reading.
    */
   gameLabel?: string;
+  gameText?: string;
   /**
    * Position is SkyUI's cursor position when the option is added: where
    * the game draws it; -1 when the script decides it at runtime.

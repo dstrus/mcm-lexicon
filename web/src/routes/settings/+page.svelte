@@ -2,12 +2,14 @@
      recordings are saved to in an MO2 instance. A save folder change is
      kept as it's made, editing or not, since it changes no recording;
      another list is chosen in its form, since it rescans and can discard
-     the draft. Under them, copies of what was read, saved to files: the
-     list's catalog, and for an MO2 instance a snapshot. -->
+     the draft. Then the capture from the game, and copies of what was
+     read, saved to files: the list's catalog, and for an MO2 instance a
+     snapshot. -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { ApiError } from '#lib/api/client.ts';
+	import CaptureSettings from '#lib/capture/CaptureSettings.svelte';
 	import { exportCatalog, exportSnapshot, setSaveFolder } from '#lib/api/status.ts';
 	import type { Status } from '#lib/api/types/api.ts';
 	import Fill from '#lib/copy/Fill.svelte';
@@ -118,6 +120,12 @@
 	{#if error}<p class="notice error" role="alert">{error}</p>{/if}
 </section>
 
+{#if source || status.catalogFile}
+	<section class="settings" id="capture" aria-labelledby="capture-title">
+		<h2 id="capture-title" class="caps">{m.settings.capture.title}</h2>
+		<CaptureSettings game={source?.game ?? ''} />
+	</section>
+{/if}
 {#if source}
 	<section class="settings" id="catalog-file" aria-labelledby="catalog-file-title">
 		<h2 id="catalog-file-title" class="caps">{t.catalogTitle}</h2>

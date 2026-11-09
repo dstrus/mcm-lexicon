@@ -43,3 +43,12 @@ packages:
       time.Time: string
       catalog.Option: catalog.Option
       catalog.Diff: catalog.Diff
+  - path: lexicon/internal/capture
+    include_files: [capture.go]
+    output_path: web/src/lib/api/types/capture.ts
+    fallback_type: unknown
+    frontmatter: |
+      import type * as catalog from './catalog.ts';
+    type_mappings:
+      time.Time: string
+      catalog.CaptureInfo: catalog.CaptureInfo

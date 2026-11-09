@@ -3,7 +3,11 @@
 // into a catalog, reads and writes catalog files, searches, and serves it.
 package catalog
 
-import "time"
+import (
+	"time"
+
+	"lexicon/internal/translations"
+)
 
 // SchemaVersion of a catalog file; a reader refuses a newer one.
 const SchemaVersion = 1
@@ -17,6 +21,10 @@ type Catalog struct {
 	// Capture is the capture from a running game added to it, if one was
 	// (ApplyCapture); a scan has none.
 	Capture *CaptureInfo `json:"capture,omitempty"`
+
+	// tr is the translations the scan read, so a capture added later reads
+	// as the rest does; nil for a catalog read from a file.
+	tr *translations.Table
 }
 
 // CaptureInfo says which capture a catalog's game values come from, and
@@ -27,6 +35,11 @@ type CaptureInfo struct {
 	Game     string        `json:"game"`
 	Plugin   string        `json:"plugin"`
 	Report   CaptureReport `json:"report"`
+	// Stopped is why the capture ended early, if it did, and Unfinished
+	// the menu and step it was on when the game closed, for a capture
+	// that never finished.
+	Stopped    string `json:"stopped"`
+	Unfinished string `json:"unfinished"`
 }
 
 // CaptureReport counts what a capture matched in the catalog and what it
@@ -170,8 +183,10 @@ type Option struct {
 	HelpText  string     `json:"helpText"` // translated
 	Certainty Certainty  `json:"certainty"`
 	// GameLabel is the label the menu showed in that capture, where the
-	// files know it only as a pattern, or not at all.
+	// files know it only as a pattern, or not at all, and GameText the
+	// same for reading.
 	GameLabel string `json:"gameLabel,omitempty"`
+	GameText  string `json:"gameText,omitempty"`
 	// Position is SkyUI's cursor position when the option is added: where
 	// the game draws it; -1 when the script decides it at runtime.
 	Position int `json:"position"`

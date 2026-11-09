@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"lexicon/internal/translations"
 )
 
 // CaptureFormat is the capture file's format that this reads; it refuses
@@ -108,7 +111,7 @@ func ApplyCapture(c *Catalog, f *Capture, path string) *Catalog {
 			m.Pages[j].Fixtures = slices.Clone(m.Pages[j].Fixtures)
 		}
 	}
-	a := applier{cat: &out, ids: map[string]bool{}}
+	a := applier{cat: &out, ids: map[string]bool{}, tr: c.tr}
 	for _, m := range out.Menus {
 		a.ids[m.ID] = true
 	}
@@ -126,6 +129,7 @@ func ApplyCapture(c *Catalog, f *Capture, path string) *Catalog {
 		}
 		matched[i] = true
 		a.report.MenusMatched++
+		a.translating(out.Menus[i].Plugin)
 		a.applyMenu(&out.Menus[i], cm)
 	}
 	if a.report.MenusAdded > 0 {
@@ -133,14 +137,36 @@ func ApplyCapture(c *Catalog, f *Capture, path string) *Catalog {
 			return strings.ToLower(out.Menus[i].NameText) < strings.ToLower(out.Menus[j].NameText)
 		})
 	}
-	out.Capture = &CaptureInfo{Path: path, Captured: f.Captured, Game: f.Game, Plugin: f.Plugin, Report: a.report}
+	out.Capture = &CaptureInfo{Path: path, Captured: f.Captured, Game: f.Game, Plugin: f.Plugin, Report: a.report, Stopped: f.Stopped}
+	if f.Running != nil {
+		out.Capture.Unfinished = f.Running.Menu + ": " + f.Running.Step
+	}
 	return &out
 }
 
 type applier struct {
 	cat    *Catalog
 	ids    map[string]bool
+	tr     *translations.Table // the scan's; nil for a catalog file
+	prefer []string            // the translation files to look in first: the menu's plugin's
 	report CaptureReport
+}
+
+// text is a captured label for reading, as the scan gives the files' own:
+// translated where it's a $KEY the list translates, without its markup.
+func (a *applier) text(s string) string {
+	if a.tr != nil {
+		s = a.tr.Text(s, a.prefer...)
+	}
+	return plain(s)
+}
+
+// translating sets the translation files a menu's text looks in first.
+func (a *applier) translating(plugin string) {
+	a.prefer = nil
+	if plugin != "" {
+		a.prefer = []string{strings.TrimSuffix(plugin, filepath.Ext(plugin))}
+	}
 }
 
 // findMenu is the catalog menu a captured one is: the one with its script,
@@ -190,10 +216,11 @@ func (a *applier) applyMenu(m *Menu, cm CapturedMenu) {
 }
 
 func (a *applier) addMenu(cm CapturedMenu) {
+	a.translating(pluginOf(cm.Quest))
 	m := Menu{
 		ID:        a.id(cm.Name),
 		Name:      cm.Name,
-		NameText:  shownText(cm.Name),
+		NameText:  a.text(cm.Name),
 		Kind:      KindCaptured,
 		Plugin:    pluginOf(cm.Quest),
 		Active:    true,
@@ -264,7 +291,7 @@ func (a *applier) applyPage(p *Page, cp CapturedPage) {
 			a.report.Values++
 		}
 		if o.Certainty != CertaintyExact && co.Text != "" && !strings.EqualFold(o.Label, co.Text) {
-			o.GameLabel = co.Text
+			o.GameLabel, o.GameText = co.Text, a.text(co.Text)
 		}
 	}
 	if added {
@@ -273,10 +300,10 @@ func (a *applier) applyPage(p *Page, cp CapturedPage) {
 }
 
 func (a *applier) newPage(cp CapturedPage) Page {
-	p := Page{Name: cp.Name, Text: shownText(cp.Name), Options: []Option{}, Fixtures: []Fixture{}, Placed: true}
+	p := Page{Name: cp.Name, Text: a.text(cp.Name), Options: []Option{}, Fixtures: []Fixture{}, Placed: true}
 	for _, co := range cp.Options {
 		if co.Type == "header" {
-			p.Fixtures = append(p.Fixtures, Fixture{Kind: FixtureKindHeader, Label: co.Text, Text: shownText(co.Text), Certainty: CertaintyCaptured, Position: co.Position})
+			p.Fixtures = append(p.Fixtures, Fixture{Kind: FixtureKindHeader, Label: co.Text, Text: a.text(co.Text), Certainty: CertaintyCaptured, Position: co.Position})
 			continue
 		}
 		if t, ok := capturedType(co.Type); ok {
@@ -292,7 +319,7 @@ func (a *applier) newOption(co CapturedOption, t OptionType) Option {
 	o := Option{
 		Type:      t,
 		Label:     co.Text,
-		Text:      shownText(co.Text),
+		Text:      a.text(co.Text),
 		State:     co.State,
 		Certainty: CertaintyCaptured,
 		Position:  co.Position,
@@ -302,7 +329,7 @@ func (a *applier) newOption(co CapturedOption, t OptionType) Option {
 		o.Disabled = DisabledSometimes // so it was in this game; the files don't say whether it always is
 	}
 	if t == OptionTypeText && shown(co.Str) {
-		o.Value, o.ValueText, o.ValueCertainty = co.Str, shownText(co.Str), CertaintyCaptured
+		o.Value, o.ValueText, o.ValueCertainty = co.Str, a.text(co.Str), CertaintyCaptured
 	}
 	if v := gameValue(o, co); v != nil {
 		o.Game = v
@@ -367,10 +394,6 @@ func fits(label, text string) bool {
 	}
 	return strings.EqualFold(label, text)
 }
-
-// shownText is a captured label for reading. The capture holds what the
-// script passed, so a $KEY stays as it is: the translations are the scan's.
-func shownText(s string) string { return plain(s) }
 
 // pluginOf is the plugin a capture's quest key names.
 func pluginOf(quest string) string {

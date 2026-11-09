@@ -85,9 +85,26 @@ func (s *Service) UseCapture(path string) error {
 			return err
 		}
 	}
+	s.AddCapture(f, path)
+	return nil
+}
+
+// AddCapture is UseCapture for a capture already read from path; nil adds
+// none.
+func (s *Service) AddCapture(f *Capture, path string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.capture, s.capturePath, s.merged, s.mergedFrom = f, path, nil, nil
+}
+
+// CaptureInfo is what the current catalog says of the capture added to
+// it, or nil when none is, or there's no catalog yet.
+func (s *Service) CaptureInfo() *CaptureInfo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if c := s.current(); c != nil {
+		return c.Capture
+	}
 	return nil
 }
 

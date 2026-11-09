@@ -137,21 +137,23 @@ export const typeKind: Record<Option['type'], Kind> = {
 };
 
 // known is the value an option has as far as the catalog knows: the
-// player's saved one (MCM Helper), else what a new game shows (from the
-// script and plugin), else the mod's default.
+// player's saved one (MCM Helper), else what the menu showed in a capture
+// from their game, else what a new game shows (from the script and
+// plugin), else the mod's default.
 export function known(o: Option): Option['default'] {
-	return o.saved ?? o.start ?? o.default;
+	return o.saved ?? o.game ?? o.start ?? o.default;
 }
 
 // recordable reports whether a recording can name the option exactly: a
-// label built at runtime can't be matched without a wildcard. A text option
+// label built at runtime can't be matched without a wildcard. One only a
+// capture saw is named as the game showed it, which MCM Recorder matches. A text option
 // without a label is clicked on its right side, by its value, so that has
 // to be known instead.
 export function recordable(o: Option): boolean {
 	if (o.disabled === 'always') return false; // grayed out: the mod means it not to be set
 	if (o.inert) return false; // a click on it does nothing
 	if (o.type === 'text' && !o.label) return !!o.value && o.valueCertainty === 'exact';
-	return o.certainty === 'exact';
+	return o.certainty === 'exact' || o.certainty === 'captured';
 }
 
 // stepFor is a new step for an option, its value the one the option has
@@ -168,7 +170,8 @@ export function stepFor(menu: string, page: string, o: Option): Step {
 			value = String(d?.kind === 'number' ? d.number : (o.slider?.min ?? 0));
 			break;
 		case 'choose':
-			value = (d?.kind === 'number' ? o.choices?.[d.number]?.raw : undefined) ?? o.choices?.[0]?.raw ?? '';
+			// A captured menu whose entries aren't known holds its entry's text.
+			value = (d?.kind === 'number' ? o.choices?.[d.number]?.raw : d?.kind === 'string' ? d.string : undefined) ?? o.choices?.[0]?.raw ?? '';
 			break;
 		case 'shortcut':
 		case 'color':

@@ -31,11 +31,17 @@ type Values struct {
 	// The folders MCM Lexicon has saved recordings into, by list, so it
 	// deletes only recordings in those, never a mod list's own.
 	WroteTo map[string][]string `json:"wroteTo,omitempty"`
+	// The capture plugin's (PLAN.md §11): a capture file added in place of
+	// the newest in the game's folder; whether no capture is added; and
+	// whether requests leave in the trackers they'd skip.
+	CaptureFile     string `json:"captureFile,omitempty"`
+	CaptureOff      bool   `json:"captureOff,omitempty"`
+	IncludeTrackers bool   `json:"includeTrackers,omitempty"`
 }
 
 // keys are the names Values writes, so an omitted value is cleared from
 // the file rather than kept from last time.
-var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording", "author", "saveTarget", "saveName", "noDelete", "wroteTo"}
+var keys = []string{"listDir", "profile", "catalogFile", "theme", "openRecording", "author", "saveTarget", "saveName", "noDelete", "wroteTo", "captureFile", "captureOff", "includeTrackers"}
 
 // Themes are the themes MCM Lexicon has. "system" follows the operating
 // system's dark or light setting.

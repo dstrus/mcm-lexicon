@@ -40,8 +40,9 @@ export interface Listing {
  */
 export const LookingList = "list"; // a mod list: a folder
 export const LookingCatalog = "catalog"; // a catalog file
+export const LookingCapture = "capture"; // a capture file, which the capture plugin writes in the game
 export const LookingFolder = "folder"; // a folder to save a file in
-export type Looking = typeof LookingList | typeof LookingCatalog | typeof LookingFolder;
+export type Looking = typeof LookingList | typeof LookingCatalog | typeof LookingCapture | typeof LookingFolder;
 
 //////////
 // source: modlist.go

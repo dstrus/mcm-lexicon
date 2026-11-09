@@ -55,6 +55,7 @@ type Looking string
 const (
 	LookingList    Looking = "list"    // a mod list: a folder
 	LookingCatalog Looking = "catalog" // a catalog file
+	LookingCapture Looking = "capture" // a capture file, which the capture plugin writes in the game
 	LookingFolder  Looking = "folder"  // a folder to save a file in
 )
 
@@ -93,7 +94,7 @@ func Browse(dir string, looking Looking) (Listing, error) {
 		p := filepath.Join(abs, name)
 		if !IsDir(p) { // a link to a folder counts as a folder
 			f := Entry{Name: name, Path: p}
-			if looking == LookingCatalog && isCatalog(p) {
+			if looking == LookingCatalog && opensWith(p, "schemaVersion") || looking == LookingCapture && opensWith(p, "format") {
 				f.Mark = MarkHere
 			}
 			out.Files = append(out.Files, f)
@@ -115,11 +116,12 @@ func Browse(dir string, looking Looking) (Listing, error) {
 	return out, nil
 }
 
-// isCatalog reports whether the file at p looks like a catalog file: a
-// .json file that opens with its schema version, as MCM Lexicon writes one.
-// Only the start is read, since a catalog can be large; opening it says
-// more if it isn't one after all.
-func isCatalog(p string) bool {
+// opensWith reports whether the file at p looks like a catalog file or a
+// capture: a .json file whose object opens with key, as MCM Lexicon writes
+// a catalog ("schemaVersion") and the capture plugin a capture ("format").
+// Only the start is read, since either can be large; opening it says more
+// if it isn't one after all.
+func opensWith(p, key string) bool {
 	if !strings.EqualFold(filepath.Ext(p), ".json") {
 		return false
 	}
@@ -134,7 +136,7 @@ func isCatalog(p string) bool {
 	if !strings.HasPrefix(t, "{") {
 		return false
 	}
-	return strings.HasPrefix(strings.TrimLeft(t[1:], " \t\r\n"), `"schemaVersion"`)
+	return strings.HasPrefix(strings.TrimLeft(t[1:], " \t\r\n"), `"`+key+`"`)
 }
 
 // mark is how dir relates to a mod list: an MO2 instance, a Data folder,

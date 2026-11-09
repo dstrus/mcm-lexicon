@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"lexicon/internal/apperr"
+	"lexicon/internal/capture"
 	"lexicon/internal/catalog"
 	"lexicon/internal/httpapi"
 	"lexicon/internal/modlist"
@@ -57,6 +58,7 @@ type Server struct {
 	api        *http.ServeMux
 	catalog    *catalog.Service
 	recordings *recordings.Service
+	capture    *capture.Service
 
 	mu          sync.Mutex
 	source      *modlist.Source
@@ -124,7 +126,7 @@ func (s *Server) routes() {
 	m.Handle("GET /api/folders", httpapi.JSON(func(r *http.Request, _ httpapi.None) (modlist.Listing, error) {
 		looking := modlist.LookingList
 		switch l := modlist.Looking(r.URL.Query().Get("for")); l {
-		case modlist.LookingCatalog, modlist.LookingFolder:
+		case modlist.LookingCatalog, modlist.LookingCapture, modlist.LookingFolder:
 			looking = l
 		}
 		return modlist.Browse(r.URL.Query().Get("path"), looking)
@@ -194,6 +196,10 @@ func (s *Server) routes() {
 	}))
 
 	s.catalog.Routes(m)
+	// The capture from the game, added to whatever catalog is open.
+	s.capture = capture.NewService(s.catalog, s.Prefs, s.Source)
+	s.capture.Routes(m)
+	s.capture.Watch()
 	s.recordings = recordings.NewService(s.catalog, s.Prefs, s.Running)
 	s.recordings.Routes(m)
 	m.Handle("PUT /api/editing", httpapi.JSON(func(_ *http.Request, req EditingRequest) (Status, error) {
