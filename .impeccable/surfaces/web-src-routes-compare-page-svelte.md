@@ -27,4 +27,4 @@ FIRST VIEWPORT: COMPARE, one sentence, the OLDER CATALOG FILE field with COMPARE
 
 FORM: The Game's Own Menus, inherited.
 
-FINISH: looked at in both themes at 1440 with no file chosen; a comparison of the MGO RC 4.5 and RC 5 catalogs is the test case for the result.
+FINISH: looked at in both themes at 1440 with no file chosen; a comparison of MGO 4 RC 4.5 against an older MGO 4 catalog file (RC 4.2's, saved before its snapshot was removed) is the test case for the result.

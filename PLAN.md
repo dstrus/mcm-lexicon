@@ -145,7 +145,7 @@ Many mods pack their files into Bethesda archives (`.bsa`) instead of shipping t
 - Extended Encounters' archive, in the author's Skyrim VR list, is **version 105**, Skyrim SE's format. Its flags are `0x3`: folder names and file names are stored, files are uncompressed by default, and names aren't embedded in the file data. It holds 29 folders and 437 files. So VR loads version 105, and Phase 8 reads it first.
 - Its MCM's source ships loose, flat in the mod's `Source` folder as `ee_mcmscript.psc`, beside the sources of its other scripts, while the compiled `ee_mcmscript.pex` is in the archive. So the check that a shipped source is the version the game runs must compare a loose source against an archived compiled script. Snapshots made before Phase 8 held none of it, because they found sources only through loose compiled scripts.
 
-- **The format, against real archives.** Nine archives from MGO 4 RC5, every one version 105, with four combinations of flags: uncompressed (`0x3`), compressed by default (`0x7`, `0x87`), and names retained (`0x1b`, `0x1f`). All 1,254 files in them extract, LZ4-compressed scripts included, and every compiled script among them reads. One of them, `Accuracy - MCM.bsa`, packs a whole classic MCM, compiled script, source, and translations together; it reads as a menu of five pages.
+- **The format, against real archives.** Nine archives from an earlier MGO 4 build (RC 4.2, in a snapshot mislabeled RC5), every one version 105, with four combinations of flags: uncompressed (`0x3`), compressed by default (`0x7`, `0x87`), and names retained (`0x1b`, `0x1f`). All 1,254 files in them extract, LZ4-compressed scripts included, and every compiled script among them reads. One of them, `Accuracy - MCM.bsa`, packs a whole classic MCM, compiled script, source, and translations together; it reads as a menu of five pages.
 - **Against the refreshed snapshots** (all four lists, taken with Phase 8's build): 17 to 20 menus per list are read from archives. Extended Encounters, R.A.S.S., Wyrmstooth, and Sanguine Symphony (the `$SS_ModName` menu) are all in the catalog, and every recorded step in every list matches its option, none of them "mod not found" any more.
 
 **As built (Phase 8), from the format's documentation and the game's known behavior:**
@@ -554,7 +554,7 @@ A whole list is small. MGO RC 4.5 is 72 of 1,819 enabled mods and 277 files: 17.
 **Today:** `New-MCM-Lexicon-Snapshot.ps1` (Windows PowerShell 5.1, comes with this plan) makes them:
 
 ```powershell
-.\New-MCM-Lexicon-Snapshot.ps1 -ModList F:\modlists\mgo-4-rc5
+.\New-MCM-Lexicon-Snapshot.ps1 -ModList F:\modlists\mgo-4-rc4.5
 .\New-MCM-Lexicon-Snapshot.ps1 -ModList F:\modlists\nordic -Profile 'Nordic Adventures - High Fantasy Skyrim' -Languages ENGLISH, GERMAN -Out D:\snapshots
 ```
 
