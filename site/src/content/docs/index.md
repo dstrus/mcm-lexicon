@@ -21,7 +21,7 @@ MCM Lexicon is one executable. Put it next to your mod list and run it. That's t
 
 ## Running it
 
-Run `MCMLexicon.exe`. It finds your list, scans it (a few seconds, even for 1,800 mods), and opens in a window of its own. Close the window when you're done; that stops MCM Lexicon.
+Run `MCMLexicon.exe`. It finds your list, scans it (a few seconds, even for 1,800 mods), and opens in a window. Close the window when you're done; that stops MCM Lexicon.
 
 If you ran it from somewhere else and it can't find a list, it asks for the path to your list instead. You can change the list later in Settings, too.
 

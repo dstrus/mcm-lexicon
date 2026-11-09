@@ -43,7 +43,7 @@ const screens = [
 	},
 	{
 		title: 'Changes',
-		text: 'Nothing is written until you save. Before you do, every change is shown exactly as it will be written, compared with what’s on disk now.',
+		text: 'Nothing is written until you save. Before you do, every change is shown as it will be written, compared with what’s on disk now.',
 		dark: changesDark,
 		light: changesLight,
 		alt: 'MCM Lexicon’s Changes page, showing a new step file as it will be written.'
@@ -99,11 +99,11 @@ const safety = [
 	},
 	{
 		rule: 'All or nothing',
-		text: 'If a save can’t finish completely, the old recording stays exactly as it was. You can never end up with half a recording. Translation for nerds: writes are atomic.'
+		text: 'If a save can’t finish completely, the old recording stays as it was. You can never end up with half a recording. Translation for nerds: writes are atomic.'
 	},
 	{
 		rule: 'Other recordings stay put',
-		text: 'MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to a mod folder of its own.'
+		text: 'MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to a separate mod folder.'
 	},
 	{
 		rule: 'Your machine only',
@@ -284,7 +284,7 @@ const safety = [
 					</li>
 				</ul>
 				<p>
-					Then run it! It finds your list, scans it (a few seconds for 1,800 mods), and opens in a window of its own. If you ran it from somewhere else, it asks where
+					Then run it! It finds your list, scans it (a few seconds for 1,800 mods), and opens in a window. If you ran it from somewhere else, it asks where
 					your list is. <a href={`${base}/docs/`}>The docs</a> cover the rest.
 				</p>
 				<p>To play a recording back in the game, you’ll need MCM Recorder in your list.</p>

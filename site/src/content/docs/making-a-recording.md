@@ -28,6 +28,24 @@ A value in copper is already saved in the recording and differs from the mod's d
   <figcaption><ol><li>The amber diamond: this step is in the recording, but not saved yet.</li><li>The value, in copper because it differs from the mod's default of 2.0.</li><li>The menu's pages.</li><li>The selected option's help, its exact label, what it allows, its default, and which step of the recording it is.</li></ol></figcaption>
 </figure>
 
+### Where the values come from
+
+Before you record an option, its control shows the value it already has, in muted text, so you can see what you'd be changing. MCM Lexicon takes that value from the first of these it knows:
+
+1. **Saved:** what MCM Helper has saved for the option, if it's an MCM Helper menu and you've changed it in the game.
+2. **New game:** what the mod's scripts and plugins say a new game starts with. That's read from the mod's global variables, the values its scripts set up for themselves, other scripts' settings that it reads, MCM Helper settings, and the INI files that some SKSE plugins keep their settings in (VRIK, Experience, Ricochet, Accuracy, and Core Impact Framework so far).
+3. **Default:** the default the menu itself states, which is what it resets to.
+
+The line under the menu names each value it knows, as DEFAULT, NEW GAME, and SAVED. NEW GAME only appears when it says something DEFAULT doesn't. An option shows a dash when none of them is known, usually because its value depends on something only the running game knows (what's in your inventory, say), or because a plugin keeps it out of reach inside its DLL.
+
+<div class="btw">
+
+Why a new game, and not my game?
+
+MCM Lexicon reads your mods' files, not your save games. If you've changed a setting in your current playthrough, that change often lives in your save, where MCM Lexicon can't see it. For a recording, that's likely what you want anyway, since recordings mostly play on a new game.
+
+</div>
+
 ### Hotkeys
 
 To record a hotkey, click into the key box and press the key you want, a mouse button (other than the left one), or a button on a controller that's plugged into your PC. In Skyrim VR, your motion controllers show up to menus as a regular gamepad, and those mappings may or may not make sense. So a list beside the box names each VR controller button by its controller and shows the gamepad button it gets translated to.
@@ -61,7 +79,7 @@ A recording's page lists its steps, grouped by file, and checks each one against
 | DOES NOTHING | The option is there, but the menu doesn't respond to a click on it. |
 | UNCHECKED | MCM Lexicon doesn't know all of that menu's options, so this could be a false alarm. |
 
-A step that matches what's installed says nothing at all. The **Files** tab shows each file exactly as it will be written.
+A step that matches what's installed says nothing at all. The **Files** tab shows each file's changes as they will be written.
 
 <figure class="shot themed" style="--w: 1280px">
   <img class="dark" src="/mcm-lexicon/docs/shots/steps-dark.webp" alt="A recording's page, listing its steps with one selected and its details beside it." loading="lazy" decoding="async" />
@@ -79,6 +97,6 @@ Nothing is written until you save. **Review** (or the Changes page) shows every 
   <figcaption>Before you save, every file as it will be written, next to what's on disk now (nothing, for a new recording).</figcaption>
 </figure>
 
-If you changed a recording that came with another mod, the change saves as a copy, in a mod folder of its own. The original stays untouched. See [Where things go](../where-things-go/).
+If you changed a recording that came with another mod, the change saves as a copy, in a separate mod folder. The original stays untouched. See [Where things go](../where-things-go/).
 
 **MO2 users:** the first time you save, MO2 lists the recordings folder as a new mod, disabled. Enable it, or MCM Recorder won't see your recording in the game.

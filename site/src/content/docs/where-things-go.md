@@ -8,7 +8,7 @@ MCM Lexicon reads your whole list, but it only writes to a few places. Here they
 
 ## Recordings
 
-With Mod Organizer 2, recordings save to a mod folder of their own in your MO2 instance, called `[NoDelete] MCM Lexicon Recordings` unless you change it in Settings. The `[NoDelete] ` prefix keeps a Wabbajack update from deleting it.
+With Mod Organizer 2, recordings save to a separate mod folder in your MO2 instance, called `[NoDelete] MCM Lexicon Recordings` unless you change it in Settings. The `[NoDelete] ` prefix keeps a Wabbajack update from deleting it.
 
 <figure class="shot themed" style="--w: 1280px">
   <img class="dark" src="/mcm-lexicon/docs/shots/settings-dark.webp" alt="The Settings page: the mod list in use, and the save folder's name and [NoDelete] prefix." loading="lazy" decoding="async" />
@@ -20,15 +20,15 @@ MO2 lists that folder as a new mod, disabled, the first time. Enable it so MCM R
 
 With a plain `Data` folder instead, recordings save there.
 
-MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to that same separate folder, as a recording of its own.
+MCM Lexicon never changes a recording that came with another mod. Changing one saves a copy to that same separate folder, as a new recording.
 
 ## Backups
 
 When MCM Lexicon replaces or removes a file, a copy goes to a `lexicon-backups` folder beside the list (next to `ModOrganizer.ini` or `Data`) first. A recording's **Backups** tab lists its backups and can restore them.
 
-## Its own settings
+## MCM Lexicon Settings
 
-Which list was open, the theme, and the save folder's name live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache and the window's own browsing data go under your user cache folder.
+Which list was open, the theme, and the save folder's name live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache and MCM Lexicon's browsing data go under your user cache folder.
 
 Nothing else is written anywhere.
 

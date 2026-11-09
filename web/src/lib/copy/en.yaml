@@ -240,7 +240,7 @@ menu:
 # A menu drawn as SkyUI draws it; the info text at its foot.
 mcm:
   noHelp: This option has no help text.
-  pick: Select an option to see its help and where it's defined.
+  pick: Select an option to see its help, its label, and its values.
   stepOf: Step {n} of {recording}
 
 # One option, in the pane.
@@ -715,7 +715,7 @@ adding:
   # In the info area, where a recorded option says which step it is.
   notIn: Not in {recording} yet
   recordThis: Record {option}
-  cantRecord: Its label is built at runtime, so a recording can’t name it exactly.
+  cantRecord: Its label is built at runtime, so a recording can’t find it by label.
   readOnly: Grayed out in the menu, so MCM Lexicon leaves it out of recordings.
   inert: Clicking it does nothing, so MCM Lexicon leaves it out of recordings.
   clickTitle: Click to record a click on this option in {recording}. Its value is the menu’s own.

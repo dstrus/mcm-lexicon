@@ -28,7 +28,7 @@ MCM Lexicon reads your mod list from disk, with Skyrim closed, and builds a cata
 
 _Please excuse the bullet points that begin with a bold verb or verb phrase, but it's an AI cliché for a reason. (That reason is because it's something real people actually do sometimes.)_
 
-- **Browse** any menu, laid out as close as possible to the way it appears in SkyUI, with each option's help text, its exact label, and where it's defined.
+- **Browse** any menu, laid out as close as possible to the way it appears in SkyUI, with each option's help text, its label, and (whenever possible) its defaults.
 - **Search** every option in every menu by label, page, menu, or mod.
 - **Create and edit MCM Recorder recordings** with a graphical interface, like in the in-game menus. You don't have to remember what the JSON property names are for a million different things. Changes go into a reviewable draft, and nothing is actually written to a proper recording until you say so.
 - **Check existing recordings** against what's installed, so you know before you launch which steps still have a matching menu/option in your game.
