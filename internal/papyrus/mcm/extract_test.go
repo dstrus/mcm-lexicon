@@ -1138,3 +1138,32 @@ EndEvent
 		t.Errorf("a setting MCM Helper doesn't have starts at %v", *o.StartNumber)
 	}
 }
+
+// A full property whose Get reads a global, as some menus' settings do: what
+// it works out once initialization has run.
+func TestRemoteComputedProperty(t *testing.T) {
+	const main = `Scriptname Computed_Main extends Quest
+GlobalVariable Property Computed_Reset Auto
+Bool Property ResetAfter
+	bool Function Get()
+		Return Computed_Reset.value != 0
+	EndFunction
+	Function Set(bool abValue)
+		Computed_Reset.value = abValue as Int
+	EndFunction
+EndProperty
+Bool Property InCombat
+	bool Function Get()
+		Return Game.GetPlayer().IsInCombat()
+	EndFunction
+EndProperty
+`
+	one := 1.0
+	remote := Initialized([]*ir.Script{parse(t, main)}, []Property{{Name: "Computed_Reset", Global: &one}}, nil)
+	if v := remote["resetafter"]; v.Number == nil || *v.Number != 1 {
+		t.Errorf("a property that reads a global = %+v, want 1", v)
+	}
+	if v, ok := remote["incombat"]; ok {
+		t.Errorf("a property the game decides = %+v", v)
+	}
+}

@@ -55,6 +55,12 @@ func (f *File) Script() *ir.Script {
 	for _, v := range o.Variables {
 		types[ir.Key(v.Name)] = v.Type
 	}
+	// A computed property's Get function, for what another script reads.
+	for i, p := range o.Properties {
+		if s.Properties[i].Computed && p.Get != nil {
+			s.Properties[i].Get = lowerFunction(*p.Get, names, types)
+		}
+	}
 	s.States = []*ir.State{{Name: ""}}
 	for _, st := range o.States {
 		target := s.States[0]

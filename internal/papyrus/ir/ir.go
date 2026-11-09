@@ -29,6 +29,10 @@ type Variable struct {
 	// Computed is a property whose Get function works its value out each
 	// time it's read (MCM Recorder's IsSkyrimVR): the game decides it.
 	Computed bool
+	// Get is a computed property's Get function, when it's at hand: what
+	// another script reads of the property, run once the script's
+	// initialization has (some menus' settings read globals this way).
+	Get *Function
 }
 
 type State struct {

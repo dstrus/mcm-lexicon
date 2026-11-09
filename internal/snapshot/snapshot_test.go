@@ -74,7 +74,10 @@ func build(t *testing.T) *testcorpus.Instance {
 	})
 	inst.Mod("Off", false, map[string]string{"MCM/Config/Off/config.json": "{}", "Off.esp": "p"})
 	inst.Unmanaged("DLC: Dawnguard")
-	inst.Overwrite(map[string]string{"MCM/Settings/Alpha.ini": "a=1", "McmRecorder/Late.json": "{}", "SKSE/Plugins/x.log": "no"})
+	// An SKSE plugin with no MCM: its INI comes along, never the plugin
+	// itself, nor the mod's own plugin.
+	inst.Mod("Plugin Only", true, map[string]string{"SKSE/Plugins/Thing.ini": "x=1", "SKSE/Plugins/Thing.dll": "bin", "Thing.esp": "p"})
+	inst.Overwrite(map[string]string{"MCM/Settings/Alpha.ini": "a=1", "McmRecorder/Late.json": "{}", "SKSE/Plugins/x.log": "no", "SKSE/Plugins/Thing.ini": "x=2"})
 	inst.Plugins("*Alpha.esp", "Beta.esp", "*BetaPatch.esl", "*Nothing.esp", "*Packed.esp", "Inactive.esp", "*SofiaFollower.esp", "*Off.esp")
 	return inst
 }
@@ -142,6 +145,7 @@ func TestWriteFolder(t *testing.T) {
 		"mods/Packed/Packed.bsa",
 		"mods/Packed/Packed.esp",
 		"mods/Packed/Source/packed_mcm.psc",
+		"mods/Plugin Only/SKSE/Plugins/Thing.ini",
 		"mods/Recs/McmRecorder/My.json",
 		"mods/Recs/McmRecorder/My/0001_Alpha.json",
 		"mods/Settings Patch/MCM/Config/Beta/settings.ini",
@@ -149,6 +153,7 @@ func TestWriteFolder(t *testing.T) {
 		"mods/Sofia/SofiaFollower.esp",
 		"overwrite/MCM/Settings/Alpha.ini",
 		"overwrite/McmRecorder/Late.json",
+		"overwrite/SKSE/Plugins/Thing.ini",
 	}
 	if got := paths(inv); strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Errorf("files:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
@@ -164,7 +169,7 @@ func TestWriteFolder(t *testing.T) {
 			t.Errorf("%s: hash or size is off", f.Path)
 		}
 	}
-	if sum.Files != len(want) || sum.Mods != 8 || sum.Steps != 2 || sum.Out != out {
+	if sum.Files != len(want) || sum.Mods != 9 || sum.Steps != 2 || sum.Out != out {
 		t.Errorf("summary = %+v", sum)
 	}
 
@@ -173,10 +178,10 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range inv.Mods {
 		mods = append(mods, m.Name+" "+strings.Join(m.Kinds, ","))
 	}
-	if want := "Packed archive:1,source:1; Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1; Sofia - Replacer archive:1; Sofia plugin"; strings.Join(mods, "; ") != want {
+	if want := "Plugin Only plugin-settings:1; Packed archive:1,source:1; Recs recordings; Alpha - Translations translations; Settings Patch settings:1; Beta Helper compiled:1,mcmhelper:1; Alpha source:1,compiled:1; Sofia - Replacer archive:1; Sofia plugin"; strings.Join(mods, "; ") != want {
 		t.Errorf("mods = %q", mods)
 	}
-	if inv.List.EnabledMods != 9 || inv.List.IncludedMods != 8 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
+	if inv.List.EnabledMods != 10 || inv.List.IncludedMods != 9 || inv.List.Profile != "VR" || inv.List.Game != "Skyrim VR" || inv.List.Name != "[NoDelete] MGO" {
 		t.Errorf("list = %+v", inv.List)
 	}
 	// Steps, with keys in any case, and the value by its kind.
@@ -193,7 +198,7 @@ func TestWriteFolder(t *testing.T) {
 	for _, m := range l.Mods {
 		order = append(order, m.Name)
 	}
-	if want := "Sofia, Sofia - Replacer, Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, Packed, DLC: Dawnguard, overwrite"; strings.Join(order, ", ") != want {
+	if want := "Sofia, Sofia - Replacer, Alpha, Beta Helper, Settings Patch, Alpha - Translations, Recs, Packed, DLC: Dawnguard, Plugin Only, overwrite"; strings.Join(order, ", ") != want {
 		t.Errorf("snapshot's order = %q", order)
 	}
 	if l.PluginActive("Beta.esp") || !l.PluginActive("Alpha.esp") || l.PluginActive("Nothing.esp") || !l.PluginActive("Packed.esp") || l.PluginActive("Inactive.esp") {
@@ -212,7 +217,7 @@ func TestWriteFolder(t *testing.T) {
 		t.Errorf("ModOrganizer.ini = %q", ini)
 	}
 	md, _ := os.ReadFile(filepath.Join(out, "SNAPSHOT.md"))
-	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "8 of 9 enabled mods, 23 files", "| 1 | Packed | archive:1, source:1 |", "| 2 | Recs | recordings |", "| 4 | Settings Patch | settings:1 |", "| 6 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
+	for _, want := range []string{"# MCM Lexicon snapshot: [NoDelete] MGO", "9 of 10 enabled mods, 25 files", "| 1 | Plugin Only | plugin-settings:1 |", "| 2 | Packed | archive:1, source:1 |", "| 3 | Recs | recordings |", "| 5 | Settings Patch | settings:1 |", "| 7 | Alpha | source:1, compiled:1 |", `| "My" | "Alpha" | "Settings" | "Thing" |  | "toggle on" |`, `| "My" | "Alpha" |  | "Slide " | "2" | "slider 25.0" |`, "## Known gaps"} {
 		if !strings.Contains(string(md), want) {
 			t.Errorf("SNAPSHOT.md lacks %q:\n%s", want, md)
 		}

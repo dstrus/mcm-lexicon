@@ -213,6 +213,29 @@ func (w *writer) run() error {
 			w.addKind(m.Name, "translations")
 		}
 	}
+	// Every INI file SKSE plugins keep settings in, from every mod, small
+	// as they are: MCM Lexicon reads some (VRIK's), and the rest show which
+	// it could. Never the plugins themselves, and a mod with nothing else
+	// included brings none of its plugins along.
+	for _, m := range enabled {
+		dir, rel, ok := modlist.Resolve(m.Dir, "SKSE/Plugins")
+		if !ok {
+			continue
+		}
+		inis := 0
+		for _, f := range listFiles(dir) {
+			if !strings.EqualFold(filepath.Ext(f), ".ini") {
+				continue
+			}
+			if err := w.copy(filepath.Join(dir, f), "mods/"+m.Name+"/"+rel+"/"+f, m.Name); err != nil {
+				return err
+			}
+			inis++
+		}
+		if inis > 0 {
+			w.addKind(m.Name, fmt.Sprintf("plugin-settings:%d", inis))
+		}
+	}
 	// overwrite: MCM Helper's saved settings, any recordings made through
 	// MO2, and SKSE plugins' INI files the game wrote there.
 	if ow, ok := l.Mod("overwrite"); ok {
@@ -225,10 +248,12 @@ func (w *writer) run() error {
 				return err
 			}
 		}
-		for _, p := range catalog.PluginINIs {
-			if f, found := findLoose(ow.Dir, p.File); found {
-				if err := w.copy(f, "overwrite/"+filepath.ToSlash(mustRel(ow.Dir, f)), "overwrite"); err != nil {
-					return err
+		if dir, rel, ok := modlist.Resolve(ow.Dir, "SKSE/Plugins"); ok {
+			for _, f := range listFiles(dir) {
+				if strings.EqualFold(filepath.Ext(f), ".ini") {
+					if err := w.copy(filepath.Join(dir, f), "overwrite/"+rel+"/"+f, "overwrite"); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -315,20 +340,6 @@ func (w *writer) mod(m modlist.Mod, langs *regexp.Regexp) error {
 			w.addKind(m.Name, fmt.Sprintf("archive:%d", packed))
 			w.packed = append(w.packed, af)
 		}
-	}
-	// The INI files SKSE plugins keep settings in that MCM Lexicon reads
-	// (VRIK's), never the plugins themselves.
-	inis := 0
-	for _, p := range catalog.PluginINIs {
-		if f, found := findLoose(m.Dir, p.File); found {
-			if err := w.copy(f, prefix+filepath.ToSlash(mustRel(m.Dir, f)), m.Name); err != nil {
-				return err
-			}
-			inis++
-		}
-	}
-	if inis > 0 {
-		w.addKind(m.Name, fmt.Sprintf("plugin-settings:%d", inis))
 	}
 	if source > 0 {
 		w.addKind(m.Name, fmt.Sprintf("source:%d", source))
@@ -537,7 +548,7 @@ func (w *writer) markdown() string {
 	}
 	fmt.Fprintf(&b, "`mo2/` is a trimmed MO2 instance: %d of %d enabled mods, %d files, %.1f MB. It holds other authors' files: local testing only, never commit or share it.\n\n", inv.List.IncludedMods, inv.List.EnabledMods, len(inv.Files), float64(bytes)/(1024*1024))
 	b.WriteString("## Mods included\n\n")
-	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `plugin` the plugin such an archive is named after, from a mod with nothing else included, `recordings`, `translations` (only translation files for an included plugin).\n\n")
+	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `plugin` the plugin such an archive is named after, from a mod with nothing else included, `recordings`, `translations` (only translation files for an included plugin), `plugin-settings:N` INI files SKSE plugins keep settings in, from any mod (its plugins aren't brought along).\n\n")
 	b.WriteString("| Priority | Mod | Kinds |\n|---|---|---|\n")
 	// Numbered from the top of modlist.txt, counting enabled mods: the
 	// highest priority is 1.
@@ -748,17 +759,4 @@ func zipDir(dir, out string) error {
 		err = cerr
 	}
 	return err
-}
-
-// findLoose is the file at rel (a path under Data, in any case) in a mod's
-// folder, if it's there.
-func findLoose(dir, rel string) (string, bool) {
-	p, _, ok := modlist.Resolve(dir, rel)
-	if !ok {
-		return "", false
-	}
-	if info, err := os.Stat(p); err != nil || info.IsDir() {
-		return "", false
-	}
-	return p, true
 }

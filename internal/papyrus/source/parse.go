@@ -191,7 +191,7 @@ func (p *parser) declaration() {
 						if c := constantReturn(f); c != nil {
 							v.Init = c
 						} else {
-							v.Computed = true
+							v.Computed, v.Get = true, f
 						}
 					}
 					continue

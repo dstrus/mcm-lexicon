@@ -351,8 +351,20 @@ func Initialized(chain []*ir.Script, props []Property, settings Settings) map[st
 	for _, sc := range chain {
 		for _, v := range sc.Properties {
 			key := ir.Key(v.Name)
+			if _, done := out[key]; done {
+				continue
+			}
 			p := m.globals[key]
-			if _, done := out[key]; done || p == nil || v.Computed {
+			// A computed property is what its Get works out, now.
+			if v.Computed {
+				if v.Get == nil {
+					continue
+				}
+				m.budget = budget
+				got := m.invoke(v.Get, nil)
+				p = &got
+			}
+			if p == nil {
 				continue
 			}
 			if p.k == kGlobal {
