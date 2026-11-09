@@ -29,6 +29,13 @@ type Service struct {
 	runs     int           // bumped per scan, so a stale one doesn't land
 	scanned  sums          // what the profile's modlist.txt and plugins.txt held when the last scan began
 	watching sync.Once     // the watch on those files, started with the first list
+
+	// The capture added to whatever catalog is current (UseCapture), and
+	// that catalog with it added, made again when the catalog changes.
+	capture     *Capture
+	capturePath string
+	merged      *Catalog
+	mergedFrom  *Catalog
 }
 
 func NewService(version string) *Service {
@@ -66,6 +73,34 @@ func (s *Service) UseFile(path string) error {
 	s.stop()
 	s.source, s.file, s.cur, s.err, s.list = nil, path, c, nil, nil
 	return nil
+}
+
+// UseCapture adds the capture file at path to the catalog, as it is now and
+// after every rescan; "" adds none.
+func (s *Service) UseCapture(path string) error {
+	var f *Capture
+	if path != "" {
+		var err error
+		if f, err = ReadCapture(path); err != nil {
+			return err
+		}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.capture, s.capturePath, s.merged, s.mergedFrom = f, path, nil, nil
+	return nil
+}
+
+// current is the catalog to show: cur, with the capture added if there is
+// one. Callers hold s.mu.
+func (s *Service) current() *Catalog {
+	if s.cur == nil || s.capture == nil {
+		return s.cur
+	}
+	if s.mergedFrom != s.cur {
+		s.merged, s.mergedFrom = ApplyCapture(s.cur, s.capture, s.capturePath), s.cur
+	}
+	return s.merged
 }
 
 // stop abandons a scan still running, so it won't land, and lets anyone
@@ -181,7 +216,7 @@ func (s *Service) State() State {
 func (s *Service) Catalog(r *http.Request) (*Catalog, error) {
 	for {
 		s.mu.Lock()
-		cur, err, done, scanning, open := s.cur, s.err, s.done, s.scanning, s.source != nil || s.file != ""
+		cur, err, done, scanning, open := s.current(), s.err, s.done, s.scanning, s.source != nil || s.file != ""
 		s.mu.Unlock()
 		switch {
 		case cur != nil:

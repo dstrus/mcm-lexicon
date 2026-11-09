@@ -14,6 +14,36 @@ type Catalog struct {
 	List          ListInfo  `json:"list"`
 	Menus         []Menu    `json:"menus"`   // by their text, in reading order
 	Skipped       []Skipped `json:"skipped"` // what couldn't be read, and why
+	// Capture is the capture from a running game added to it, if one was
+	// (ApplyCapture); a scan has none.
+	Capture *CaptureInfo `json:"capture,omitempty"`
+}
+
+// CaptureInfo says which capture a catalog's game values come from, and
+// how much of it matched.
+type CaptureInfo struct {
+	Path     string        `json:"path"`
+	Captured time.Time     `json:"captured"`
+	Game     string        `json:"game"`
+	Plugin   string        `json:"plugin"`
+	Report   CaptureReport `json:"report"`
+}
+
+// CaptureReport counts what a capture matched in the catalog and what it
+// added. Headers aren't counted as options.
+type CaptureReport struct {
+	Menus        int `json:"menus"` // captured menus SkyUI lists
+	MenusMatched int `json:"menusMatched"`
+	MenusAdded   int `json:"menusAdded"`
+	Pages        int `json:"pages"` // their pages, those that ran
+	PagesMatched int `json:"pagesMatched"`
+	PagesAdded   int `json:"pagesAdded"`
+	Options      int `json:"options"`
+	ByPosition   int `json:"byPosition"` // matched by where the page draws it
+	ByLabel      int `json:"byLabel"`
+	ByPattern    int `json:"byPattern"` // matched to a label the files only partly know
+	OptionsAdded int `json:"optionsAdded"`
+	Values       int `json:"values"` // options given the game's value
 }
 
 // ListInfo says where a catalog came from.
@@ -36,6 +66,7 @@ const (
 	KindSource    Kind = "source"    // a Papyrus script, read from its source
 	KindCompiled  Kind = "compiled"  // a Papyrus script, read from its compiled form
 	KindFramework Kind = "framework" // a framework's menu, read in part
+	KindCaptured  Kind = "captured"  // a menu only a capture from a running game saw
 )
 
 // Certainty is how sure MCM Lexicon is of an option's label.
@@ -45,6 +76,9 @@ const (
 	CertaintyExact   Certainty = "exact"   // the label as the game shows it
 	CertaintyPattern Certainty = "pattern" // built at runtime; a *wildcard* can match it
 	CertaintyUnknown Certainty = "unknown" // can't be known without the game
+	// The game showed it in a capture, but the files don't say it's there:
+	// the label is as exact as the game made it, in that game.
+	CertaintyCaptured Certainty = "captured"
 )
 
 type Menu struct {
@@ -131,9 +165,13 @@ type Option struct {
 	Default   *Value     `json:"default"`  // when the source states one
 	Start     *Value     `json:"start"`    // what the menu shows on a new game, when its script and plugin say
 	Saved     *Value     `json:"saved"`    // the player's own value, when MCM Helper has saved one
+	Game      *Value     `json:"game"`     // what the menu showed in a capture from a running game, when one was added
 	Help      string     `json:"help"`     // the info text the menu shows, raw
 	HelpText  string     `json:"helpText"` // translated
 	Certainty Certainty  `json:"certainty"`
+	// GameLabel is the label the menu showed in that capture, where the
+	// files know it only as a pattern, or not at all.
+	GameLabel string `json:"gameLabel,omitempty"`
 	// Position is SkyUI's cursor position when the option is added: where
 	// the game draws it; -1 when the script decides it at runtime.
 	Position int `json:"position"`

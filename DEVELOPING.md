@@ -19,7 +19,7 @@ make types              # regenerate the API's TypeScript types after changing t
 make icons              # the icon files, from the drawings in assets/
 ```
 
-`go test ./internal/...` works without Node. Building the program, or `go vet ./...`, needs the frontend built first, since it's embedded from `web/build`. The tests that read real mod lists run only when `snapshots/` holds some (or `LEXICON_SNAPSHOTS` points at them); without any they're skipped, not failed.
+`go test ./internal/...` works without Node. Building the program, or `go vet ./...`, needs the frontend built first, since it's embedded from `web/build`. The tests that read real mod lists run only when `snapshots/` holds some (or `LEXICON_SNAPSHOTS` points at them); without any they're skipped, not failed. A snapshot's folder can also hold a `capture.json` the capture plugin wrote in that list's game, beside `mo2/`, and the capture test then checks how much of it matches the list's catalog; `lexicon scan -json -capture <file> -list <list>` prints the same counts.
 
 To release a version, add its section to [CHANGELOG.md](CHANGELOG.md) (`make release-notes VERSION=v0.2.0` shows the notes it makes), then push a tag such as `v0.2.0`. The Release workflow tests, builds the Windows download and the capture plugin's, and attaches them to a draft release with those notes, which goes live when you publish it.
 

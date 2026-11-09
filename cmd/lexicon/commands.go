@@ -47,7 +47,7 @@ func listFlags(fs *flag.FlagSet) func() *modlist.List {
 
 // runScan reads a list and prints its mods with the files the game sees
 // from each, within what MCM Lexicon reads; or, with -json, writes the
-// list's catalog.
+// list's catalog, with a capture from the game added if -capture names one.
 func runScan(args []string) {
 	fs := flag.NewFlagSet("lexicon scan", flag.ExitOnError)
 	read := listFlags(fs)
@@ -56,6 +56,7 @@ func runScan(args []string) {
 	out := fs.String("o", "", "with -json, the catalog file to write (a .json file)")
 	language := fs.String("language", "ENGLISH", "the translations to read, as their file names spell the language")
 	cache := fs.Bool("cache", true, "with -json, use and update the cache the app keeps of the list's scripts")
+	capture := fs.String("capture", "", "with -json, a capture.json from the capture plugin to add, saying what it matched")
 	fs.Parse(args)
 	l := read()
 	if *asJSON {
@@ -64,6 +65,14 @@ func runScan(args []string) {
 			o.CacheDir = catalog.DefaultCacheDir()
 		}
 		c := catalog.Scan(l, o)
+		if *capture != "" {
+			f, err := catalog.ReadCapture(*capture)
+			if err != nil {
+				exit("%v", err)
+			}
+			c = catalog.ApplyCapture(c, f, *capture)
+			fmt.Fprintf(os.Stderr, "Capture: %s\n", c.Capture.Report)
+		}
 		if *out == "" {
 			b, err := catalog.Marshal(c)
 			if err != nil {

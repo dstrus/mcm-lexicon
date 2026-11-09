@@ -77,6 +77,40 @@ export interface Catalog {
   list: ListInfo;
   menus: Menu[]; // by their text, in reading order
   skipped: Skipped[]; // what couldn't be read, and why
+  /**
+   * Capture is the capture from a running game added to it, if one was
+   * (ApplyCapture); a scan has none.
+   */
+  capture?: CaptureInfo;
+}
+/**
+ * CaptureInfo says which capture a catalog's game values come from, and
+ * how much of it matched.
+ */
+export interface CaptureInfo {
+  path: string;
+  captured: string;
+  game: string;
+  plugin: string;
+  report: CaptureReport;
+}
+/**
+ * CaptureReport counts what a capture matched in the catalog and what it
+ * added. Headers aren't counted as options.
+ */
+export interface CaptureReport {
+  menus: number /* int */; // captured menus SkyUI lists
+  menusMatched: number /* int */;
+  menusAdded: number /* int */;
+  pages: number /* int */; // their pages, those that ran
+  pagesMatched: number /* int */;
+  pagesAdded: number /* int */;
+  options: number /* int */;
+  byPosition: number /* int */; // matched by where the page draws it
+  byLabel: number /* int */;
+  byPattern: number /* int */; // matched to a label the files only partly know
+  optionsAdded: number /* int */;
+  values: number /* int */; // options given the game's value
 }
 /**
  * ListInfo says where a catalog came from.
@@ -98,14 +132,20 @@ export const KindMCMHelper = "mcmhelper"; // MCM Helper's config.json
 export const KindSource = "source"; // a Papyrus script, read from its source
 export const KindCompiled = "compiled"; // a Papyrus script, read from its compiled form
 export const KindFramework = "framework"; // a framework's menu, read in part
-export type Kind = typeof KindMCMHelper | typeof KindSource | typeof KindCompiled | typeof KindFramework;
+export const KindCaptured = "captured"; // a menu only a capture from a running game saw
+export type Kind = typeof KindMCMHelper | typeof KindSource | typeof KindCompiled | typeof KindFramework | typeof KindCaptured;
 /**
  * Certainty is how sure MCM Lexicon is of an option's label.
  */
 export const CertaintyExact = "exact"; // the label as the game shows it
 export const CertaintyPattern = "pattern"; // built at runtime; a *wildcard* can match it
 export const CertaintyUnknown = "unknown"; // can't be known without the game
-export type Certainty = typeof CertaintyExact | typeof CertaintyPattern | typeof CertaintyUnknown;
+/**
+ * The game showed it in a capture, but the files don't say it's there:
+ * the label is as exact as the game made it, in that game.
+ */
+export const CertaintyCaptured = "captured";
+export type Certainty = typeof CertaintyExact | typeof CertaintyPattern | typeof CertaintyUnknown | typeof CertaintyCaptured;
 export interface Menu {
   id: string; // stable across scans and list versions
   name: string; // what a recording calls it ("mod"), raw: may be a $KEY
@@ -187,9 +227,15 @@ export interface Option {
   default?: Value; // when the source states one
   start?: Value; // what the menu shows on a new game, when its script and plugin say
   saved?: Value; // the player's own value, when MCM Helper has saved one
+  game?: Value; // what the menu showed in a capture from a running game, when one was added
   help: string; // the info text the menu shows, raw
   helpText: string; // translated
   certainty: Certainty;
+  /**
+   * GameLabel is the label the menu showed in that capture, where the
+   * files know it only as a pattern, or not at all.
+   */
+  gameLabel?: string;
   /**
    * Position is SkyUI's cursor position when the option is added: where
    * the game draws it; -1 when the script decides it at runtime.
