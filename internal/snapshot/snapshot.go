@@ -94,7 +94,7 @@ type Summary struct {
 // Gaps a snapshot leaves, stated in SNAPSHOT.md.
 var gaps = []string{
 	"MCM scripts were found by following each compiled script's Extends chain to SKI_ConfigBase or MCM_ConfigBase, frameworks between included. A chain through a script that isn't in the list is lost.",
-	"Plugins are copied whole, from mods with MCM content only. A mod whose MCM quest lives in a plugin from a different mod (a patch) needs that plugin added by hand.",
+	"Plugins are copied whole, from mods with MCM content, and from any mod whose plugin defines or overrides a quest an MCM is attached to or reads through a property (a patch).",
 	"Loose files in the game's real Data folder (outside MO2) aren't included.",
 	"Archives are included only when the game loads them (named after an active plugin) and they hold an MCM script or MCM Helper config; the INI files' archive lists aren't read.",
 }
@@ -184,6 +184,27 @@ func (w *writer) run() error {
 	// (Sofia's SkyUI replacer holds only the archive).
 	if err := w.archivePlugins(); err != nil {
 		return err
+	}
+	// Every plugin that defines or overrides a quest an MCM uses, so the
+	// quests are as the game has them: a patch's override, from a mod with
+	// no MCM content, attaches a script another MCM reads (Seasonal
+	// Weathers').
+	for _, path := range catalog.QuestPlugins(l) {
+		p, ok := l.Open(path)
+		if !ok {
+			continue
+		}
+		dest := "mods/" + p.Mod + "/" + p.Path
+		if p.Mod == "overwrite" {
+			dest = "overwrite/" + p.Path
+		}
+		if w.copied[strings.ToLower(dest)] {
+			continue
+		}
+		if err := w.copy(p.Abs, dest, p.Mod); err != nil {
+			return err
+		}
+		w.addKind(p.Mod, "plugin")
 	}
 	// Translations often live in a mod without scripts (a separate "MCM"
 	// or translation mod), so pick up translation files from every enabled
@@ -548,7 +569,7 @@ func (w *writer) markdown() string {
 	}
 	fmt.Fprintf(&b, "`mo2/` is a trimmed MO2 instance: %d of %d enabled mods, %d files, %.1f MB. It holds other authors' files: local testing only, never commit or share it.\n\n", inv.List.IncludedMods, inv.List.EnabledMods, len(inv.Files), float64(bytes)/(1024*1024))
 	b.WriteString("## Mods included\n\n")
-	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `plugin` the plugin such an archive is named after, from a mod with nothing else included, `recordings`, `translations` (only translation files for an included plugin), `plugin-settings:N` INI files SKSE plugins keep settings in, from any mod (its plugins aren't brought along).\n\n")
+	b.WriteString("Kinds: `mcmhelper:N` config.json files, `settings:N` MCM Helper settings.ini files without a config, `source:N` MCM scripts with .psc, `compiled:N` MCM scripts with only .pex, `archive:N` MCM scripts and configs packed in an archive the game loads (copied whole), `plugin` a plugin from a mod with nothing else included: one an archive is named after, or one that defines or overrides a quest an MCM uses, `recordings`, `translations` (only translation files for an included plugin), `plugin-settings:N` INI files SKSE plugins keep settings in, from any mod (its plugins aren't brought along).\n\n")
 	b.WriteString("| Priority | Mod | Kinds |\n|---|---|---|\n")
 	// Numbered from the top of modlist.txt, counting enabled mods: the
 	// highest priority is 1.

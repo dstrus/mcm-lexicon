@@ -785,3 +785,31 @@ func TestScanCache(t *testing.T) {
 		}
 	}
 }
+
+// The plugins that hold an MCM's quest as the game has it: its own, and a
+// patch that overrides it, but not a plugin whose quests no MCM uses.
+func TestQuestPlugins(t *testing.T) {
+	inst := testcorpus.New(t, "List", "Default")
+	inst.Mod("Alpha", true, map[string]string{
+		"Alpha.esp":             testcorpus.Plugin(testcorpus.Quest{EditorID: "AlphaQuest", Script: "Alpha_MCM"}),
+		"Scripts/Alpha_MCM.pex": testcorpus.Compiled("Alpha_MCM", "SKI_ConfigBase"),
+	})
+	inst.Mod("Alpha Patch", true, map[string]string{
+		"AlphaPatch.esp": testcorpus.PluginWith([]string{"Alpha.esp"}, testcorpus.Quest{EditorID: "AlphaQuest", Script: "Alpha_MCM", FormID: 0x00000800}),
+	})
+	inst.Mod("Unrelated", true, map[string]string{
+		"Unrelated.esp": testcorpus.Plugin(testcorpus.Quest{EditorID: "OtherQuest", Script: "Other"}),
+	})
+	inst.Plugins("*Alpha.esp", "*AlphaPatch.esp", "*Unrelated.esp")
+	src, err := modlist.Check(inst.Dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := modlist.Read(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(QuestPlugins(l), ", "); got != "Alpha.esp, AlphaPatch.esp" {
+		t.Errorf("quest plugins = %q", got)
+	}
+}

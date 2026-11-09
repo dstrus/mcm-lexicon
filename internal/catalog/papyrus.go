@@ -593,6 +593,40 @@ func sortedKeys[V any](m map[string]V) []string {
 	return keys
 }
 
+// QuestPlugins is every plugin that defines or overrides a quest an MCM
+// script is attached to, or one its properties point to, as the game sees
+// the plugin: what a snapshot must hold for those quests to be as the game
+// has them, a patch's override (Seasonal Weathers') included.
+func QuestPlugins(l *modlist.List) []string {
+	l.Index(modlist.MCMScope)
+	s := &scan{list: l, cat: &Catalog{}, ids: map[string]bool{}}
+	s.scripts()
+	s.plugins()
+	seen := map[string]bool{}
+	var out []string
+	add := func(key string) {
+		for _, p := range s.questPlugins[key] {
+			if !seen[strings.ToLower(p)] {
+				seen[strings.ToLower(p)] = true
+				out = append(out, p)
+			}
+		}
+	}
+	for k := range s.compiled {
+		if s.base(k) == "" {
+			continue
+		}
+		for _, a := range s.quests[k] {
+			add(a.form)
+			for _, key := range a.objects {
+				add(key)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Scripts is every compiled script in the list that makes an MCM, by its
 // Extends chain, the scripts on the chains between them and the MCM bases
 // (a framework's), and the scripts on the quests an MCM script's properties

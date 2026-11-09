@@ -206,11 +206,16 @@ type Quest struct {
 	Script   string
 	ModName  string   // the script's ModName property; "" leaves it out
 	Pages    []string // its Pages property; nil leaves it out
+	FormID   uint32   // 0 for the plugin's own next one, 0x800 on
 }
 
 // Plugin is the bytes of a minimal plugin holding the quests, as the
 // Creation Kit writes them (VMAD version 5, object format 2).
-func Plugin(quests ...Quest) string {
+func Plugin(quests ...Quest) string { return PluginWith(nil, quests...) }
+
+// PluginWith is Plugin with masters, which a quest's FormID counts in its
+// first byte: an override of a master's quest gives that master's index.
+func PluginWith(masters []string, quests ...Quest) string {
 	le := func(v any) []byte {
 		var b bytes.Buffer
 		binary.Write(&b, binary.LittleEndian, v)
@@ -243,10 +248,18 @@ func Plugin(quests ...Quest) string {
 		}
 		data := append(sub("EDID", append([]byte(q.EditorID), 0)), sub("VMAD", v)...)
 		rec := record("QUST", data)
-		binary.LittleEndian.PutUint32(rec[12:], uint32(0x800+i))
+		id := q.FormID
+		if id == 0 {
+			id = uint32(len(masters))<<24 | uint32(0x800+i)
+		}
+		binary.LittleEndian.PutUint32(rec[12:], id)
 		body = append(body, rec...)
 	}
-	file := record("TES4", sub("HEDR", make([]byte, 12)))
+	header := sub("HEDR", make([]byte, 12))
+	for _, m := range masters {
+		header = append(header, sub("MAST", append([]byte(m), 0))...)
+	}
+	file := record("TES4", header)
 	if len(body) > 0 {
 		file = append(file, "GRUP"...)
 		file = append(file, le(uint32(24+len(body)))...)
