@@ -1,8 +1,9 @@
 <!-- One menu, as SkyUI draws it: the name across the top, the pages down
      the left, and the options in two columns placed where the game puts
      them, each a label with its value at the right. The value is the open
-     recording's where it has the option, else the menu's own; while
-     editing, it changes in place, and any change records the option. The
+     recording's where it has the option, else the menu's own; it changes
+     in place, and any change records the option (asking first to start
+     editing, while read-only). The
      selected option's help and details sit at the foot, where SkyUI shows
      its info text. -->
 <script lang="ts">
@@ -14,6 +15,7 @@
 	import { column } from '#lib/menus/column.svelte.ts';
 	import { allowed, changed, edgeSpace, hex, show, startSays } from '#lib/menus/values.ts';
 	import ChooseRecording from '#lib/recordings/ChooseRecording.svelte';
+	import StartEditing from '#lib/recordings/StartEditing.svelte';
 	import LiveValue from '#lib/recordings/LiveValue.svelte';
 	import { addAll, addStep, getRecording, putDraft, recordingHref, recordingsDependency, setClicks } from '#lib/recordings/api.ts';
 	import { OpenRecording } from '#lib/recordings/open.svelte.ts';
@@ -188,16 +190,19 @@
 	});
 	const typeLabel = (o: Option) => (o.control === 'stepper' ? m.option.types.stepper : m.option.types[o.type]);
 
-	// The open recording, while editing: what it has of this page.
+	// The open recording: what it has of this page.
 	const open = new OpenRecording();
 	let chooser = $state<ChooseRecording>();
 	const choose = () => chooser?.choose() ?? Promise.resolve(null);
-	// While editing, the rows' values can be changed whether or not a
-	// recording is chosen: the first change asks which one it goes to.
-	let recording = $derived(open.editing);
+	// Every option looks editable, read-only or not, and with or without a
+	// recording chosen: a first-time player changes a value without first
+	// finding the switch at the column's top. The change asks what it
+	// needs: to start editing, then which recording it goes to.
+	let starter = $state<StartEditing>();
 	// The recording a change goes to: the open one, else the one chosen in
-	// the dialog; null when the dialog closes without a choice.
-	const target = async () => open.name || (await choose());
+	// the dialog, once editing is on (asked for while read-only); null when
+	// either dialog closes without a yes.
+	const target = async () => ((open.editing || (await starter?.ask())) ? open.name || (await choose()) : null);
 	// An option's step as this page makes it, and as the recording has it:
 	// on a landing page, a step on the default page is the same option, and
 	// a change to it stays on the page it's on.
@@ -372,14 +377,14 @@
 					{ key: 'ArrowUp', label: m.common.previous, hidden: true, run: () => vertical(-1) },
 					{ key: 'ArrowRight', label: m.common.next, hidden: true, run: () => across(1) },
 					{ key: 'ArrowLeft', label: m.common.previous, hidden: true, run: () => across(-1) },
-					...(zone === 'options' && recording && current && canEdit(current.option)
+					...(zone === 'options' && current && canEdit(current.option)
 						? flippable(current.option)
 							? [{ key: ' ', shown: 'Space', label: on(current.option) ? m.edit.turnOff : m.edit.turnOn, disabled: working, run: () => flip(current!.option) }]
 							: current.option.type === 'text'
 								? []
 								: [{ key: 'e', shown: 'E', label: m.edit.edit, disabled: working, run: () => lives[current!.i]?.focus() }]
 						: []),
-					...(zone === 'options' && open.editing && current && canEdit(current.option) && !recorded(current.option)
+					...(zone === 'options' && current && canEdit(current.option) && !recorded(current.option)
 						? [{ key: 'a', shown: 'A', label: open.name ? m.adding.addTo({ recording: open.name }) : m.adding.addToAny, disabled: working, run: add }]
 						: []),
 					{ key: 'Escape', shown: 'Esc', label: t.up, run: () => goto('/menus') }
@@ -414,11 +419,11 @@
 {/snippet}
 
 {#snippet value(o: Option, i: number)}
-	{#if recording && (o.disabled === 'always' || o.inert)}
+	{#if (o.disabled === 'always' || o.inert)}
 		<!-- Grayed out in the game, or a line a click does nothing to: for
 		     reading only. -->
 		<span class="val readonly" title={o.inert ? m.adding.inert : m.adding.readOnly}>{@render shown(o)}</span>
-	{:else if recording}
+	{:else}
 		{@const rec = recorded(o)}
 		<span class="val" class:live={canEdit(o) && !flippable(o) && !stepper(o) && o.type !== 'text'} class:changed={!!rec && stepChanged(rec.step, o)}>
 			<!-- What the recording holds of it: a hollow diamond for a step
@@ -457,8 +462,6 @@
 				<LiveValue bind:this={lives[i]} kind={base(o).kind} option={o} value={valueShown(o)} recorded={!!rec} label={o.text || o.label} apply={(v) => record(o, v)} onfocus={(f, field) => (live = f ? { i, field } : live?.i === i ? null : live)} />
 			{/if}
 		</span>
-	{:else}
-		<span class="val" class:changed={changed(o)} class:readonly={o.disabled === 'always'}>{@render shown(o)}</span>
 	{/if}
 {/snippet}
 
@@ -508,7 +511,7 @@
 				{#each slots as x, i (i)}{@render slot(x)}{/each}
 			</ul>
 		{/if}
-		{#if open.editing && options.length}
+		{#if options.length}
 			<div class="tools">
 				<button type="button" class="button" disabled={working || !recordableNow.length} onclick={recordAll}>{t.recordAll}</button>
 				{#if unsavedHere}<button type="button" class="textbutton" disabled={working} onclick={discardMenu}>{t.discardHere({ count: unsavedHere })}</button>{/if}
@@ -538,10 +541,10 @@
 					<!-- A click on an inert option does nothing, grayed out or not. -->
 					{#if o.inert}<p class="notice">{m.option.inert}</p>
 					{:else if o.disabled}<p class="notice">{o.disabled === 'always' ? m.option.disabledAlways : m.option.disabledSometimes}</p>{/if}
-					{#if recording && stepper(o) && canEdit(o)}<p class="notice">{m.adding.stepperNote({ start: cycled(o, 0) })}</p>
-					{:else if recording && o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>
-					{:else if recording && o.type === 'keymap' && canEdit(o)}<p class="notice">{m.editor.controllerNote}{#if inVR(data.status.source?.game)}{' '}{m.editor.vrNote}{/if}</p>{/if}
-					{#if recording && !canEdit(o) && o.disabled !== 'always' && !o.inert}<p class="notice">{m.adding.cantRecord}</p>{/if}
+					{#if stepper(o) && canEdit(o)}<p class="notice">{m.adding.stepperNote({ start: cycled(o, 0) })}</p>
+					{:else if o.type === 'text' && canEdit(o)}<p class="notice">{rec ? m.adding.clickNoteRecorded({ recording: open.name }) : m.adding.clickNote}</p>
+					{:else if o.type === 'keymap' && canEdit(o)}<p class="notice">{m.editor.controllerNote}{#if inVR(data.status.source?.game)}{' '}{m.editor.vrNote}{/if}</p>{/if}
+					{#if !canEdit(o) && o.disabled !== 'always' && !o.inert}<p class="notice">{m.adding.cantRecord}</p>{/if}
 				</div>
 			{/key}
 		{:else if options.length}
@@ -551,6 +554,7 @@
 </div>
 
 <ChooseRecording bind:this={chooser} />
+<StartEditing bind:this={starter} />
 
 <style>
 	h1 {

@@ -34,6 +34,10 @@ shell:
   editing: Editing
   readOnlyTitle: Nothing can be changed. Turn on editing to make and change recordings.
   editingTitle: Every change goes to the draft until you save it, here or on the Changes page.
+  # Asked when a value is changed while read-only.
+  startTitle: Start editing?
+  startSays: MCM Lexicon is read-only. Editing puts each change in a draft, and nothing is written until you save.
+  startEditing: Start editing
   leaveTitle: The draft has changes
   leaveSays:
     one: The draft changes {count} recording, and none of it is saved. Review and save it first, or discard it to go back to read-only.
