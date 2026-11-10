@@ -44,9 +44,12 @@ export interface Status {
   trackers: Tracker[];
   /**
    * Capture is the capture added, as the catalog has it; absent when
-   * none is. Error says why one found isn't added.
+   * none is. Pending is true while the list is still being scanned, so
+   * the capture has been read but not yet matched, and has no report.
+   * Error says why one found isn't added.
    */
   capture?: catalog.CaptureInfo;
+  pending: boolean;
   error: string;
 }
 /**

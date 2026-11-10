@@ -57,9 +57,11 @@ type Service struct {
 	source  func() (*modlist.Source, string) // the list open, or the catalog file open instead
 
 	mu       sync.Mutex
-	path     string    // the capture file added, "" for none
-	modTime  time.Time // and when it was written, so a new one is read
-	err      string    // why the capture found isn't added
+	path     string               // the capture file added, "" for none
+	modTime  time.Time            // and when it was written, so a new one is read
+	info     *catalog.CaptureInfo // what it says, before the catalog has matched it
+	err      string               // why the capture found isn't added
+	missing  string               // that the file chosen in Settings is gone
 	watching sync.Once
 }
 
@@ -149,15 +151,20 @@ func (s *Service) Sync() {
 	} else {
 		path = ""
 	}
+	// A file chosen in Settings that's gone says so, rather than nothing.
+	missing := ""
+	if chosen := s.prefs.Get().CaptureFile; chosen != "" && path == "" {
+		missing = fmt.Sprintf("The capture file chosen in Settings, %s, isn't there anymore.", chosen)
+	}
 	if s.prefs.Get().CaptureOff {
-		path = ""
+		path, missing = "", ""
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if path == s.path && mod.Equal(s.modTime) {
+	if path == s.path && mod.Equal(s.modTime) && missing == s.missing {
 		return
 	}
-	s.path, s.modTime, s.err = path, mod, ""
+	s.path, s.modTime, s.info, s.err, s.missing = path, mod, nil, "", missing
 	if path == "" {
 		s.catalog.AddCapture(nil, "")
 		return
@@ -173,6 +180,7 @@ func (s *Service) Sync() {
 		s.catalog.AddCapture(nil, "")
 		return
 	}
+	s.info = catalog.InfoOf(f, path)
 	s.catalog.AddCapture(f, path)
 	log.Printf("Capture: %s, from %s", path, f.Captured.Local().Format(time.DateTime))
 }
@@ -192,8 +200,11 @@ type Status struct {
 	IncludeTrackers bool      `json:"includeTrackers"`
 	Trackers        []Tracker `json:"trackers"`
 	// Capture is the capture added, as the catalog has it; absent when
-	// none is. Error says why one found isn't added.
+	// none is. Pending is true while the list is still being scanned, so
+	// the capture has been read but not yet matched, and has no report.
+	// Error says why one found isn't added.
 	Capture *catalog.CaptureInfo `json:"capture,omitempty"`
+	Pending bool                 `json:"pending"`
 	Error   string               `json:"error"`
 }
 
@@ -208,6 +219,12 @@ func (s *Service) Status() Status {
 	}
 	s.mu.Lock()
 	st.Error = s.err
+	if s.missing != "" {
+		st.Error = s.missing
+	}
+	if st.Capture == nil && s.info != nil {
+		st.Capture, st.Pending = s.info, true
+	}
 	s.mu.Unlock()
 	return st
 }

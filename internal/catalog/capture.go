@@ -137,11 +137,19 @@ func ApplyCapture(c *Catalog, f *Capture, path string) *Catalog {
 			return strings.ToLower(out.Menus[i].NameText) < strings.ToLower(out.Menus[j].NameText)
 		})
 	}
-	out.Capture = &CaptureInfo{Path: path, Captured: f.Captured, Game: f.Game, Plugin: f.Plugin, Report: a.report, Stopped: f.Stopped}
-	if f.Running != nil {
-		out.Capture.Unfinished = f.Running.Menu + ": " + f.Running.Step
-	}
+	out.Capture = InfoOf(f, path)
+	out.Capture.Report = a.report
 	return &out
+}
+
+// InfoOf is what a catalog says of the capture read from path, before it's
+// matched against one: everything but the report.
+func InfoOf(f *Capture, path string) *CaptureInfo {
+	info := &CaptureInfo{Path: path, Captured: f.Captured, Game: f.Game, Plugin: f.Plugin, Stopped: f.Stopped}
+	if f.Running != nil {
+		info.Unfinished = f.Running.Menu + ": " + f.Running.Step
+	}
+	return info
 }
 
 type applier struct {

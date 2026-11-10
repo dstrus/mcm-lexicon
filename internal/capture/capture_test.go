@@ -159,3 +159,30 @@ func jsonString(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
 }
+
+// Before the first scan ends there's no catalog to match a capture against:
+// Status says it's read and waiting, rather than that there's none.
+func TestStatusBeforeTheScan(t *testing.T) {
+	_, docs, p := fixture(t)
+	dir := filepath.Join(docs, "My Games", "Skyrim VR", "SKSE", "MCM Lexicon")
+	os.MkdirAll(dir, 0o755)
+	os.WriteFile(filepath.Join(dir, captureFile), []byte(captureOf("SkyrimVR")), 0o644)
+	src := &modlist.Source{Game: "Skyrim VR"}
+	s := NewService(catalog.NewService("test"), p, func() (*modlist.Source, string) { return src, "" })
+	st := s.Status()
+	if st.Capture == nil || !st.Pending || st.Capture.Captured.IsZero() || st.Error != "" {
+		t.Errorf("before the scan: %+v", st)
+	}
+}
+
+func TestMissingChosenFile(t *testing.T) {
+	s, _, p := fixture(t)
+	p.Update(func(v *prefs.Values) { v.CaptureFile = filepath.Join(t.TempDir(), "gone.json") })
+	if st := s.Status(); st.Capture != nil || !strings.Contains(st.Error, "isn't there") {
+		t.Errorf("a chosen file that's gone: %+v", st)
+	}
+	p.Update(func(v *prefs.Values) { v.CaptureOff = true })
+	if st := s.Status(); st.Error != "" {
+		t.Errorf("turned off, a missing file doesn't matter: %+v", st)
+	}
+}

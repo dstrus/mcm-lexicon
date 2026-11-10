@@ -886,6 +886,7 @@ settings:
     values: Values
     added: Added from the game
     none: No capture yet.
+    pending: The list is still being scanned. Once it’s done, the capture is matched against it, and this says how much matched.
     stopped: "It stopped early: {why}."
     unfinished: "It didn’t finish: the game closed during {step}. What it read before then is here."
     request: Capture in game

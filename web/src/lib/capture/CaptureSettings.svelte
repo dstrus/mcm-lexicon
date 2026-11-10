@@ -16,7 +16,13 @@
 	import Switch from '#lib/ui/Switch.svelte';
 	import { cancelRequest, getCapture, requestCapture, setCaptureSettings } from './api.ts';
 
-	let { game }: { game: string } = $props(); // the list's game as MO2 names it; "" when not known
+	let {
+		game,
+		scanned
+	}: {
+		game: string; // the list's game as MO2 names it; "" when not known
+		scanned: string; // when the list was last scanned: a capture is matched against each new catalog
+	} = $props();
 
 	const t = m.settings.capture;
 	const releases = 'https://github.com/dstrus/mcm-lexicon/releases/latest';
@@ -49,13 +55,15 @@
 
 	$effect(() => {
 		void game; // another list may be another game's folder
+		void scanned; // a scan that ends matches the capture against its catalog
 		getCapture()
 			.then(update)
 			.catch((e) => (error = e instanceof ApiError ? e.message : String(e)));
 	});
-	// While a request waits for the game, look again every few seconds.
+	// While a request waits for the game, or a capture for the scan, look
+	// again every few seconds.
 	$effect(() => {
-		if (!st?.requested) return;
+		if (!st?.requested && !st?.pending) return;
 		const timer = setInterval(() => getCapture().then(update).catch(() => {}), 3000);
 		return () => clearInterval(timer);
 	});
@@ -76,11 +84,14 @@
 	{#if st.capture && report}
 		<dl class="stats">
 			<div><dt class="caps">{t.captured}</dt><dd>{realTime(Date.parse(st.capture.captured))}</dd></div>
-			<div><dt class="caps">{t.menus}</dt><dd>{count(report.menus)}</dd></div>
-			<div><dt class="caps">{t.matched}</dt><dd>{t.matchedOf({ matched: count(matched), options: count(report.options) })}</dd></div>
-			<div><dt class="caps">{t.values}</dt><dd>{count(report.values)}</dd></div>
-			{#if report.optionsAdded}<div><dt class="caps">{t.added}</dt><dd>{count(report.optionsAdded)}</dd></div>{/if}
+			{#if !st.pending}
+				<div><dt class="caps">{t.menus}</dt><dd>{count(report.menus)}</dd></div>
+				<div><dt class="caps">{t.matched}</dt><dd>{t.matchedOf({ matched: count(matched), options: count(report.options) })}</dd></div>
+				<div><dt class="caps">{t.values}</dt><dd>{count(report.values)}</dd></div>
+				{#if report.optionsAdded}<div><dt class="caps">{t.added}</dt><dd>{count(report.optionsAdded)}</dd></div>{/if}
+			{/if}
 		</dl>
+		{#if st.pending}<p class="note">{t.pending}</p>{/if}
 		{#if st.capture.unfinished}<p class="notice warn">{t.unfinished({ step: st.capture.unfinished })}</p>
 		{:else if st.capture.stopped}<p class="notice warn">{t.stopped({ why: st.capture.stopped })}</p>{/if}
 	{:else if !st.error}

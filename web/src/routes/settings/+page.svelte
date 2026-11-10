@@ -123,7 +123,7 @@
 {#if source || status.catalogFile}
 	<section class="settings" id="capture" aria-labelledby="capture-title">
 		<h2 id="capture-title" class="caps">{m.settings.capture.title}</h2>
-		<CaptureSettings game={source?.game ?? ''} />
+		<CaptureSettings game={source?.game ?? ''} scanned={status.scan.scannedAt ?? ''} />
 	</section>
 {/if}
 {#if source}
