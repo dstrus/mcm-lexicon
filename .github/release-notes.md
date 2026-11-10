@@ -1,10 +1,11 @@
-It's a beta. It has worked well on my own lists, but you will find things that don't. Please [open an issue](https://github.com/dstrus/mcm-lexicon/issues) if and when something looks wrong, especially a menu, page, or option that reads differently in the game.
+This is a beta. It has worked well for me thus far, but you may find things that don't. Please [open an issue](https://github.com/dstrus/mcm-lexicon/issues) if and when something looks wrong, especially a menu, page, or option that reads differently in the game.
 
 ## Download
 
 - **Windows:** `MCMLexicon-windows-x64.zip`. Put `MCMLexicon.exe` in your MO2 instance folder (beside `ModOrganizer.ini`), or in your Skyrim folder (beside `SkyrimVR.exe` or `SkyrimSE.exe`) if you use Vortex or nothing, and run it. It opens in a window of its own; closing the window stops it.
+- **The capture plugin (optional):** `MCMLexicon-Capture.zip`. Install it as a mod, like any other. It's an SKSE plugin for Skyrim SE, AE, and VR, and needs SKSE and Address Library (or VR Address Library). As distributed, it's licensed under GPL-3.0-or-later, since it's built on CommonLibSSE NG; its license and notices are in the zip. See [Capturing from the game](https://daveystrus.com/mcm-lexicon/docs/capturing-from-the-game/).
 
-Releases are for Windows only. On macOS or Linux, you can build it yourself; see [DEVELOPING.md](https://github.com/dstrus/mcm-lexicon/blob/main/DEVELOPING.md). `SHA256SUMS` lists the download's checksum.
+Releases are for Windows only. On macOS or Linux, you can build it yourself; see [DEVELOPING.md](https://github.com/dstrus/mcm-lexicon/blob/main/DEVELOPING.md). `SHA256SUMS` lists both downloads' checksums.
 
 ## Before you start
 

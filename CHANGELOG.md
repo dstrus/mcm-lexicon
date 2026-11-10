@@ -2,6 +2,18 @@
 
 What changed in each release of MCM Lexicon, newest first.
 
+## 0.1.0-beta.4 (2026-11-09)
+
+MCM Lexicon can now read your menus from inside the running game with an optional SKSE plugin. This fills in the values and labels that can't be derived from just reading the mods' files. The other big change: every option can be changed straight away, without first hunting down the **editing** switch.
+
+- Added the capture plugin, `MCMLexicon-Capture.zip`, an SKSE plugin for Skyrim SE, AE, and VR. Install it as a mod, press **Capture in game** in MCM Lexicon Settings, and load a save. The plugin works through every menu, one page at a time, and MCM Lexicon automatically picks up what it found. The plugin only runs the capture when you ask for it, adds nothing to your load order or saves, and can be removed at any time. See [Capturing from the game](https://daveystrus.com/mcm-lexicon/docs/capturing-from-the-game/).
+- With a capture, the line under a menu shows **IN YOUR GAME**, and an option you haven't recorded yet starts from your game's value, after any value MCM Helper has saved. On Mad God's Overhaul, a capture matched all 83 menus and gave 4,144 options their value in the game.
+- A capture also adds other information that couldn't be read from the files: pages MCM Lexicon couldn't find (one menu went from one page to 16), options a script adds once per item, and labels built while the game runs. Options loaded from a capture can be recorded like any other.
+- Menus that only track your progress, like the LOTD Checklist, are skipped by a capture unless you turn on **Include trackers**. (But don't turn it on.) You can also exclude capture data from what the Lexicon displays, or read a capture file from another location.
+- Every option now looks editable from the jump and can be changed at any time. WHen in read-only mode, the first change prompts you to start editing, and if no recording is chosen, it asks which recording to use.
+- **Adding to** shows **None** when the recording it remembered isn't in the list anymore, instead of showing nothing.
+- `MCMLexicon.exe scan -json -capture capture.json` adds a capture to the catalog it writes and prints how much matched.
+
 ## 0.1.0-beta.3 (2026-11-08)
 
 Menus now show the default values for far more options across far more menus. On an internal build of Mad God's Overhaul, the options showing no default value went from about two-thirds to under a quarter.
