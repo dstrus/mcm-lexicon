@@ -23,7 +23,7 @@ It has no Skyrim plugin, so nothing new shows up in your load order, and it neve
 3. In MCM Lexicon, go to **Settings** and press **Capture in game**.
 4. Back in the game, load the save you just made.
 
-_Note that MCM Helper menus always show your saved settings on new games, so unless this is a truly fresh install, some values may not be defaults._
+_Note that MCM Helper menus load your saved settings into every new game. To ensure that you really are capturing the defaults, move `MCM\Settings` out of MO2's overwrite folder (and disable any mod that includes those files) while you take the capture._
 
 **If you want to capture the current values in a particular playthrough:**
 
