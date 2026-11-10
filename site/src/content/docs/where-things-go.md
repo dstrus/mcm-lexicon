@@ -1,7 +1,7 @@
 ---
 title: Where things go
 description: Every place MCM Lexicon writes to, and what it writes there.
-order: 3
+order: 4
 ---
 
 MCM Lexicon reads your whole list, but it only writes to a few places. Here they all are.
@@ -26,9 +26,13 @@ MCM Lexicon never changes a recording that came with another mod. Changing one s
 
 When MCM Lexicon replaces or removes a file, a copy goes to a `lexicon-backups` folder beside the list (next to `ModOrganizer.ini` or `Data`) first. A recording's **Backups** tab lists its backups and can restore them.
 
+## Captures
+
+If you use the [capture plugin](../capturing-from-the-game/), **Capture in game** writes a small request file, `capture-request.json`, to `Documents\My Games\<your game>\SKSE\MCM Lexicon`. The plugin reads it at your next load, deletes it, and writes `capture.json` in the same folder. It also keeps a log, `MCMLexicon.log`, in the parent folder, alongside SKSE's logs. None of this is in your mod list or your saves.
+
 ## MCM Lexicon Settings
 
-Which list was open, the theme, and the save folder's name live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache and MCM Lexicon's browsing data go under your user cache folder.
+Which list was open, the theme, the save folder's name, and your capture settings live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache and MCM Lexicon's browsing data go under your user cache folder.
 
 Nothing else is written anywhere.
 

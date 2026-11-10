@@ -1,7 +1,7 @@
 ---
 title: Command line
 description: Switches for running MCM Lexicon, and the commands that work with catalogs from a terminal.
-order: 4
+order: 5
 ---
 
 You never have to use any of this. Running `MCMLexicon.exe` is enough, and Settings can save a catalog file or make a snapshot too. But if you like a terminal, there are fancy switches.
@@ -32,6 +32,12 @@ Write the catalog to a file, which the app can open on any machine, including on
 
 ```
 MCMLexicon.exe scan -json -o catalog.json [-list …]
+```
+
+Add a [capture](../capturing-from-the-game/) from your game to that catalog, and print how much of it matched:
+
+```
+MCMLexicon.exe scan -json -capture capture.json -o catalog.json [-list …]
 ```
 
 Show the differences between two catalogs, such as one version of a list and the next:

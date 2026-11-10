@@ -33,6 +33,7 @@ _Please excuse the bullet points that begin with a bold verb or verb phrase, but
 - **Create and edit MCM Recorder recordings** with a graphical interface, like in the in-game menus. You don't have to remember what the JSON property names are for a million different things. Changes go into a reviewable draft, and nothing is actually written to a proper recording until you say so.
 - **Check existing recordings** against what's installed, so you know before you launch which steps still have a matching menu/option in your game.
 - **Compare** two versions of a list's catalog, to see which MCMs changed between releases and which recorded steps are broken by those changes.
+- **Capture** what every menu shows in your running game with an optional SKSE plugin, for the values and labels that are not otherwise discoverable. (Yes, this one involves launching Skyrim. Sorry.)
 
 It's a single program that runs a small web server on your machine and shows its interface in a window of its own (Microsoft Edge's WebView2, part of Windows 10 and 11). It reads MCMs defined in your load order and writes new recordings and changes to a separate mod.
 
@@ -45,6 +46,8 @@ It works with [MCM Recorder](https://www.nexusmods.com/skyrimspecialedition/mods
 **Everyone else (including Vortex users):** Put `MCMLexicon.exe` in your Skyrim installation folder (the one holding `SkyrimVR.exe` or `SkyrimSE.exe`), or in its `Data` folder.
 
 Releases are for Windows only, but you can build it for macOS or Linux. See [DEVELOPING.md](DEVELOPING.md).
+
+**The capture plugin (optional):** Install `MCMLexicon-Capture.zip` as a mod, like any other. It's an SKSE plugin for Skyrim SE, AE, and VR, and needs SKSE and Address Library (or VR Address Library, as the case may be). It has no Skyrim plugin of its own, so it doesn't touch your load order, and it never writes to your saves, so you can remove it whenever you like.
 
 ## Running it
 
@@ -92,9 +95,11 @@ MCM Lexicon will never change a recording that came with another mod directly. M
 
 If you're working with a plain `Data` folder instead of an MO2-managed list, recordings get saved there.
 
+If you use the capture plugin, **Capture in game** writes a tiny file called `capture-request.json` to `Documents\My Games\<your game>\SKSE\MCM Lexicon`. The plugin deletes it at your next load and writes `capture.json` there in its place, plus a log (`MCMLexicon.log`) in the parent folder, alongside SKSE's logs.
+
 When MCM Lexicon replaces or removes a file, **backups** go to a `lexicon-backups` folder beside the list (next to `ModOrganizer.ini` or `Data`). The Backups tab for a recording lists its backups and can restore them.
 
-**Settings** (which list was open, the theme, the save folder's name) live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache is saved under your user cache folder.
+**Settings** (which list was open, the theme, the save folder's name, your capture settings) live in `MCM Lexicon/settings.json` under your user configuration folder. A scan cache is saved under your user cache folder.
 
 Nothing else is written anywhere.
 
@@ -105,6 +110,7 @@ Nothing else is written anywhere.
 - Before a file is replaced or removed, a copy goes to `lexicon-backups`.
 - If a save cannot finish completely, it leaves the old recording untouched. You can never end up with half a recording. (For the nerds: _writes are atomic_.)
 - The server only listens on `127.0.0.1`, and every API request must carry a per-session token from the page. Nothing else on your PC, and no website open in a browser, can reach your files through it.
+- The capture plugin only does anything when you ask it to, and each request is used up the moment a capture starts, so a menu that misbehaves can't do it twice. It never writes to your saves.
 - It reads files from mods installed on your machine when creating the catalog, but there are no files from other mods included here. Snapshots generated from a list, which copy other mods' files for testing, are for your own machine.
 
 ## Development
@@ -114,5 +120,7 @@ How to build MCM Lexicon, run its tests, and find your way around the code is in
 ## License
 
 MCM Lexicon is released under the [MIT License](LICENSE). Copyright (c) 2026 Davey Strus. It includes other people's software and fonts, each under its own license. [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) lists them with their license texts, and that's included in releases.
+
+The capture plugin, `MCMLexicon.dll`, is built on [CommonLibSSE NG](https://github.com/alandtse/CommonLibSSE-NG), which is GPL-licensed, so the plugin as distributed is under GPL-3.0-or-later. Its source (the `skse` folder in this repo) is still MIT. [skse/LICENSE.md](skse/LICENSE.md) explains, and the plugin's zip carries its license and notices.
 
 The Elder Scrolls V: Skyrim is a trademark of ZeniMax Media Inc.

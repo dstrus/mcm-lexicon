@@ -8,7 +8,7 @@ A recording is what MCM Recorder plays when you start a new game (if autorun is 
 
 ## Turn on editing
 
-Near the top of the column, switch from **Read-only** to **Editing**. Then choose which recording to add to under **Adding to**, or pick **New recording…** at the bottom of that list and give it a name. (You can also leave it at **None** and just start changing things. The first change asks which recording it should go to.)
+Near the top of the column, switch from **Read-only** to **Editing**. Then choose which recording to add to under **Adding to**, or pick **New recording…** at the bottom of that list and give it a name. (You can also skip all that and just start changing things. If you're still read-only, the first change asks whether to start editing, and if no recording is chosen, which one it should go to.)
 
 <figure class="shot themed" style="--w: 300px">
   <img class="dark" src="/mcm-lexicon/docs/shots/editing-controls-dark.webp" alt="The top of the column while editing, its parts numbered." loading="lazy" decoding="async" />
@@ -18,7 +18,7 @@ Near the top of the column, switch from **Read-only** to **Editing**. Then choos
 
 ## Set some values
 
-Open a menu and set options the way you would in SkyUI. While you're editing, every option shows an appropriate control: a toggle switch, a slider, a dropdown, etc. You can also press `E` to edit the selected option from the keyboard. In either case, changing one records it in your draft recording.
+Open a menu and set options the way you would in SkyUI. Every option shows an appropriate control: a toggle switch, a slider, a dropdown, etc. You can also press `E` to edit the selected option from the keyboard. In either case, changing one records it in your draft recording.
 
 A value in copper is already saved in the recording and differs from the mod's default (when MCM Lexicon knows the default). A small amber diamond before a value means it's in the draft recording but not saved to disk yet.
 
@@ -33,16 +33,17 @@ A value in copper is already saved in the recording and differs from the mod's d
 Before you record an option, its control shows the value it already has, in muted text, so you can see what you'd be changing. MCM Lexicon takes that value from the first of these it knows:
 
 1. **Saved:** what MCM Helper has saved for the option, if it's an MCM Helper menu and you've changed it in the game.
-2. **New game:** what the mod's scripts and plugins say a new game starts with. That's read from the mod's global variables, the values its scripts set up for themselves, other scripts' settings that it reads, MCM Helper settings, and the INI files that some SKSE plugins keep their settings in (VRIK, Experience, Ricochet, Accuracy, and Core Impact Framework so far).
-3. **Default:** the default the menu itself states, which is what it resets to.
+2. **In your game:** the value shown in-game, if you've [taken a capture](../capturing-from-the-game/).
+3. **New game:** what the mod's scripts and plugins say a new game starts with. That's read from the mod's global variables, the values its scripts set up for themselves, other scripts' settings that it reads, MCM Helper settings, and the INI files that some SKSE plugins keep their settings in (VRIK, Experience, Ricochet, Accuracy, and Core Impact Framework so far).
+4. **Default:** the default the menu itself states, which is what it resets to.
 
-The line under the menu names each value it knows, as DEFAULT, NEW GAME, and SAVED. NEW GAME only appears when it says something DEFAULT doesn't. An option shows a dash when none of them is known, usually because its value depends on something only the running game knows (what's in your inventory, say), or because a plugin keeps it out of reach inside its DLL.
+The line under the menu lists each value it knows, as DEFAULT, NEW GAME, SAVED, and IN YOUR GAME. NEW GAME only appears when it says something DEFAULT doesn't. An option shows a dash when none of them is known, usually because its value depends on something only the running game knows (what's in your inventory, say), or because a plugin keeps it out of reach inside its DLL. A [capture](../capturing-from-the-game/) can fill in many of those.
 
 <div class="btw">
 
 Why a new game, and not my game?
 
-MCM Lexicon reads your mods' files, not your save games. If you've changed a setting in your current playthrough, that change often lives in your save, where MCM Lexicon can't see it. For a recording, that's likely what you want anyway, since recordings mostly play on a new game.
+MCM Lexicon reads your mods' files, not your save games. If you've changed a setting in your current playthrough, that change often lives in your save, where MCM Lexicon can't see it. For a recording, that's likely what you want anyway, since recordings mostly play on a new game. If you'd rather start from what your current game has, [take a capture](../capturing-from-the-game/).
 
 </div>
 
